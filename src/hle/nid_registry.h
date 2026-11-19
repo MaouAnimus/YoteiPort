@@ -15,6 +15,15 @@ struct NidEntry {
     uint64_t host_stub_address = 0;
 };
 
+struct UnhandledStubRecord {
+    std::string nid;
+    std::string resolved_name;
+    std::string library;
+    uint64_t call_count = 0;
+    uint64_t last_rdi = 0;
+    uint64_t last_rsi = 0;
+};
+
 class NidRegistry {
 public:
     bool LoadResolutionTable(const std::filesystem::path& json_path);
@@ -25,6 +34,9 @@ public:
     const NidEntry* Lookup(const std::string& nid) const;
     size_t GetTotalRegistered() const { return table_.size(); }
     void FreeTrampolines();
+
+    static void PrintUnhandledStubSummary();
+    static size_t GetUnhandledStubCount();
 
 private:
     std::unordered_map<std::string, NidEntry> table_;

@@ -5,6 +5,7 @@
 #include "hle/nid_registry.h"
 #include "kernel/filesystem.h"
 #include "kernel/memory.h"
+#include "kernel/threads.h"
 #include "loader/elf_mapper.h"
 #include <cstring>
 #include <iomanip>
@@ -21,10 +22,27 @@ namespace {
 #ifdef _WIN32
 LONG WINAPI GuestVehHandler(EXCEPTION_POINTERS* ep) {
     DWORD code = ep->ExceptionRecord->ExceptionCode;
+    uint64_t current_fs = 0;
+    __try { current_fs = _readfsbase_u64(); } __except(1) {}
     std::cout << "  [VEH] Exception 0x" << std::hex << code
               << " at RIP=0x" << ep->ContextRecord->Rip
               << " RAX=0x" << ep->ContextRecord->Rax
-              << " RBX=0x" << ep->ContextRecord->Rbx << std::dec << std::endl;
+              << " RBX=0x" << ep->ContextRecord->Rbx
+              << " SegFs=0x" << ep->ContextRecord->SegFs
+              << " FSBase=0x" << current_fs << std::dec << std::endl;
+    if (code == EXCEPTION_ACCESS_VIOLATION) {
+        uint8_t* p = reinterpret_cast<uint8_t*>(ep->ContextRecord->Rip);
+        while (p && *p == 0x66) ++p;
+        // mov rax, qword ptr fs:[0] -> 64 48 8b 04 25 00 00 00 00 (9 bytes)
+        if (p && p[0] == 0x64 && p[1] == 0x48 && p[2] == 0x8B && p[3] == 0x04 && p[4] == 0x25 &&
+            *reinterpret_cast<uint32_t*>(p + 5) == 0) {
+            uint64_t tcb = yotei::kernel::ThreadManager::Instance().GetCurrentThreadTcb();
+            ep->ContextRecord->Rax = tcb;
+            ep->ContextRecord->Rip = reinterpret_cast<DWORD64>(p + 9);
+            std::cout << "  [VEH] Emulated fs:[0] -> RAX=0x" << std::hex << tcb << std::dec << "\n" << std::flush;
+            return EXCEPTION_CONTINUE_EXECUTION;
+        }
+    }
     if (code == EXCEPTION_BREAKPOINT) {
         // If hit int3 (0xCC), advance RIP by 1 or return
         ep->ContextRecord->Rip += 1;
@@ -33,39 +51,15 @@ LONG WINAPI GuestVehHandler(EXCEPTION_POINTERS* ep) {
     return EXCEPTION_CONTINUE_SEARCH;
 }
 
-uint64_t InvokeGuestSysV(uint64_t fn_addr, uint64_t rdi_arg, uint64_t rsi_arg) {
-    uint8_t caller_code[] = {
-        0x55,                                     // push rbp
-        0x48, 0x89, 0xE5,                         // mov rbp, rsp
-        0x41, 0x57,                               // push r15
-        0x41, 0x56,                               // push r14
-        0x41, 0x55,                               // push r13
-        0x41, 0x54,                               // push r12
-        0x57,                                     // push rdi
-        0x56,                                     // push rsi
-        0x53,                                     // push rbx
-        0x48, 0x83, 0xEC, 0x08,                   // sub rsp, 8 (16-byte align)
-        0x48, 0x89, 0xD7,                         // mov rdi, rdx (rdi_arg)
-        0x4C, 0x89, 0xC6,                         // mov rsi, r8  (rsi_arg)
-        0xFF, 0xD1,                               // call rcx     (fn_addr)
-        0x48, 0x8D, 0x65, 0xC8,                   // lea rsp, [rbp - 56]
-        0x5B,                                     // pop rbx
-        0x5E,                                     // pop rsi
-        0x5F,                                     // pop rdi
-        0x41, 0x5C,                               // pop r12
-        0x41, 0x5D,                               // pop r13
-        0x41, 0x5E,                               // pop r14
-        0x41, 0x5F,                               // pop r15
-        0x5D,                                     // pop rbp
-        0xC3                                      // ret
-    };
-    void* exec_mem = VirtualAlloc(nullptr, 64, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
-    std::memcpy(exec_mem, caller_code, sizeof(caller_code));
-    using GateFn = uint64_t(__fastcall*)(uint64_t, uint64_t, uint64_t);
-    auto gate = reinterpret_cast<GateFn>(exec_mem);
-    uint64_t result = gate(fn_addr, rdi_arg, rsi_arg);
-    VirtualFree(exec_mem, 0, MEM_RELEASE);
-    return result;
+static bool ProbeGuestFunctionSeh(uint64_t fn, uint64_t arg0, uint64_t arg1, uint64_t* out_ret, DWORD* out_exc) {
+    __try {
+        uint64_t r = yotei::kernel::InvokeGuestSysV(fn, arg0, arg1, 0, 0);
+        if (out_ret) *out_ret = r;
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        if (out_exc) *out_exc = GetExceptionCode();
+        return false;
+    }
 }
 #endif
 
@@ -118,6 +112,31 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+    // Initialize TLS and Threads
+    uint64_t tls_vaddr = 0;
+    const uint8_t* tls_data = nullptr;
+    size_t tls_filesz = 0, tls_memsz = 0, tls_align = 0;
+    if (mapper.GetTlsTemplate(&tls_vaddr, &tls_data, &tls_filesz, &tls_memsz, &tls_align)) {
+        yotei::kernel::ThreadManager::Instance().Initialize(
+            tls_vaddr, tls_data, tls_filesz, tls_memsz, tls_align);
+        std::cout << "[+] Initialized PT_TLS: filesz=0x" << std::hex << tls_filesz
+                  << " memsz=0x" << tls_memsz << " align=0x" << tls_align << std::dec << "\n";
+    }
+    yotei::kernel::ThreadManager::Instance().SetupMainThread();
+
+    // Parse PT_SCE_PROCPARAM
+    size_t procparam_sz = 0;
+    const uint8_t* procparam_data = mapper.GetProcParamData(&procparam_sz);
+    if (procparam_data) {
+        yotei::kernel::SceProcParam pp{};
+        if (yotei::kernel::ThreadManager::Instance().ParseProcParam(procparam_data, procparam_sz, &pp)) {
+            std::cout << "[+] Parsed PT_SCE_PROCPARAM (Magic='ORBI'):\n"
+                      << "    SDK Version       : 0x" << std::hex << pp.sdk_version << "\n"
+                      << "    Compiler Version  : 0x" << pp.compiler_version << std::dec << "\n"
+                      << "    Main Stack Size   : " << pp.main_thread_stack_size << " bytes\n";
+        }
+    }
+
     // Mount virtual filesystems (/app0, /cache_ps5) and load AMPRIDX3 index
     auto& vfs = yotei::kernel::VirtualFileSystem::Instance();
     std::filesystem::path app0_dir = root / "PPSA26344" / "PPSA26344-app";
@@ -148,7 +167,7 @@ int main(int argc, char** argv) {
     uint64_t sub_mutex_init = mapper.GetBaseAddress() + 0xcd85f0ULL;
     std::cout << "[*] Calling sub_cd85f0 (Engine Memory & Virtual Path Table Init) @ 0x"
               << std::hex << sub_mutex_init << std::dec << "...\n" << std::flush;
-    InvokeGuestSysV(sub_mutex_init, reinterpret_cast<uint64_t>(dummy_mutex_obj), 0);
+    yotei::kernel::InvokeGuestSysV(sub_mutex_init, reinterpret_cast<uint64_t>(dummy_mutex_obj), 0);
     std::cout << "[+] sub_cd85f0 returned cleanly!\n";
     const auto& regions = yotei::kernel::GuestMemoryManager::Instance().GetMappedRegions();
     std::cout << "[+] Active Guest Direct/Flexible Memory Regions (" << regions.size() << "):\n";
@@ -159,7 +178,25 @@ int main(int argc, char** argv) {
                   << std::hex << reg.phys_offset << std::dec << "\n";
     }
 
-    // 2. Verify AMPR Asynchronous Streaming Command Buffer Execution into Guest Direct Memory
+    // 2. Test sub_24f2c0 (calls scePthreadSelf and returns current thread ID)
+    uint64_t sub_pthread_self = mapper.GetBaseAddress() + 0x24f2c0ULL;
+    std::cout << "[*] Calling sub_24f2c0 (scePthreadSelf SysV entry) @ 0x"
+              << std::hex << sub_pthread_self << std::dec << "...\n" << std::flush;
+    uint64_t self_tid = yotei::kernel::InvokeGuestSysV(sub_pthread_self, 0, 0);
+    std::cout << "[+] sub_24f2c0 returned TID=" << self_tid << "\n";
+
+    // 3. Test Calling Global Static Constructors @ 0x800000010
+    uint64_t global_init = mapper.GetBaseAddress() + 0x10ULL;
+    std::cout << "\n[*] Testing Global Static Constructors @ 0x" << std::hex << global_init << std::dec << "...\n" << std::flush;
+    uint64_t init_ret = 0;
+    DWORD init_exc = 0;
+    if (ProbeGuestFunctionSeh(global_init, 0, 0, &init_ret, &init_exc)) {
+        std::cout << "[+] Global static constructors executed cleanly!\n";
+    } else {
+        std::cout << "  [!] Global init exception: 0x" << std::hex << init_exc << std::dec << "\n";
+    }
+
+    // 4. Verify AMPR Asynchronous Streaming Command Buffer Execution into Guest Direct Memory
     if (!regions.empty() && vfs.GetAmprEntryCount() > 0) {
         std::cout << "\n--- Testing AMPR Async DMA Streaming & AGC PM4 Decoder ---\n";
         uint64_t guest_crt_base = regions[0].guest_vaddr;
@@ -169,7 +206,6 @@ int main(int argc, char** argv) {
         auto& ampr = yotei::hle::AmprHleManager::Instance();
         uint64_t dummy_cb = guest_crt_base + 0x200000ULL;
         uint64_t ret = 0;
-        // Construct APR command buffer, enqueue ReadFile for ID=2 (all_shaders.xpps, first 64 bytes), write completion tag, and submit!
         ampr.DispatchNid("Qs1xtplKo0U", "Ampr::AprCommandBufferConstructor", dummy_cb, 0, 0, 0, 0, 0, &ret);
         ampr.DispatchNid("mZSbNJVJpV8", "Ampr::AprCommandBufferReadFile", dummy_cb, reinterpret_cast<uint64_t>(dst_ptr), 2, 64, 0, 0, &ret);
         ampr.DispatchNid("jK+yuYCI7MA", "Ampr::CommandBufferWriteAddressOnCompletion", dummy_cb, reinterpret_cast<uint64_t>(&completion_tag), 0xCAFEBABEULL, 0, 0, 0, &ret);
@@ -194,7 +230,7 @@ int main(int argc, char** argv) {
                       << p.dword_count << " dwords) " << p.details << "\n";
         }
 
-        // 3. Scan real RDNA2 shaders inside all_shaders.xpps and emit/verify SPIR-V 1.6 on Host Vulkan 1.3 GPU
+        // Scan real RDNA2 shaders inside all_shaders.xpps and emit/verify SPIR-V 1.6 on Host Vulkan 1.3 GPU
         std::cout << "\n--- Testing RDNA2 ISA Disassembler & Host Vulkan 1.3 SPIR-V Pipeline ---\n";
         auto shaders = yotei::graphics::Rdna2ShaderAnalyzer::ScanShaderPack(
             app0_dir / "cache_ps5" / "all_shaders.xpps", 4);
@@ -229,9 +265,27 @@ int main(int argc, char** argv) {
     }
     std::cout << std::flush;
 
+    // 4. Test Calling Game main() @ 0x800f3d320
+    uint64_t game_main = mapper.GetMainAddress();
+    std::cout << "\n--- Testing Game main() Entry Point (Native x86-64) ---\n";
+    std::cout << "[*] Calling Game main() @ 0x" << std::hex << game_main << std::dec << "...\n" << std::flush;
+    static const char* dummy_argv[] = { "/app0/eboot.bin", nullptr };
+    uint64_t main_ret = 0;
+    DWORD exc_code = 0;
+    if (ProbeGuestFunctionSeh(game_main, 1, reinterpret_cast<uint64_t>(&dummy_argv[0]), &main_ret, &exc_code)) {
+        std::cout << "[+] Game main() returned: " << main_ret << "\n";
+    } else {
+        std::cout << "  [!] Game main() probe reached unhandled early stub / exception: 0x"
+                  << std::hex << exc_code << std::dec << " (Phase 2 stubbing progress)\n";
+    }
+
+    // Report any unhandled stubs observed
+    yotei::hle::NidRegistry::PrintUnhandledStubSummary();
+
     RemoveVectoredExceptionHandler(veh);
 #endif
 
+    yotei::kernel::ThreadManager::Instance().Shutdown();
     yotei::kernel::GuestMemoryManager::Instance().ReleaseAll();
     registry.FreeTrampolines();
     mapper.Unmap();

@@ -41,6 +41,11 @@ public:
     const std::vector<ProgramSegment>& GetSegments() const { return segments_; }
     const std::vector<ImportedSymbol>& GetImports() const { return imports_; }
 
+    bool GetTlsTemplate(uint64_t* out_vaddr, const uint8_t** out_data,
+                        size_t* out_filesz, size_t* out_memsz, size_t* out_align) const;
+    uint64_t GetProcParamAddress() const;
+    const uint8_t* GetProcParamData(size_t* out_size) const;
+
 private:
     struct InternalReloc {
         uint64_t r_offset;

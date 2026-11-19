@@ -326,4 +326,42 @@ void ElfMapper::Unmap() {
 #endif
 }
 
+bool ElfMapper::GetTlsTemplate(uint64_t* out_vaddr, const uint8_t** out_data,
+                               size_t* out_filesz, size_t* out_memsz, size_t* out_align) const {
+    for (const auto& seg : segments_) {
+        if (seg.type == 7) { // PT_TLS
+            if (out_vaddr) *out_vaddr = base_address_ + seg.vaddr;
+            if (out_data && seg.file_offset < raw_bytes_.size()) {
+                *out_data = raw_bytes_.data() + seg.file_offset;
+            }
+            if (out_filesz) *out_filesz = static_cast<size_t>(seg.filesz);
+            if (out_memsz) *out_memsz = static_cast<size_t>(seg.memsz);
+            if (out_align) *out_align = static_cast<size_t>(seg.align);
+            return true;
+        }
+    }
+    return false;
+}
+
+uint64_t ElfMapper::GetProcParamAddress() const {
+    for (const auto& seg : segments_) {
+        if (seg.type == 0x61000001) { // PT_SCE_PROCPARAM
+            return base_address_ + seg.vaddr;
+        }
+    }
+    return base_address_ + 0x1e7bfd8ULL;
+}
+
+const uint8_t* ElfMapper::GetProcParamData(size_t* out_size) const {
+    for (const auto& seg : segments_) {
+        if (seg.type == 0x61000001) {
+            if (out_size) *out_size = static_cast<size_t>(seg.filesz);
+            if (seg.file_offset < raw_bytes_.size()) {
+                return raw_bytes_.data() + seg.file_offset;
+            }
+        }
+    }
+    return nullptr;
+}
+
 } // namespace yotei::loader

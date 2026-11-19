@@ -15,6 +15,7 @@ add_executable(yotei_runtime
     src/hle/ampr_hle.cpp
     src/kernel/memory.cpp
     src/kernel/filesystem.cpp
+    src/kernel/threads.cpp
     src/graphics/pm4_decoder.cpp
     src/graphics/rdna2_shader.cpp
     src/graphics/vk_backend.cpp

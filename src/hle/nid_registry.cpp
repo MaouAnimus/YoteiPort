@@ -3,10 +3,12 @@
 #include "hle/ampr_hle.h"
 #include "kernel/filesystem.h"
 #include "kernel/memory.h"
+#include "kernel/threads.h"
 #include <cstring>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <mutex>
 #include <regex>
 #include <sstream>
 #include <vector>
@@ -33,6 +35,9 @@ size_t g_call_counter = 0;
 uint64_t g_stack_canary_value = 0x594f54454943414eULL; // "YOTEICAN"
 uint64_t g_need_flag_value = 1;
 uint64_t g_dummy_iob_object[16] = {0};
+
+std::mutex g_unhandled_mutex;
+std::unordered_map<std::string, UnhandledStubRecord> g_unhandled_stubs;
 
 // SysV AMD64 ABI passes args in: RDI, RSI, RDX, RCX, R8, R9.
 // Our generated 32-byte x86-64 trampoline translates a SysV call into MS x64 call:
@@ -74,6 +79,13 @@ extern "C" uint64_t __fastcall HleDispatchTrampoline(
     // 2. Delegate AGC / AgcDriver / VideoOut graphics calls
     if (graphics::AgcPm4Backend::Instance().DispatchNid(
             meta.library, meta.nid, meta.resolved_name,
+            guest_rdi, guest_rsi, guest_rdx, guest_rcx, guest_r8, guest_r9, &sub_ret)) {
+        return sub_ret;
+    }
+
+    // 3. Delegate Threading / Pthread / Mutex / Cond / Semaphore calls
+    if (kernel::ThreadManager::Instance().DispatchNid(
+            meta.nid, meta.resolved_name,
             guest_rdi, guest_rsi, guest_rdx, guest_rcx, guest_r8, guest_r9, &sub_ret)) {
         return sub_ret;
     }
@@ -229,7 +241,7 @@ extern "C" uint64_t __fastcall HleDispatchTrampoline(
         }
         return guest_rdi;
     }
-    if (meta.nid == "8zsu04XNsZ4" || meta.resolved_name == "LibcInternal::memset") {
+    if (meta.nid == "8zsu04XNsZ4" || meta.nid == "8zTFvBIAIN8" || meta.resolved_name == "memset" || meta.resolved_name == "LibcInternal::memset") {
         // memset(void* dst, int c, size_t n)
         if (guest_rdi != 0 && guest_rdx > 0 && guest_rdx < (1ULL << 28)) {
             std::memset(
@@ -238,6 +250,19 @@ extern "C" uint64_t __fastcall HleDispatchTrampoline(
                 static_cast<size_t>(guest_rdx));
         }
         return guest_rdi;
+    }
+    if (meta.nid == "1j3S3n-tTW4" || meta.resolved_name == "sceKernelGetTscFrequency") {
+        // PS5 Zen 2 CPU TSC frequency: 3.300 GHz (3,300,000,000 Hz)
+        return 3300000000ULL;
+    }
+    if (meta.nid == "vSMAm3cxYTY" || meta.resolved_name == "sceKernelMprotect") {
+        return 0; // SCE_OK
+    }
+    if (meta.nid == "uoUpLGNkygk" || meta.resolved_name == "sceCommonDialogInitialize") {
+        return 0; // SCE_OK
+    }
+    if (meta.nid == "g8cM39EUZ6o" || meta.resolved_name == "sceSysmoduleLoadModule") {
+        return 0; // SCE_OK
     }
     if (meta.nid == "BfBDZGbti7A" || meta.nid == "tU5e3f9gSiU") {
         // AgcGetIsTrinityMode / KernelIsTrinityMode -> 0 (Standard PS5 Prospero)
@@ -257,12 +282,34 @@ extern "C" uint64_t __fastcall HleDispatchTrampoline(
         }
         return 0;
     }
+    if (meta.nid == "tsvEmnenz48" || meta.resolved_name == "__cxa_atexit") {
+        // __cxa_atexit(func, arg, dso_handle) -> 0 (SCE_OK)
+        return 0;
+    }
     if (meta.nid == "obuxdTiwkF8") {
         // sceNetCtlGetInfo(code, SceNetCtlInfo* info)
         if (guest_rsi != 0) {
             std::strcpy(reinterpret_cast<char*>(guest_rsi), "YoteiPC");
         }
         return 0;
+    }
+
+    // Track unhandled stubs
+    {
+        std::lock_guard<std::mutex> lock(g_unhandled_mutex);
+        auto& rec = g_unhandled_stubs[meta.nid];
+        rec.nid = meta.nid;
+        rec.resolved_name = meta.resolved_name;
+        rec.library = meta.library;
+        rec.last_rdi = guest_rdi;
+        rec.last_rsi = guest_rsi;
+        rec.call_count++;
+        if (rec.call_count == 1) {
+            std::cout << "  [STUB WARNING] First unhandled call: "
+                      << meta.library << "::" << meta.resolved_name
+                      << " (" << meta.nid << ") | rdi=0x" << std::hex << guest_rdi
+                      << " rsi=0x" << guest_rsi << std::dec << "\n" << std::flush;
+        }
     }
     return 0;
 }
@@ -394,6 +441,29 @@ void NidRegistry::FreeTrampolines() {
         trampoline_slab_ = nullptr;
     }
 #endif
+}
+
+void NidRegistry::PrintUnhandledStubSummary() {
+    std::lock_guard<std::mutex> lock(g_unhandled_mutex);
+    if (g_unhandled_stubs.empty()) {
+        std::cout << "[+] All invoked HLE stubs were handled (0 unhandled stubs)!\n";
+        return;
+    }
+    std::cout << "\n=================================================================\n";
+    std::cout << " UNHANDLED STUB CALL REPORT (" << g_unhandled_stubs.size() << " unique stubs invoked)\n";
+    std::cout << "=================================================================\n";
+    for (const auto& [nid, rec] : g_unhandled_stubs) {
+        std::cout << "  [" << std::setw(16) << std::left << rec.library << "] "
+                  << std::setw(36) << rec.resolved_name
+                  << " (" << rec.nid << ") -> called " << rec.call_count << " times (last rdi=0x"
+                  << std::hex << rec.last_rdi << std::dec << ")\n";
+    }
+    std::cout << "=================================================================\n" << std::flush;
+}
+
+size_t NidRegistry::GetUnhandledStubCount() {
+    std::lock_guard<std::mutex> lock(g_unhandled_mutex);
+    return g_unhandled_stubs.size();
 }
 
 } // namespace yotei::hle
