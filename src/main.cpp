@@ -1,3 +1,5 @@
+#include "graphics/pm4_decoder.h"
+#include "hle/ampr_hle.h"
 #include "hle/nid_registry.h"
 #include "kernel/filesystem.h"
 #include "kernel/memory.h"
@@ -144,6 +146,42 @@ int main(int argc, char** argv) {
                   << std::hex << reg.guest_vaddr << " size=0x" << reg.size
                   << " (" << std::dec << (reg.size / (1024 * 1024)) << " MiB) phys=0x"
                   << std::hex << reg.phys_offset << std::dec << "\n";
+    }
+
+    // 2. Verify AMPR Asynchronous Streaming Command Buffer Execution into Guest Direct Memory
+    if (!regions.empty() && vfs.GetAmprEntryCount() > 0) {
+        std::cout << "\n--- Testing AMPR Async DMA Streaming & AGC PM4 Decoder ---\n";
+        uint64_t guest_crt_base = regions[0].guest_vaddr;
+        uint8_t* dst_ptr = reinterpret_cast<uint8_t*>(guest_crt_base + 0x100000ULL);
+        uint64_t completion_tag = 0;
+
+        auto& ampr = yotei::hle::AmprHleManager::Instance();
+        uint64_t dummy_cb = guest_crt_base + 0x200000ULL;
+        uint64_t ret = 0;
+        // Construct APR command buffer, enqueue ReadFile for ID=2 (all_shaders.xpps, first 64 bytes), write completion tag, and submit!
+        ampr.DispatchNid("Qs1xtplKo0U", "Ampr::AprCommandBufferConstructor", dummy_cb, 0, 0, 0, 0, 0, &ret);
+        ampr.DispatchNid("mZSbNJVJpV8", "Ampr::AprCommandBufferReadFile", dummy_cb, reinterpret_cast<uint64_t>(dst_ptr), 2, 64, 0, 0, &ret);
+        ampr.DispatchNid("jK+yuYCI7MA", "Ampr::CommandBufferWriteAddressOnCompletion", dummy_cb, reinterpret_cast<uint64_t>(&completion_tag), 0xCAFEBABEULL, 0, 0, 0, &ret);
+        ampr.DispatchNid("eE4Szl8sil8", "Apr::SubmitCommandBuffer", dummy_cb, 0, 0, 0, 0, 0, &ret);
+
+        std::string magic(reinterpret_cast<const char*>(dst_ptr), 4);
+        std::cout << "[+] AMPR Streamed File ID=2 ('all_shaders.xpps') into Guest Memory @ 0x"
+                  << std::hex << reinterpret_cast<uint64_t>(dst_ptr)
+                  << " | Magic='" << magic << "' | CompletionTag=0x" << completion_tag << std::dec
+                  << " | Bytes=" << ampr.GetTotalBytesStreamed() << "\n";
+
+        // Verify AGC PM4 Command Stream Decoder on a synthetic Ghost of Yotei pass packet stream
+        uint32_t sample_pm4[] = {
+            (3U << 30) | (3U << 16) | (0x10U << 8), 0x68757350U, 0x43205343U, 0x68746F6CU, 0x00000000U, // IT_NOP ("CS Cloth")
+            (3U << 30) | (2U << 16) | (0x76U << 8), 0x00000004U, 0x801A0000U, 0x00000008U,              // IT_SET_SH_REG
+            (3U << 30) | (2U << 16) | (0x15U << 8), 64U, 1U, 1U,                                        // IT_DISPATCH_DIRECT (64,1,1)
+        };
+        auto pkts = yotei::graphics::AgcPm4Backend::Instance().DecodeCommandStream(sample_pm4, 13);
+        std::cout << "[+] AGC PM4 Decoder parsed " << pkts.size() << " RDNA2 packets:\n";
+        for (const auto& p : pkts) {
+            std::cout << "    [" << std::setw(18) << std::left << p.name << "] ("
+                      << p.dword_count << " dwords) " << p.details << "\n";
+        }
     }
     std::cout << std::flush;
 

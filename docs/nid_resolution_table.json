@@ -5,8 +5,8 @@
   "entries": [
     {
       "nid": "8fe55ktlNVo",
-      "resolved_name": "Acm::AcmBatchStartBuffers",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAcmBatchStartBuffers",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAcm",
       "module": "libSceAcm",
       "shipped_in": [],
@@ -22,8 +22,8 @@
     },
     {
       "nid": "RLN3gRlXJLE",
-      "resolved_name": "Acm::AcmBatchWait",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAcmBatchWait",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAcm",
       "module": "libSceAcm",
       "shipped_in": [],
@@ -39,8 +39,8 @@
     },
     {
       "nid": "ZIXln2K3XMk",
-      "resolved_name": "Acm",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAcmContextCreate",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAcm",
       "module": "libSceAcm",
       "shipped_in": [],
@@ -56,8 +56,8 @@
     },
     {
       "nid": "jBgBjAj02R8",
-      "resolved_name": "Acm::AcmContextDestroy",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAcmContextDestroy",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAcm",
       "module": "libSceAcm",
       "shipped_in": [],
@@ -73,7 +73,7 @@
     },
     {
       "nid": "u70oWo92SYQ",
-      "resolved_name": "Acm::AcmConvReverbSharedInput",
+      "resolved_name": "Acm::AcmBatchJobPriority",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAcm",
       "module": "libSceAcm",
@@ -90,8 +90,8 @@
     },
     {
       "nid": "+kSrjIVxKFE",
-      "resolved_name": "Gen5::AgcDcbPushMarker",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDcbPushMarker",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -110,8 +110,8 @@
     },
     {
       "nid": "-HOOCn0JY48",
-      "resolved_name": "Gen5::AgcDcbSetShRegistersIndirect",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDcbSetShRegistersIndirect",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -130,8 +130,8 @@
     },
     {
       "nid": "-KRzWekV120",
-      "resolved_name": "Gen5::AgcDcbSetIndexSize_0600",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDcbSetIndexSize_0600",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -150,8 +150,8 @@
     },
     {
       "nid": "-RnpfpxIhec",
-      "resolved_name": "Gen5::AgcAcbDmaData",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcAcbDmaData",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -170,8 +170,8 @@
     },
     {
       "nid": "0fWWK5uG9rQ",
-      "resolved_name": "Gen5::AgcQueueEndOfPipeActionPatchAddress",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcQueueEndOfPipeActionPatchAddress",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -190,8 +190,8 @@
     },
     {
       "nid": "1q1titRBL6o",
-      "resolved_name": "Gen5::AgcDcbDrawIndirect",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDcbDrawIndirect",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -230,8 +230,8 @@
     },
     {
       "nid": "2JtWUUiYBXs",
-      "resolved_name": "Gen5::AgcGetRegisterDefaults2",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcGetRegisterDefaults2",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -250,8 +250,8 @@
     },
     {
       "nid": "3KDcnM3lrcU",
-      "resolved_name": "Gen5::AgcWaitRegMemPatchAddress",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcWaitRegMemPatchAddress",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -270,8 +270,8 @@
     },
     {
       "nid": "57labkp+rSQ",
-      "resolved_name": "Gen5::AgcDcbAcquireMem",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDcbAcquireMem",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -290,8 +290,8 @@
     },
     {
       "nid": "6lNcCp+fxi4",
-      "resolved_name": "Gen5::AgcSetUcRegIndirectPatchSetAddress",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcSetUcRegIndirectPatchSetAddress",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -310,8 +310,8 @@
     },
     {
       "nid": "6mFxkVqdmbQ",
-      "resolved_name": "Gen5::AgcAcbPopMarker",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcAcbPopMarker",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -330,8 +330,8 @@
     },
     {
       "nid": "8N2tmT3jmC8",
-      "resolved_name": "Gen5::AgcDcbSetIndexCount",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDcbSetIndexCount",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -369,8 +369,8 @@
     },
     {
       "nid": "Abendgtz+3o",
-      "resolved_name": "Gen5::AgcCbDispatchGetSize",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcCbDispatchGetSize",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -389,8 +389,8 @@
     },
     {
       "nid": "BIPexNBSGog",
-      "resolved_name": "Gen5::AgcDcbCondExec",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDcbCondExec",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -409,8 +409,8 @@
     },
     {
       "nid": "BfBDZGbti7A",
-      "resolved_name": "Gen5::AgcGetIsTrinityMode",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcGetIsTrinityMode",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -429,8 +429,8 @@
     },
     {
       "nid": "CtB+A9-VxO0",
-      "resolved_name": "Gen5::AgcDcbDispatchIndirect",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDcbDispatchIndirect",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -449,8 +449,8 @@
     },
     {
       "nid": "D9sr1xGUriE",
-      "resolved_name": "Gen5::AgcCreatePrimState",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcCreatePrimState",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -489,8 +489,8 @@
     },
     {
       "nid": "H7uZqCoNuWk",
-      "resolved_name": "Gen5::AgcDcbPopMarker",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDcbPopMarker",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -509,8 +509,8 @@
     },
     {
       "nid": "KT-hTp-Ch14",
-      "resolved_name": "Gen5::AgcAcbAcquireMem",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcAcbAcquireMem",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -529,8 +529,8 @@
     },
     {
       "nid": "LtTouSCZjHM",
-      "resolved_name": "Gen5::AgcCbNop",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcCbNop",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -549,8 +549,8 @@
     },
     {
       "nid": "MWiElSNE8j8",
-      "resolved_name": "Gen5::AgcDcbWaitUntilSafeForRendering",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDcbWaitUntilSafeForRendering",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -569,8 +569,8 @@
     },
     {
       "nid": "NKIzURsgV7I",
-      "resolved_name": "Gen5::AgcGetGsOversubscription",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcGetGsOversubscription",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -589,8 +589,8 @@
     },
     {
       "nid": "Qrj4c+61z4A",
-      "resolved_name": "Gen5::AgcSetShRegIndirectPatchSetAddress",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcSetShRegIndirectPatchSetAddress",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -609,8 +609,8 @@
     },
     {
       "nid": "RmaJwLtc8rY",
-      "resolved_name": "Gen5::AgcDcbSetBaseIndirectArgs",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDcbSetBaseIndirectArgs",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -629,8 +629,8 @@
     },
     {
       "nid": "T6xuVw0KUJo",
-      "resolved_name": "Gen5::AgcDebugRaiseException",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDebugRaiseException",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -649,8 +649,8 @@
     },
     {
       "nid": "TRO721eVt4g",
-      "resolved_name": "Gen5::AgcDcbResetQueue",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDcbResetQueue",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -669,8 +669,8 @@
     },
     {
       "nid": "UZbQjYAwwXM",
-      "resolved_name": "Gen5::AgcCbSetShRegistersDirect",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcCbSetShRegistersDirect",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -689,7 +689,7 @@
     },
     {
       "nid": "V++UgBtQhn0",
-      "resolved_name": "Gen5::AgcGetDataPacketPayloadAddress",
+      "resolved_name": "Gen5::AgcCreateInterpolantMapping",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAgc",
       "module": "libSceAgc",
@@ -709,8 +709,8 @@
     },
     {
       "nid": "VEGu4dixjUg",
-      "resolved_name": "Gen5::AgcDcbJumpGetSize",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDcbJumpGetSize",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -729,8 +729,8 @@
     },
     {
       "nid": "VmW0Tdpy420",
-      "resolved_name": "Gen5::AgcDcbWaitRegMem",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDcbWaitRegMem",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -749,8 +749,8 @@
     },
     {
       "nid": "WmAc2MEj6Io",
-      "resolved_name": "Gen5::AgcDcbDmaData",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDcbDmaData",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -769,8 +769,8 @@
     },
     {
       "nid": "YUeqkyT7mEQ",
-      "resolved_name": "Gen5::AgcDcbSetFlip",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDcbSetFlip",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -789,8 +789,8 @@
     },
     {
       "nid": "Yw0jKSqop+E",
-      "resolved_name": "Gen5::AgcDcbDrawIndexAuto",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDcbDrawIndexAuto",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -809,8 +809,8 @@
     },
     {
       "nid": "ZvwO9euwYzc",
-      "resolved_name": "Gen5::AgcDcbSetCxRegistersIndirect",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDcbSetCxRegistersIndirect",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -829,8 +829,8 @@
     },
     {
       "nid": "aJf+j5yntiU",
-      "resolved_name": "Gen5::AgcDcbEventWrite",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDcbEventWrite",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -849,8 +849,8 @@
     },
     {
       "nid": "bxGoVxpdSPQ",
-      "resolved_name": "Gen5::AgcCbSetShRegisterRangeDirectGetSize",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcCbSetShRegisterRangeDirectGetSize",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -869,8 +869,8 @@
     },
     {
       "nid": "cFazmnXpJOE",
-      "resolved_name": "Gen5::AgcAcbEventWrite",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcAcbEventWrite",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -889,8 +889,8 @@
     },
     {
       "nid": "cpCILPya5Zk",
-      "resolved_name": "Gen5::AgcAcbPushMarker",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcAcbPushMarker",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -909,8 +909,8 @@
     },
     {
       "nid": "d-6uF9sZDIU",
-      "resolved_name": "Gen5::AgcSetCxRegIndirectPatchAddRegisters",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcSetCxRegIndirectPatchAddRegisters",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -929,7 +929,7 @@
     },
     {
       "nid": "dbOlWdppb4o",
-      "resolved_name": "Gen5::AgcCreateInterpolantMapping2",
+      "resolved_name": "Gen5::AgcGetIsTrinityMode",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAgc",
       "module": "libSceAgc",
@@ -949,8 +949,8 @@
     },
     {
       "nid": "e1DFTg+Sd8U",
-      "resolved_name": "Gen5::AgcAcbJump",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcAcbJump",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -969,8 +969,8 @@
     },
     {
       "nid": "eZ4+17OQz4Q",
-      "resolved_name": "Gen5::AgcAcbWriteData",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcAcbWriteData",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -1009,8 +1009,8 @@
     },
     {
       "nid": "f3dg2CSgRKY",
-      "resolved_name": "Gen5::AgcCreateShader",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcCreateShader",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -1029,8 +1029,8 @@
     },
     {
       "nid": "fPSCdQxgpSw",
-      "resolved_name": "Gen5::AgcWriteDataPatchSetAddressOrOffset",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcWriteDataPatchSetAddressOrOffset",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -1049,8 +1049,8 @@
     },
     {
       "nid": "h9z6+0hEydk",
-      "resolved_name": "Gen5::AgcSuspendPoint",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcSuspendPoint",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -1068,8 +1068,8 @@
     },
     {
       "nid": "htn36gPnBk4",
-      "resolved_name": "Gen5::AgcAcbWaitRegMem",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcAcbWaitRegMem",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -1088,8 +1088,8 @@
     },
     {
       "nid": "hvUfkUIQcOE",
-      "resolved_name": "Gen5::AgcDcbSetUcRegistersIndirect",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDcbSetUcRegistersIndirect",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -1108,8 +1108,8 @@
     },
     {
       "nid": "i1jyy49AjXU",
-      "resolved_name": "Gen5::AgcDcbWriteData",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDcbWriteData",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -1128,8 +1128,8 @@
     },
     {
       "nid": "j3EtxFkSIhQ",
-      "resolved_name": "Gen5::AgcAcbDispatchIndirect",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcAcbDispatchIndirect",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -1148,8 +1148,8 @@
     },
     {
       "nid": "k3GhuSNmBLU",
-      "resolved_name": "Gen5::AgcCbDispatch",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcCbDispatch",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -1168,8 +1168,8 @@
     },
     {
       "nid": "l4fM9K-Lyks",
-      "resolved_name": "Gen5::AgcDcbSetIndexBuffer",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDcbSetIndexBuffer",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -1188,8 +1188,8 @@
     },
     {
       "nid": "n2fD4A+pb+g",
-      "resolved_name": "Gen5::AgcCbSetShRegisterRangeDirect",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcCbSetShRegisterRangeDirect",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -1208,8 +1208,8 @@
     },
     {
       "nid": "q88lQ+GP5Yk",
-      "resolved_name": "Gen5::AgcDcbDrawIndex",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDcbDrawIndex",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -1228,7 +1228,7 @@
     },
     {
       "nid": "qj7QZpgr9Uw",
-      "resolved_name": "Gen5::AgcDcbContextStateOp",
+      "resolved_name": "Gen5::AgcSuspendPoint",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAgc",
       "module": "libSceAgc",
@@ -1248,8 +1248,8 @@
     },
     {
       "nid": "t1vNu082-jM",
-      "resolved_name": "Gen5::AgcDcbDrawIndexIndirect",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDcbDrawIndexIndirect",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -1268,8 +1268,8 @@
     },
     {
       "nid": "t7PlZ9nt5Lc",
-      "resolved_name": "Gen5::AgcCbNopGetSize",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcCbNopGetSize",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -1288,8 +1288,8 @@
     },
     {
       "nid": "tSBxhAPyytQ",
-      "resolved_name": "Gen5::AgcDcbSetNumInstances",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDcbSetNumInstances",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -1308,8 +1308,8 @@
     },
     {
       "nid": "u2T2DiA5hRI",
-      "resolved_name": "Gen5::AgcDcbStallCommandBufferParser",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDcbStallCommandBufferParser",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -1328,8 +1328,8 @@
     },
     {
       "nid": "vRoArM9zaIk",
-      "resolved_name": "Gen5::AgcSetUcRegIndirectPatchAddRegisters",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcSetUcRegIndirectPatchAddRegisters",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -1348,8 +1348,8 @@
     },
     {
       "nid": "vcmNN+AAXnY",
-      "resolved_name": "Gen5::AgcSetCxRegIndirectPatchSetAddress",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcSetCxRegIndirectPatchSetAddress",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -1368,8 +1368,8 @@
     },
     {
       "nid": "wRbq6ZjNop4",
-      "resolved_name": "Gen5::AgcGetRegisterDefaults2Internal",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcGetRegisterDefaults2Internal",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -1388,8 +1388,8 @@
     },
     {
       "nid": "wr23dPKyWc0",
-      "resolved_name": "Gen5::AgcCbReleaseMem",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcCbReleaseMem",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -1408,8 +1408,8 @@
     },
     {
       "nid": "xSAR0LTcRKM",
-      "resolved_name": "Gen5::AgcDcbJump",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDcbJump",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -1428,8 +1428,8 @@
     },
     {
       "nid": "ypVBz4uPKcQ",
-      "resolved_name": "Gen5::AgcDcbDrawIndexIndirectMulti",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDcbDrawIndexIndirectMulti",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -1448,8 +1448,8 @@
     },
     {
       "nid": "z2duB-hHQSM",
-      "resolved_name": "Gen5::AgcSetShRegIndirectPatchAddRegisters",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcSetShRegIndirectPatchAddRegisters",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgc",
       "module": "libSceAgc",
       "shipped_in": [
@@ -1468,7 +1468,7 @@
     },
     {
       "nid": "AhGvpITrf4M",
-      "resolved_name": "6UzEidRZwkg",
+      "resolved_name": "Gen5Driver::AgcDriverSubmitDcb",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAgcDriver",
       "module": "libSceAgcDriver",
@@ -1487,8 +1487,8 @@
     },
     {
       "nid": "MM4IZSEYytQ",
-      "resolved_name": "Gen5Driver::AgcDriverSetHsOffchipParam",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDriverSetHsOffchipParam",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgcDriver",
       "module": "libSceAgcDriver",
       "shipped_in": [
@@ -1506,8 +1506,8 @@
     },
     {
       "nid": "UglJIZjGssM",
-      "resolved_name": "",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDriverSubmitDcb",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgcDriver",
       "module": "libSceAgcDriver",
       "shipped_in": [
@@ -1525,8 +1525,8 @@
     },
     {
       "nid": "W5z4eZrjEas",
-      "resolved_name": "Gen5::AgcDriverRegisterResource",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDriverRegisterResource",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgcDriver",
       "module": "libSceAgcDriver",
       "shipped_in": [
@@ -1544,8 +1544,8 @@
     },
     {
       "nid": "X-Nm5KLREeg",
-      "resolved_name": "Gen5::AgcDriverRegisterOwner",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDriverRegisterOwner",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgcDriver",
       "module": "libSceAgcDriver",
       "shipped_in": [
@@ -1563,8 +1563,8 @@
     },
     {
       "nid": "XlNp7jzGiPo",
-      "resolved_name": "Gen5Driver::AgcDriverSetTFRing",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDriverSetTFRing",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgcDriver",
       "module": "libSceAgcDriver",
       "shipped_in": [
@@ -1582,8 +1582,8 @@
     },
     {
       "nid": "gSRnr79F8tQ",
-      "resolved_name": "Gen5Driver::AgcDriverSubmitAcb",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDriverSubmitAcb",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgcDriver",
       "module": "libSceAgcDriver",
       "shipped_in": [
@@ -1602,8 +1602,8 @@
     },
     {
       "nid": "w2rJhmD+dsE",
-      "resolved_name": "Gen5Driver::AgcDriverAddEqEvent",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAgcDriverAddEqEvent",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAgcDriver",
       "module": "libSceAgcDriver",
       "shipped_in": [
@@ -1621,8 +1621,8 @@
     },
     {
       "nid": "-qLsfDAywIY",
-      "resolved_name": "Ajm::AjmBatchWait",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAjmBatchWait",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAjm",
       "module": "libSceAjm",
       "shipped_in": [],
@@ -1638,8 +1638,8 @@
     },
     {
       "nid": "1t3ixYNXyuc",
-      "resolved_name": "Ajm::AjmDecAt9ParseConfigData",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAjmDecAt9ParseConfigData",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAjm",
       "module": "libSceAjm",
       "shipped_in": [],
@@ -1655,8 +1655,8 @@
     },
     {
       "nid": "3cAg7xN995U",
-      "resolved_name": "Ajm::AjmBatchJobGetStatistics",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAjmBatchJobGetStatistics",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAjm",
       "module": "libSceAjm",
       "shipped_in": [],
@@ -1672,8 +1672,8 @@
     },
     {
       "nid": "5tOfnaClcqM",
-      "resolved_name": "Ajm::AjmBatchStart",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAjmBatchStart",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAjm",
       "module": "libSceAjm",
       "shipped_in": [],
@@ -1689,8 +1689,8 @@
     },
     {
       "nid": "7FZsbyVRM4U",
-      "resolved_name": "Ajm::AjmBatchJobControl",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAjmBatchJobControl",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAjm",
       "module": "libSceAjm",
       "shipped_in": [],
@@ -1706,8 +1706,8 @@
     },
     {
       "nid": "AxoDrINp4J8",
-      "resolved_name": "Ajm::AjmInstanceCreate",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAjmInstanceCreate",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAjm",
       "module": "libSceAjm",
       "shipped_in": [],
@@ -1723,8 +1723,8 @@
     },
     {
       "nid": "MHur6qCsUus",
-      "resolved_name": "Ajm::AjmFinalize",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAjmFinalize",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAjm",
       "module": "libSceAjm",
       "shipped_in": [],
@@ -1740,8 +1740,8 @@
     },
     {
       "nid": "MmpF1XsQiHw",
-      "resolved_name": "Ajm::AjmBatchInitialize",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAjmBatchInitialize",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAjm",
       "module": "libSceAjm",
       "shipped_in": [],
@@ -1757,8 +1757,8 @@
     },
     {
       "nid": "Q3dyFuwGn64",
-      "resolved_name": "Ajm::AjmModuleRegister",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAjmModuleRegister",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAjm",
       "module": "libSceAjm",
       "shipped_in": [],
@@ -1774,8 +1774,8 @@
     },
     {
       "nid": "RbLbuKv8zho",
-      "resolved_name": "Ajm::AjmInstanceDestroy",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAjmInstanceDestroy",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAjm",
       "module": "libSceAjm",
       "shipped_in": [],
@@ -1791,8 +1791,8 @@
     },
     {
       "nid": "WfAiBW8Wcek",
-      "resolved_name": "Ajm::AjmBatchErrorDump",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAjmBatchErrorDump",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAjm",
       "module": "libSceAjm",
       "shipped_in": [],
@@ -1808,8 +1808,8 @@
     },
     {
       "nid": "Wi7DtlLV+KI",
-      "resolved_name": "Ajm::AjmModuleUnregister",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAjmModuleUnregister",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAjm",
       "module": "libSceAjm",
       "shipped_in": [],
@@ -1825,8 +1825,8 @@
     },
     {
       "nid": "Z9NVCesiP0Q",
-      "resolved_name": "Ajm::AjmBatchJobRunSplit",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAjmBatchJobRunSplit",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAjm",
       "module": "libSceAjm",
       "shipped_in": [],
@@ -1842,8 +1842,8 @@
     },
     {
       "nid": "bkRHEYG6lEM",
-      "resolved_name": "Ajm::AjmMemoryRegister",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAjmMemoryRegister",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAjm",
       "module": "libSceAjm",
       "shipped_in": [],
@@ -1859,8 +1859,8 @@
     },
     {
       "nid": "dl+4eHSzUu4",
-      "resolved_name": "Ajm",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAjmInitialize",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAjm",
       "module": "libSceAjm",
       "shipped_in": [],
@@ -1893,8 +1893,8 @@
     },
     {
       "nid": "pIpGiaYkHkM",
-      "resolved_name": "Ajm::AjmMemoryUnregister",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAjmMemoryUnregister",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAjm",
       "module": "libSceAjm",
       "shipped_in": [],
@@ -1910,7 +1910,7 @@
     },
     {
       "nid": "0BMj1hgG+kE",
-      "resolved_name": "Ampr::MeasureCommandSizeFixed32",
+      "resolved_name": "Ampr::MeasureCommandSizeWriteCounterOnCompletion",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -1929,7 +1929,7 @@
     },
     {
       "nid": "0RdLmAh7WVo",
-      "resolved_name": "pbnNnahE8vk",
+      "resolved_name": "Ampr::MeasureCommandSizeMarker",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -1948,7 +1948,7 @@
     },
     {
       "nid": "2Hw8gjMdwSY",
-      "resolved_name": "I-Qm+MEso5c",
+      "resolved_name": "Ampr::MeasureCommandSizeFixed32",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -1967,7 +1967,7 @@
     },
     {
       "nid": "3OfeY4pzDV0",
-      "resolved_name": "0RdLmAh7WVo",
+      "resolved_name": "Ampr::MeasureCommandSizeMarker",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -1986,7 +1986,7 @@
     },
     {
       "nid": "4UkZbYKVF7c",
-      "resolved_name": "Ampr::CommandBufferConstructMarker",
+      "resolved_name": "Ampr::CommandBufferNopWithData",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2005,7 +2005,7 @@
     },
     {
       "nid": "4fgtGfXDrFc",
-      "resolved_name": "gAtc79UTt5E",
+      "resolved_name": "Ampr::MeasureCommandSizeFixed32",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2024,7 +2024,7 @@
     },
     {
       "nid": "4quckD2y7Pg",
-      "resolved_name": "Ampr::CommandBufferSetMarker",
+      "resolved_name": "Ampr::CommandBufferSetMarkerWithColor",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2043,7 +2043,7 @@
     },
     {
       "nid": "7nXGDGMXSqo",
-      "resolved_name": "Ampr::MeasureCommandSizeReadFileScatter",
+      "resolved_name": "Ampr::MeasureCommandSizeReadFileGather",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2062,7 +2062,7 @@
     },
     {
       "nid": "8aI7R7WaOlc",
-      "resolved_name": "Ampr",
+      "resolved_name": "Apr::SubmitCommandBufferAndGetId",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2081,7 +2081,7 @@
     },
     {
       "nid": "BVmR1H8l+XI",
-      "resolved_name": "Ampr::AprCommandBufferReadFileGatherScatter",
+      "resolved_name": "Ampr::AprCommandBufferReadFileScatter",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2100,7 +2100,7 @@
     },
     {
       "nid": "ClnsFLLLcss",
-      "resolved_name": "4fgtGfXDrFc",
+      "resolved_name": "Ampr::MeasureCommandSizeFixed32",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2119,7 +2119,7 @@
     },
     {
       "nid": "DLfoNxTFNVk",
-      "resolved_name": "Ampr::CommandBufferWaitOnAddress",
+      "resolved_name": "Ampr::CommandBufferPopMarker",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2138,7 +2138,7 @@
     },
     {
       "nid": "DXmgc5op8Yw",
-      "resolved_name": "Ampr::MeasureCommandSizeReadFileGatherScatter",
+      "resolved_name": "Ampr::MeasureCommandSizeReadFileScatter",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2157,7 +2157,7 @@
     },
     {
       "nid": "Eul7AGEpjLo",
-      "resolved_name": "Ampr::AprCommandBufferMapBegin",
+      "resolved_name": "Ampr::AprCommandBufferResetGatherScatterState",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2176,7 +2176,7 @@
     },
     {
       "nid": "GmOguNIsuKk",
-      "resolved_name": "Ampr::CommandBufferConstructNop",
+      "resolved_name": "Ampr::CommandBufferGetNumCommands",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2195,7 +2195,7 @@
     },
     {
       "nid": "GnxKOHEawhk",
-      "resolved_name": "Ampr::CommandBufferGetCurrentOffset",
+      "resolved_name": "Ampr::CommandBufferGetSize",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2214,7 +2214,7 @@
     },
     {
       "nid": "GuchCTefuZw",
-      "resolved_name": "Ampr::CommandBufferDestructor",
+      "resolved_name": "Ampr::AprCommandBufferDestructor",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2233,7 +2233,7 @@
     },
     {
       "nid": "H896Pt-yB4I",
-      "resolved_name": "Ampr::CommandBufferWriteKernelEventQueue",
+      "resolved_name": "Ampr::CommandBufferGetCurrentOffset",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2252,7 +2252,7 @@
     },
     {
       "nid": "I-Qm+MEso5c",
-      "resolved_name": "6hbai6KIXkk",
+      "resolved_name": "Ampr::MeasureCommandSizeFixed32",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2271,7 +2271,7 @@
     },
     {
       "nid": "JYd9g9L+TmE",
-      "resolved_name": "2Hw8gjMdwSY",
+      "resolved_name": "Ampr::MeasureCommandSizeFixed32",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2290,7 +2290,7 @@
     },
     {
       "nid": "Jg-AgkdJHkk",
-      "resolved_name": "Ampr::AprCommandBufferReadFileScatter",
+      "resolved_name": "Ampr::AprCommandBufferReadFileGather",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2309,7 +2309,7 @@
     },
     {
       "nid": "N-FSPA4S3nI",
-      "resolved_name": "Ampr::CommandBufferSetBuffer",
+      "resolved_name": "Ampr::CommandBufferDestructor",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2328,7 +2328,7 @@
     },
     {
       "nid": "NNIZ-FMyz3M",
-      "resolved_name": "Ampr::MeasureCommandSizeNop",
+      "resolved_name": "Ampr::MeasureAmmCommandSizeUnmap",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2347,7 +2347,7 @@
     },
     {
       "nid": "Qs1xtplKo0U",
-      "resolved_name": "Ampr::AprCommandBufferDestructor",
+      "resolved_name": "Ampr::AprCommandBufferConstructor",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2366,7 +2366,7 @@
     },
     {
       "nid": "RPCAhx-aabE",
-      "resolved_name": "Ampr::CommandBufferGetBufferBaseAddress",
+      "resolved_name": "Ampr::CommandBufferGetType",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2385,7 +2385,7 @@
     },
     {
       "nid": "ULvXMDz56po",
-      "resolved_name": "Ampr::CommandBufferClearBuffer",
+      "resolved_name": "Ampr::CommandBufferReset",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2404,7 +2404,7 @@
     },
     {
       "nid": "VEDMaQmJZng",
-      "resolved_name": "Ampr::CommandBufferGetType",
+      "resolved_name": "Ampr::CommandBufferClearBuffer",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2423,7 +2423,7 @@
     },
     {
       "nid": "VGkEj4d6-Kg",
-      "resolved_name": "Ampr::MeasureCommandSizeMarker",
+      "resolved_name": "Ampr::MeasureCommandSizeMarkerWithColor",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2442,7 +2442,7 @@
     },
     {
       "nid": "X169CE6G3Y4",
-      "resolved_name": "Ampr::AprCommandBufferMapEnd",
+      "resolved_name": "Ampr::AprCommandBufferMapDirectBegin",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2461,7 +2461,7 @@
     },
     {
       "nid": "Xp85BP3+BBI",
-      "resolved_name": "Ampr::MeasureCommandSizeNopWithData",
+      "resolved_name": "Ampr::MeasureCommandSizeNop",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2480,7 +2480,7 @@
     },
     {
       "nid": "YPxkUDhgoNI",
-      "resolved_name": "Ampr::AprCommandBufferResetGatherScatterState",
+      "resolved_name": "Ampr::AprCommandBufferReadFileGatherScatter",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2499,7 +2499,7 @@
     },
     {
       "nid": "a8uLzYY--tM",
-      "resolved_name": "Ampr::AprCommandBufferConstructor",
+      "resolved_name": "Ampr::CommandBufferConstructor",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2518,7 +2518,7 @@
     },
     {
       "nid": "bFEs0Gs6D2A",
-      "resolved_name": "Ampr::AprCommandBufferMapDirectBegin",
+      "resolved_name": "Ampr::AprCommandBufferMapBegin",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2537,7 +2537,7 @@
     },
     {
       "nid": "baQO9ez2gL4",
-      "resolved_name": "Ampr::CommandBufferReset",
+      "resolved_name": "Ampr::CommandBufferSetBuffer",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2556,7 +2556,7 @@
     },
     {
       "nid": "bt3LHR9xjK4",
-      "resolved_name": "Ampr::CommandBufferWriteAddressFromTimeCounter",
+      "resolved_name": "Ampr::CommandBufferWriteCounterOnCompletion",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2575,7 +2575,7 @@
     },
     {
       "nid": "cQb8Zr8Q0Y0",
-      "resolved_name": "Ampr::CommandBufferWaitOnCounter",
+      "resolved_name": "Ampr::CommandBufferWaitOnAddress",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2594,7 +2594,7 @@
     },
     {
       "nid": "dXPaz65HNmk",
-      "resolved_name": "Ampr::CommandBufferPushMarker",
+      "resolved_name": "Ampr::CommandBufferPushMarkerWithColor",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2613,7 +2613,7 @@
     },
     {
       "nid": "enZm-6GjWqw",
-      "resolved_name": "Ampr::CommandBufferWriteAddressFromCounterPair",
+      "resolved_name": "Ampr::CommandBufferWriteAddressFromCounterOnCompletion",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2632,7 +2632,7 @@
     },
     {
       "nid": "f12ObAMEi9A",
-      "resolved_name": "Ampr::CommandBufferPushMarkerWithColor",
+      "resolved_name": "Ampr::CommandBufferSetMarker",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2651,7 +2651,7 @@
     },
     {
       "nid": "gAtc79UTt5E",
-      "resolved_name": "JYd9g9L+TmE",
+      "resolved_name": "Ampr::MeasureCommandSizeFixed32",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2670,7 +2670,7 @@
     },
     {
       "nid": "gzndltBEzWc",
-      "resolved_name": "Ampr::CommandBufferGetNumCommands",
+      "resolved_name": "Ampr::CommandBufferGetBufferBaseAddress",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2689,7 +2689,7 @@
     },
     {
       "nid": "iwTNhyaemnw",
-      "resolved_name": "tmfr97+ED5I",
+      "resolved_name": "Ampr::MeasureAprCommandSizeMapDirectBegin",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2708,7 +2708,7 @@
     },
     {
       "nid": "j0+3uJMxYJY",
-      "resolved_name": "Ampr::CommandBufferWriteAddress",
+      "resolved_name": "Ampr::CommandBufferWaitOnCounter",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2727,7 +2727,7 @@
     },
     {
       "nid": "jK+yuYCI7MA",
-      "resolved_name": "Ampr::CommandBufferWriteCounter",
+      "resolved_name": "Ampr::CommandBufferWriteAddressOnCompletion",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2746,7 +2746,7 @@
     },
     {
       "nid": "kdFImtTD0hc",
-      "resolved_name": "Ampr::MeasureAprCommandSizeMapBegin",
+      "resolved_name": "Ampr::MeasureCommandSizePopMarker",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2765,7 +2765,7 @@
     },
     {
       "nid": "mQ16-QdKv7k",
-      "resolved_name": "Ampr::AprCommandBufferReadFile",
+      "resolved_name": "Ampr::CommandBufferWriteKernelEventQueue",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2784,7 +2784,7 @@
     },
     {
       "nid": "mZSbNJVJpV8",
-      "resolved_name": "Ampr::AprCommandBufferReadFileGather",
+      "resolved_name": "Ampr::AprCommandBufferReadFile",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2803,7 +2803,7 @@
     },
     {
       "nid": "mv0O8Zg0woU",
-      "resolved_name": "Ampr::CommandBufferPopMarker",
+      "resolved_name": "Ampr::CommandBufferPushMarker",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2822,7 +2822,7 @@
     },
     {
       "nid": "pFQ9UHpO52s",
-      "resolved_name": "Ampr::CommandBufferNopWithData",
+      "resolved_name": "Ampr::CommandBufferNop",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2841,7 +2841,7 @@
     },
     {
       "nid": "pbnNnahE8vk",
-      "resolved_name": "tZDDEo2tE5k",
+      "resolved_name": "Ampr::MeasureCommandSizeMarker",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2860,7 +2860,7 @@
     },
     {
       "nid": "qesF88X4DRg",
-      "resolved_name": "Ampr::MeasureCommandSizeReadFileGather",
+      "resolved_name": "Ampr::MeasureCommandSizeNopWithData",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2879,7 +2879,7 @@
     },
     {
       "nid": "qvbdJc7bG+s",
-      "resolved_name": "Ampr::MeasureAprCommandSizeMapDirectBegin",
+      "resolved_name": "Ampr::MeasureAprCommandSizeMapBegin",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2898,7 +2898,7 @@
     },
     {
       "nid": "rddQYXM0CjM",
-      "resolved_name": "Ampr::MeasureCommandSizePopMarker",
+      "resolved_name": "Ampr::MeasureCommandSizeReadFileGatherScatter",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2917,7 +2917,7 @@
     },
     {
       "nid": "sSAUCCU1dv4",
-      "resolved_name": "Ampr::MeasureCommandSizeWriteKernelEventQueue",
+      "resolved_name": "Ampr::MeasureCommandSizeReadFile",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2936,7 +2936,7 @@
     },
     {
       "nid": "sWbST0oQKsc",
-      "resolved_name": "Ampr::CommandBufferSetMarkerWithColor",
+      "resolved_name": "Ampr::CommandBufferConstructMarker",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2955,7 +2955,7 @@
     },
     {
       "nid": "t4ExS+SwLjs",
-      "resolved_name": "Ampr::CommandBufferWriteAddressFromCounter",
+      "resolved_name": "Ampr::CommandBufferWriteAddressFromTimeCounterOnCompletion",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2974,7 +2974,7 @@
     },
     {
       "nid": "tNn5WBkta60",
-      "resolved_name": "Ampr::CommandBufferNop",
+      "resolved_name": "Ampr::CommandBufferConstructNop",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -2993,7 +2993,7 @@
     },
     {
       "nid": "tZDDEo2tE5k",
-      "resolved_name": "Ampr::CommandBufferGetSize",
+      "resolved_name": "Ampr::MeasureCommandSizeMarker",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -3012,7 +3012,7 @@
     },
     {
       "nid": "tmfr97+ED5I",
-      "resolved_name": "Ampr::MeasureCommandSizeMarkerWithColor",
+      "resolved_name": "Ampr::MeasureAprCommandSizeMapDirectBegin",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -3031,7 +3031,7 @@
     },
     {
       "nid": "vWU-odnS+fU",
-      "resolved_name": "Ampr::MeasureCommandSizeReadFile",
+      "resolved_name": "Ampr::CommandBufferWriteAddressFromCounterPairOnCompletion",
       "resolution_source": "kyty_hle_table",
       "library": "libSceAmpr",
       "module": "libSceAmpr",
@@ -3050,8 +3050,8 @@
     },
     {
       "nid": "99b82IKXpH4",
-      "resolved_name": "AppContent::AppContentAppParamGetInt",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAppContentAppParamGetInt",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAppContent",
       "module": "libSceAppContentUtil",
       "shipped_in": [],
@@ -3067,8 +3067,8 @@
     },
     {
       "nid": "R9lA82OraNs",
-      "resolved_name": "AppContent::AppContentInitialize",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAppContentInitialize",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAppContent",
       "module": "libSceAppContentUtil",
       "shipped_in": [],
@@ -3084,8 +3084,8 @@
     },
     {
       "nid": "5NE8Sjc7VC8",
-      "resolved_name": "AudioIn",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAudioInOpen",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAudioIn",
       "module": "libSceAudioIn",
       "shipped_in": [],
@@ -3101,8 +3101,8 @@
     },
     {
       "nid": "BohEAQ7DlUE",
-      "resolved_name": "AudioIn::AudioInGetSilentState",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAudioInGetSilentState",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAudioIn",
       "module": "libSceAudioIn",
       "shipped_in": [],
@@ -3118,8 +3118,8 @@
     },
     {
       "nid": "LozEOU8+anM",
-      "resolved_name": "AudioIn::AudioInInput",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAudioInInput",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAudioIn",
       "module": "libSceAudioIn",
       "shipped_in": [],
@@ -3152,8 +3152,8 @@
     },
     {
       "nid": "0x6o1VVAYSY",
-      "resolved_name": "AudioOut2::AudioOut2ContextCreate",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAudioOut2ContextCreate",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAudioOut2",
       "module": "libSceAudioOut",
       "shipped_in": [],
@@ -3169,8 +3169,8 @@
     },
     {
       "nid": "4dq2rblWlg0",
-      "resolved_name": "AudioOut2::AudioOut2ContextSetAttributes",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAudioOut2ContextSetAttributes",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAudioOut2",
       "module": "libSceAudioOut",
       "shipped_in": [],
@@ -3186,8 +3186,8 @@
     },
     {
       "nid": "8XTArSPyWHk",
-      "resolved_name": "AudioOut2::AudioOut2PortSetAttributes",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAudioOut2PortSetAttributes",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAudioOut2",
       "module": "libSceAudioOut",
       "shipped_in": [],
@@ -3203,8 +3203,8 @@
     },
     {
       "nid": "DImz2Ft9E2g",
-      "resolved_name": "AudioOut2::AudioOut2GetSpeakerInfo",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAudioOut2GetSpeakerInfo",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAudioOut2",
       "module": "libSceAudioOut",
       "shipped_in": [],
@@ -3220,8 +3220,8 @@
     },
     {
       "nid": "IaZXJ9M79uo",
-      "resolved_name": "AudioOut2::AudioOut2UserDestroy",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAudioOut2UserDestroy",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAudioOut2",
       "module": "libSceAudioOut",
       "shipped_in": [],
@@ -3237,8 +3237,8 @@
     },
     {
       "nid": "JK2wamZPzwM",
-      "resolved_name": "AudioOut2::AudioOut2PortCreate",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAudioOut2PortCreate",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAudioOut2",
       "module": "libSceAudioOut",
       "shipped_in": [],
@@ -3254,8 +3254,8 @@
     },
     {
       "nid": "PE2zHMqLSHs",
-      "resolved_name": "AudioOut2::AudioOut2ContextAdvance",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAudioOut2ContextAdvance",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAudioOut2",
       "module": "libSceAudioOut",
       "shipped_in": [],
@@ -3271,8 +3271,8 @@
     },
     {
       "nid": "R7d0F1g2qsU",
-      "resolved_name": "AudioOut2::AudioOut2ContextGetQueueLevel",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAudioOut2ContextGetQueueLevel",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAudioOut2",
       "module": "libSceAudioOut",
       "shipped_in": [],
@@ -3288,8 +3288,8 @@
     },
     {
       "nid": "TViD1EZXkNI",
-      "resolved_name": "AudioOut2::AudioOut2Set3DLatency",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAudioOut2Set3DLatency",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAudioOut2",
       "module": "libSceAudioOut",
       "shipped_in": [],
@@ -3305,8 +3305,8 @@
     },
     {
       "nid": "XHl38ZNknbs",
-      "resolved_name": "AudioOut2::AudioOut2MasteringInit",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAudioOut2MasteringInit",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAudioOut2",
       "module": "libSceAudioOut",
       "shipped_in": [],
@@ -3322,8 +3322,8 @@
     },
     {
       "nid": "aII9h5nli9U",
-      "resolved_name": "AudioOut2::AudioOut2ContextPush",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAudioOut2ContextPush",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAudioOut2",
       "module": "libSceAudioOut",
       "shipped_in": [],
@@ -3339,8 +3339,8 @@
     },
     {
       "nid": "cd+Rtw+D1x8",
-      "resolved_name": "AudioOut2::AudioOut2PortDestroy",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAudioOut2PortDestroy",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAudioOut2",
       "module": "libSceAudioOut",
       "shipped_in": [],
@@ -3356,8 +3356,8 @@
     },
     {
       "nid": "g2tViFIohHE",
-      "resolved_name": "AudioOut2",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAudioOut2Initialize",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAudioOut2",
       "module": "libSceAudioOut",
       "shipped_in": [],
@@ -3373,8 +3373,8 @@
     },
     {
       "nid": "gatEUKG+Ea4",
-      "resolved_name": "AudioOut2::AudioOut2PortGetState",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAudioOut2PortGetState",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAudioOut2",
       "module": "libSceAudioOut",
       "shipped_in": [],
@@ -3390,8 +3390,8 @@
     },
     {
       "nid": "on6ZH7Abo10",
-      "resolved_name": "AudioOut2::AudioOut2ContextDestroy",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAudioOut2ContextDestroy",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAudioOut2",
       "module": "libSceAudioOut",
       "shipped_in": [],
@@ -3407,8 +3407,8 @@
     },
     {
       "nid": "pDmme7Bgm6E",
-      "resolved_name": "AudioOut2::AudioOut2ContextQueryMemory",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAudioOut2ContextQueryMemory",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAudioOut2",
       "module": "libSceAudioOut",
       "shipped_in": [],
@@ -3424,8 +3424,8 @@
     },
     {
       "nid": "t5YrizufpQc",
-      "resolved_name": "AudioOut2::AudioOut2ContextResetParam",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAudioOut2ContextResetParam",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAudioOut2",
       "module": "libSceAudioOut",
       "shipped_in": [],
@@ -3441,8 +3441,8 @@
     },
     {
       "nid": "xywYcRB7nbQ",
-      "resolved_name": "AudioOut2::AudioOut2UserCreate",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceAudioOut2UserCreate",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceAudioOut2",
       "module": "libSceAudioOut",
       "shipped_in": [],
@@ -3458,8 +3458,8 @@
     },
     {
       "nid": "uoUpLGNkygk",
-      "resolved_name": "CommonDialog",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceCommonDialogInitialize",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceCommonDialog",
       "module": "libSceCommonDialog",
       "shipped_in": [],
@@ -3475,8 +3475,8 @@
     },
     {
       "nid": "8zLSfEfW5AU",
-      "resolved_name": "Coredump::sceCoredumpRegisterCoredumpHandler",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceCoredumpRegisterCoredumpHandler",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceCoredump",
       "module": "libkernel",
       "shipped_in": [],
@@ -3577,8 +3577,8 @@
     },
     {
       "nid": "9XAxK2PMwk8",
-      "resolved_name": "ErrorDialog::ErrorDialogTerminate",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceErrorDialogTerminate",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceErrorDialog",
       "module": "libSceErrorDialog",
       "shipped_in": [],
@@ -3594,8 +3594,8 @@
     },
     {
       "nid": "I88KChlynSs",
-      "resolved_name": "ErrorDialog::ErrorDialogInitialize",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceErrorDialogInitialize",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceErrorDialog",
       "module": "libSceErrorDialog",
       "shipped_in": [],
@@ -3611,8 +3611,8 @@
     },
     {
       "nid": "M2ZF-ClLhgY",
-      "resolved_name": "ErrorDialog::ErrorDialogOpen",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceErrorDialogOpen",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceErrorDialog",
       "module": "libSceErrorDialog",
       "shipped_in": [],
@@ -3628,8 +3628,8 @@
     },
     {
       "nid": "WWiGuh9XfgQ",
-      "resolved_name": "ErrorDialog::ErrorDialogUpdateStatus",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceErrorDialogUpdateStatus",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceErrorDialog",
       "module": "libSceErrorDialog",
       "shipped_in": [],
@@ -3645,8 +3645,8 @@
     },
     {
       "nid": "kvYEw2lBndk",
-      "resolved_name": "",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceGameLiveStreamingInitialize",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceGameLiveStreaming",
       "module": "libSceGameLiveStreaming",
       "shipped_in": [],
@@ -3662,8 +3662,8 @@
     },
     {
       "nid": "LYVV9z8+owM",
-      "resolved_name": "LibGameUpdate::GameUpdateCheck",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceGameUpdateCheck",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceGameUpdate",
       "module": "libSceGameUpdate",
       "shipped_in": [],
@@ -3679,8 +3679,8 @@
     },
     {
       "nid": "UvcvKaFvupA",
-      "resolved_name": "LibGameUpdate::GameUpdateCreateRequest",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceGameUpdateCreateRequest",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceGameUpdate",
       "module": "libSceGameUpdate",
       "shipped_in": [],
@@ -3696,8 +3696,8 @@
     },
     {
       "nid": "YJtKLttI9fM",
-      "resolved_name": "GameUpdate",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceGameUpdateInitialize",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceGameUpdate",
       "module": "libSceGameUpdate",
       "shipped_in": [],
@@ -3713,8 +3713,8 @@
     },
     {
       "nid": "bcCyjHN5sn0",
-      "resolved_name": "LibGameUpdate::GameUpdateDeleteRequest",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceGameUpdateDeleteRequest",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceGameUpdate",
       "module": "libSceGameUpdate",
       "shipped_in": [],
@@ -3730,8 +3730,8 @@
     },
     {
       "nid": "0S9tTH0uqTU",
-      "resolved_name": "Http::HttpSetConnectTimeOut",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceHttpSetConnectTimeOut",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceHttp",
       "module": "libSceHttp",
       "shipped_in": [],
@@ -3747,8 +3747,8 @@
     },
     {
       "nid": "0a2TBNfE3BU",
-      "resolved_name": "Http::HttpGetStatusCode",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceHttpGetStatusCode",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceHttp",
       "module": "libSceHttp",
       "shipped_in": [],
@@ -3764,8 +3764,8 @@
     },
     {
       "nid": "0gYjPTR-6cY",
-      "resolved_name": "Http::HttpCreateTemplate",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceHttpCreateTemplate",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceHttp",
       "module": "libSceHttp",
       "shipped_in": [],
@@ -3781,8 +3781,8 @@
     },
     {
       "nid": "1e2BNwI-XzE",
-      "resolved_name": "Http::HttpSendRequest",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceHttpSendRequest",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceHttp",
       "module": "libSceHttp",
       "shipped_in": [],
@@ -3798,8 +3798,8 @@
     },
     {
       "nid": "A9cVMUtEp4Y",
-      "resolved_name": "Http",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceHttpInit",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceHttp",
       "module": "libSceHttp",
       "shipped_in": [],
@@ -3815,7 +3815,7 @@
     },
     {
       "nid": "Aeu5wVKkF9w",
-      "resolved_name": "rGNm+FjIXKk",
+      "resolved_name": "Http::HttpCreateRequest",
       "resolution_source": "kyty_hle_table",
       "library": "libSceHttp",
       "module": "libSceHttp",
@@ -3832,8 +3832,8 @@
     },
     {
       "nid": "DK+GoXCNT04",
-      "resolved_name": "Http::HttpsLoadCert",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceHttpsLoadCert",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceHttp",
       "module": "libSceHttp",
       "shipped_in": [],
@@ -3849,8 +3849,8 @@
     },
     {
       "nid": "EY28T2bkN7k",
-      "resolved_name": "Http::HttpAddRequestHeader",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceHttpAddRequestHeader",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceHttp",
       "module": "libSceHttp",
       "shipped_in": [],
@@ -3883,8 +3883,8 @@
     },
     {
       "nid": "P6A3ytpsiYc",
-      "resolved_name": "Http::HttpDeleteConnection",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceHttpDeleteConnection",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceHttp",
       "module": "libSceHttp",
       "shipped_in": [],
@@ -3917,8 +3917,8 @@
     },
     {
       "nid": "aCYPMSUIaP8",
-      "resolved_name": "Http::HttpGetAllResponseHeaders",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceHttpGetAllResponseHeaders",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceHttp",
       "module": "libSceHttp",
       "shipped_in": [],
@@ -3934,8 +3934,8 @@
     },
     {
       "nid": "qe7oZ+v4PWA",
-      "resolved_name": "Http::HttpDeleteRequest",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceHttpDeleteRequest",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceHttp",
       "module": "libSceHttp",
       "shipped_in": [],
@@ -3951,8 +3951,8 @@
     },
     {
       "nid": "qgxDBjorUxs",
-      "resolved_name": "Http::HttpCreateConnectionWithURL",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceHttpCreateConnectionWithURL",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceHttp",
       "module": "libSceHttp",
       "shipped_in": [],
@@ -3968,8 +3968,8 @@
     },
     {
       "nid": "xegFfZKBVlw",
-      "resolved_name": "Http::HttpSetSendTimeOut",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceHttpSetSendTimeOut",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceHttp",
       "module": "libSceHttp",
       "shipped_in": [],
@@ -3985,8 +3985,8 @@
     },
     {
       "nid": "yigr4V0-HTM",
-      "resolved_name": "Http::HttpSetRecvTimeOut",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceHttpSetRecvTimeOut",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceHttp",
       "module": "libSceHttp",
       "shipped_in": [],
@@ -4002,8 +4002,8 @@
     },
     {
       "nid": "3JCe3lCbQ8A",
-      "resolved_name": "Http2",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceHttp2Init",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceHttp2",
       "module": "libSceHttp2",
       "shipped_in": [],
@@ -4019,8 +4019,8 @@
     },
     {
       "nid": "6fIC3XKt2k0",
-      "resolved_name": "MsgDialog::MsgDialogUpdateStatus",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceMsgDialogUpdateStatus",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceMsgDialog.native",
       "module": "libSceMsgDialog",
       "shipped_in": [],
@@ -4036,8 +4036,8 @@
     },
     {
       "nid": "HTrcDKlFKuM",
-      "resolved_name": "",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceMsgDialogClose",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceMsgDialog.native",
       "module": "libSceMsgDialog",
       "shipped_in": [],
@@ -4053,8 +4053,8 @@
     },
     {
       "nid": "Lr8ovHH9l6A",
-      "resolved_name": "MsgDialog::MsgDialogGetResult",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceMsgDialogGetResult",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceMsgDialog.native",
       "module": "libSceMsgDialog",
       "shipped_in": [],
@@ -4070,8 +4070,8 @@
     },
     {
       "nid": "b06Hh0DPEaE",
-      "resolved_name": "MsgDialog::MsgDialogOpen",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceMsgDialogOpen",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceMsgDialog.native",
       "module": "libSceMsgDialog",
       "shipped_in": [],
@@ -4087,8 +4087,8 @@
     },
     {
       "nid": "ePw-kqZmelo",
-      "resolved_name": "MsgDialog::MsgDialogTerminate",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceMsgDialogTerminate",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceMsgDialog.native",
       "module": "libSceMsgDialog",
       "shipped_in": [],
@@ -4104,8 +4104,8 @@
     },
     {
       "nid": "lDqxaY1UbEo",
-      "resolved_name": "MsgDialog::MsgDialogInitialize",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceMsgDialogInitialize",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceMsgDialog.native",
       "module": "libSceMsgDialog",
       "shipped_in": [],
@@ -4121,8 +4121,8 @@
     },
     {
       "nid": "2mKX2Spso7I",
-      "resolved_name": "LibNet::NetSetsockopt",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNetSetsockopt",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNet",
       "module": "libSceNet",
       "shipped_in": [],
@@ -4138,8 +4138,8 @@
     },
     {
       "nid": "304ooNZxWDY",
-      "resolved_name": "LibNet::NetRecvfrom",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNetRecvfrom",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNet",
       "module": "libSceNet",
       "shipped_in": [],
@@ -4155,8 +4155,8 @@
     },
     {
       "nid": "45ggEzakPJQ",
-      "resolved_name": "LibNet::NetSocketClose",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNetSocketClose",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNet",
       "module": "libSceNet",
       "shipped_in": [],
@@ -4172,8 +4172,8 @@
     },
     {
       "nid": "6Oc0bLsIYe0",
-      "resolved_name": "LibNet::NetGetMacAddress",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNetGetMacAddress",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNet",
       "module": "libSceNet",
       "shipped_in": [],
@@ -4189,8 +4189,8 @@
     },
     {
       "nid": "8Kcp5d-q1Uo",
-      "resolved_name": "LibNet::NetInetPton",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNetInetPton",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNet",
       "module": "libSceNet",
       "shipped_in": [],
@@ -4206,8 +4206,8 @@
     },
     {
       "nid": "9vA2aW+CHuA",
-      "resolved_name": "LibNet::NetInetNtop",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNetInetNtop",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNet",
       "module": "libSceNet",
       "shipped_in": [],
@@ -4223,8 +4223,8 @@
     },
     {
       "nid": "9wO9XrMsNhc",
-      "resolved_name": "LibNet::NetRecv",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNetRecv",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNet",
       "module": "libSceNet",
       "shipped_in": [],
@@ -4240,8 +4240,8 @@
     },
     {
       "nid": "C4UgDHHPvdw",
-      "resolved_name": "LibNet::NetResolverCreate",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNetResolverCreate",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNet",
       "module": "libSceNet",
       "shipped_in": [],
@@ -4257,7 +4257,7 @@
     },
     {
       "nid": "HQOwnfMGipQ",
-      "resolved_name": "LibNet::GetNetErrorAddr",
+      "resolved_name": "LibNet::NetInit",
       "resolution_source": "kyty_hle_table",
       "library": "libSceNet",
       "module": "libSceNet",
@@ -4274,8 +4274,8 @@
     },
     {
       "nid": "Inp1lfL+Jdw",
-      "resolved_name": "LibNet::NetEpollDestroy",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNetEpollDestroy",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNet",
       "module": "libSceNet",
       "shipped_in": [],
@@ -4291,8 +4291,8 @@
     },
     {
       "nid": "K7RlrTkI-mw",
-      "resolved_name": "LibNet::NetPoolDestroy",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNetPoolDestroy",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNet",
       "module": "libSceNet",
       "shipped_in": [],
@@ -4308,8 +4308,8 @@
     },
     {
       "nid": "Nd91WaWmG2w",
-      "resolved_name": "LibNet::NetResolverStartNtoa",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNetResolverStartNtoa",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNet",
       "module": "libSceNet",
       "shipped_in": [],
@@ -4325,8 +4325,8 @@
     },
     {
       "nid": "OXXX4mUk3uk",
-      "resolved_name": "LibNet::NetConnect",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNetConnect",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNet",
       "module": "libSceNet",
       "shipped_in": [],
@@ -4342,8 +4342,8 @@
     },
     {
       "nid": "Q4qBuN-c0ZM",
-      "resolved_name": "LibNet::NetSocket",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNetSocket",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNet",
       "module": "libSceNet",
       "shipped_in": [],
@@ -4359,8 +4359,8 @@
     },
     {
       "nid": "SF47kB2MNTo",
-      "resolved_name": "LibNet::NetEpollCreate",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNetEpollCreate",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNet",
       "module": "libSceNet",
       "shipped_in": [],
@@ -4376,8 +4376,8 @@
     },
     {
       "nid": "ZVw46bsasAk",
-      "resolved_name": "LibNet::NetEpollControl",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNetEpollControl",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNet",
       "module": "libSceNet",
       "shipped_in": [],
@@ -4393,8 +4393,8 @@
     },
     {
       "nid": "bErx49PgxyY",
-      "resolved_name": "LibNet::NetBind",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNetBind",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNet",
       "module": "libSceNet",
       "shipped_in": [],
@@ -4410,8 +4410,8 @@
     },
     {
       "nid": "beRjXBn-z+o",
-      "resolved_name": "LibNet::NetSend",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNetSend",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNet",
       "module": "libSceNet",
       "shipped_in": [],
@@ -4427,8 +4427,8 @@
     },
     {
       "nid": "dgJBaeJnGpo",
-      "resolved_name": "LibNet::NetPoolCreate",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNetPoolCreate",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNet",
       "module": "libSceNet",
       "shipped_in": [],
@@ -4444,8 +4444,8 @@
     },
     {
       "nid": "drjIbDbA7UQ",
-      "resolved_name": "LibNet::NetEpollWait",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNetEpollWait",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNet",
       "module": "libSceNet",
       "shipped_in": [],
@@ -4461,8 +4461,8 @@
     },
     {
       "nid": "gvD1greCu0A",
-      "resolved_name": "LibNet::NetSendto",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNetSendto",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNet",
       "module": "libSceNet",
       "shipped_in": [],
@@ -4478,8 +4478,8 @@
     },
     {
       "nid": "iWQWrwiSt8A",
-      "resolved_name": "LibNet::NetHtons",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNetHtons",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNet",
       "module": "libSceNet",
       "shipped_in": [],
@@ -4495,8 +4495,8 @@
     },
     {
       "nid": "kJlYH5uMAWI",
-      "resolved_name": "LibNet::NetResolverDestroy",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNetResolverDestroy",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNet",
       "module": "libSceNet",
       "shipped_in": [],
@@ -4512,8 +4512,8 @@
     },
     {
       "nid": "v6M4txecCuo",
-      "resolved_name": "LibNet::NetEtherNtostr",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNetEtherNtostr",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNet",
       "module": "libSceNet",
       "shipped_in": [],
@@ -4529,8 +4529,8 @@
     },
     {
       "nid": "xphrZusl78E",
-      "resolved_name": "LibNet::NetGetsockopt",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNetGetsockopt",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNet",
       "module": "libSceNet",
       "shipped_in": [],
@@ -4546,8 +4546,8 @@
     },
     {
       "nid": "UJ+Z7Q+4ck0",
-      "resolved_name": "NetCtl::NetCtlRegisterCallback",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNetCtlRegisterCallback",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNetCtl",
       "module": "libSceNetCtl",
       "shipped_in": [],
@@ -4563,8 +4563,8 @@
     },
     {
       "nid": "gky0+oaNM4k",
-      "resolved_name": "NetCtl",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNetCtlInit",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNetCtl",
       "module": "libSceNetCtl",
       "shipped_in": [],
@@ -4580,8 +4580,8 @@
     },
     {
       "nid": "iQw3iQPhvUQ",
-      "resolved_name": "NetCtl::NetCtlCheckCallback",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNetCtlCheckCallback",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNetCtl",
       "module": "libSceNetCtl",
       "shipped_in": [],
@@ -4597,8 +4597,8 @@
     },
     {
       "nid": "obuxdTiwkF8",
-      "resolved_name": "NetCtl::NetCtlGetInfo",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNetCtlGetInfo",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNetCtl",
       "module": "libSceNetCtl",
       "shipped_in": [],
@@ -4614,8 +4614,8 @@
     },
     {
       "nid": "uBPlr0lbuiI",
-      "resolved_name": "NetCtl::NetCtlGetState",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNetCtlGetState",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNetCtl",
       "module": "libSceNetCtl",
       "shipped_in": [],
@@ -4631,8 +4631,8 @@
     },
     {
       "nid": "6bwFkosYRQg",
-      "resolved_name": "NpAuth",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpAuthCreateRequest",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpAuth",
       "module": "libSceNpAuth",
       "shipped_in": [],
@@ -4648,8 +4648,8 @@
     },
     {
       "nid": "H8wG9Bk-nPc",
-      "resolved_name": "LibNpAuth::NpAuthDeleteRequest",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpAuthDeleteRequest",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpAuth",
       "module": "libSceNpAuth",
       "shipped_in": [],
@@ -4665,8 +4665,8 @@
     },
     {
       "nid": "RdsFVsgSpZY",
-      "resolved_name": "LibNpAuth::NpAuthGetIdTokenV3",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpAuthGetIdTokenV3",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpAuth",
       "module": "libSceNpAuth",
       "shipped_in": [],
@@ -4682,8 +4682,8 @@
     },
     {
       "nid": "0aR2aWmQal4",
-      "resolved_name": "NpCommerce",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpCommerceDialogInitialize",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpCommerce",
       "module": "libSceNpCommerce",
       "shipped_in": [],
@@ -4716,8 +4716,8 @@
     },
     {
       "nid": "DfSCDRA3EjY",
-      "resolved_name": "NpCommerceDialogOpen",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpCommerceDialogOpen",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpCommerce",
       "module": "libSceNpCommerce",
       "shipped_in": [],
@@ -4733,8 +4733,8 @@
     },
     {
       "nid": "LR5cwFMMCVE",
-      "resolved_name": "NpCommerceDialogUpdateStatus",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpCommerceDialogUpdateStatus",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpCommerce",
       "module": "libSceNpCommerce",
       "shipped_in": [],
@@ -4767,8 +4767,8 @@
     },
     {
       "nid": "m-I92Ab50W8",
-      "resolved_name": "NpCommerceDialogTerminate",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpCommerceDialogTerminate",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpCommerce",
       "module": "libSceNpCommerce",
       "shipped_in": [],
@@ -4784,8 +4784,8 @@
     },
     {
       "nid": "r42bWcQbtZY",
-      "resolved_name": "NpCommerceDialogGetResult",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpCommerceDialogGetResult",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpCommerce",
       "module": "libSceNpCommerce",
       "shipped_in": [],
@@ -4835,8 +4835,8 @@
     },
     {
       "nid": "xddD23+8TfQ",
-      "resolved_name": "LibNpEntitlementAccess::NpEntitlementAccessGetAddcontEntitlementInfo",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpEntitlementAccessGetAddcontEntitlementInfo",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpEntitlementAccess",
       "module": "libSceNpEntitlementAccess",
       "shipped_in": [],
@@ -4852,8 +4852,8 @@
     },
     {
       "nid": "jEIXUAr9XE8",
-      "resolved_name": "LibNpGameIntent::NpGameIntentReceiveIntent",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpGameIntentReceiveIntent",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpGameIntent",
       "module": "libSceNpGameIntent",
       "shipped_in": [],
@@ -4869,8 +4869,8 @@
     },
     {
       "nid": "m87BHxt-H60",
-      "resolved_name": "NpGameIntent",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpGameIntentInitialize",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpGameIntent",
       "module": "libSceNpGameIntent",
       "shipped_in": [],
@@ -4886,8 +4886,8 @@
     },
     {
       "nid": "rPl0INNc-M8",
-      "resolved_name": "LibNpGameIntent::NpGameIntentGetPropertyValueString",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpGameIntentGetPropertyValueString",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpGameIntent",
       "module": "libSceNpGameIntent",
       "shipped_in": [],
@@ -4903,8 +4903,8 @@
     },
     {
       "nid": "+yqjab2fUJA",
-      "resolved_name": "NpManager::NpRegisterPremiumEventCallback",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpRegisterPremiumEventCallback",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpManager",
       "module": "libSceNpManager",
       "shipped_in": [],
@@ -4937,8 +4937,8 @@
     },
     {
       "nid": "3Tcz5bNCfZQ",
-      "resolved_name": "NpManager::NpGetAccountLanguage2",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpGetAccountLanguage2",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpManager",
       "module": "libSceNpManager",
       "shipped_in": [],
@@ -4954,8 +4954,8 @@
     },
     {
       "nid": "3Zl8BePTh9Y",
-      "resolved_name": "NpManager",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpCheckCallback",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpManager",
       "module": "libSceNpManager",
       "shipped_in": [],
@@ -4971,8 +4971,8 @@
     },
     {
       "nid": "GpLQDNKICac",
-      "resolved_name": "NpManager::NpCreateRequest",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpCreateRequest",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpManager",
       "module": "libSceNpManager",
       "shipped_in": [],
@@ -4988,8 +4988,8 @@
     },
     {
       "nid": "JT+t00a3TxA",
-      "resolved_name": "NpManager::NpGetAccountCountryA",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpGetAccountCountryA",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpManager",
       "module": "libSceNpManager",
       "shipped_in": [],
@@ -5005,8 +5005,8 @@
     },
     {
       "nid": "KfGZg2y73oM",
-      "resolved_name": "NpManager::NpCheckNpReachability",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpCheckNpReachability",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpManager",
       "module": "libSceNpManager",
       "shipped_in": [],
@@ -5022,8 +5022,8 @@
     },
     {
       "nid": "O80NrhUOPGY",
-      "resolved_name": "NpManager::NpCheckPremium",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpCheckPremium",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpManager",
       "module": "libSceNpManager",
       "shipped_in": [],
@@ -5056,8 +5056,8 @@
     },
     {
       "nid": "S7QTn72PrDw",
-      "resolved_name": "NpManager::NpDeleteRequest",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpDeleteRequest",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpManager",
       "module": "libSceNpManager",
       "shipped_in": [],
@@ -5073,8 +5073,8 @@
     },
     {
       "nid": "XDncXQIJUSk",
-      "resolved_name": "NpManager::NpGetOnlineId",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpGetOnlineId",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpManager",
       "module": "libSceNpManager",
       "shipped_in": [],
@@ -5090,8 +5090,8 @@
     },
     {
       "nid": "eQH7nWPcAgc",
-      "resolved_name": "NpManager::NpGetState",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpGetState",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpManager",
       "module": "libSceNpManager",
       "shipped_in": [],
@@ -5107,8 +5107,8 @@
     },
     {
       "nid": "hw5KNqAAels",
-      "resolved_name": "NpManager::NpRegisterNpReachabilityStateCallback",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpRegisterNpReachabilityStateCallback",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpManager",
       "module": "libSceNpManager",
       "shipped_in": [],
@@ -5124,8 +5124,8 @@
     },
     {
       "nid": "qQJfO8HAiaY",
-      "resolved_name": "NpManager::NpRegisterStateCallbackA",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpRegisterStateCallbackA",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpManager",
       "module": "libSceNpManager",
       "shipped_in": [],
@@ -5141,8 +5141,8 @@
     },
     {
       "nid": "rbknaUjpqWo",
-      "resolved_name": "NpManager::NpGetAccountIdA",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpGetAccountIdA",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpManager",
       "module": "libSceNpManager",
       "shipped_in": [],
@@ -5311,8 +5311,8 @@
     },
     {
       "nid": "ysmw6J-P8Ak",
-      "resolved_name": "",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpSessionSignalingInitialize",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpSessionSignaling",
       "module": "libSceNpSessionSignaling",
       "shipped_in": [],
@@ -5328,8 +5328,8 @@
     },
     {
       "nid": "Bagshr7OQ6Q",
-      "resolved_name": "NpTrophy2",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpTrophy2CreateContext",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpTrophy2",
       "module": "libSceNpTrophy2",
       "shipped_in": [],
@@ -5345,8 +5345,8 @@
     },
     {
       "nid": "Gz1rmUZpROM",
-      "resolved_name": "LibNpTrophy2::NpTrophy2CreateHandle",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpTrophy2CreateHandle",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpTrophy2",
       "module": "libSceNpTrophy2",
       "shipped_in": [],
@@ -5362,8 +5362,8 @@
     },
     {
       "nid": "bIDov3wBu5Q",
-      "resolved_name": "LibNpTrophy2::NpTrophy2RegisterContext",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpTrophy2RegisterContext",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpTrophy2",
       "module": "libSceNpTrophy2",
       "shipped_in": [],
@@ -5379,8 +5379,8 @@
     },
     {
       "nid": "d8P11CI40KE",
-      "resolved_name": "LibNpTrophy2::NpTrophy2DestroyHandle",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpTrophy2DestroyHandle",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpTrophy2",
       "module": "libSceNpTrophy2",
       "shipped_in": [],
@@ -5396,8 +5396,8 @@
     },
     {
       "nid": "sUXGfNMalIo",
-      "resolved_name": "LibNpTrophy2::NpTrophy2RegisterUnlockCallback",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpTrophy2RegisterUnlockCallback",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpTrophy2",
       "module": "libSceNpTrophy2",
       "shipped_in": [],
@@ -5413,8 +5413,8 @@
     },
     {
       "nid": "sysY2FHYff4",
-      "resolved_name": "LibNpTrophy2::NpTrophy2DestroyContext",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpTrophy2DestroyContext",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpTrophy2",
       "module": "libSceNpTrophy2",
       "shipped_in": [],
@@ -5430,8 +5430,8 @@
     },
     {
       "nid": "y3zHpdZO6ME",
-      "resolved_name": "LibNpTrophy2::NpTrophy2GetTrophyInfoArray",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpTrophy2GetTrophyInfoArray",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpTrophy2",
       "module": "libSceNpTrophy2",
       "shipped_in": [],
@@ -5447,8 +5447,8 @@
     },
     {
       "nid": "47UAEuQl+iI",
-      "resolved_name": "LibNpUniversalDataSystem::NpUniversalDataSystemTerminate",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpUniversalDataSystemTerminate",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpUniversalDataSystem",
       "module": "libSceNpUniversalDataSystem",
       "shipped_in": [],
@@ -5464,8 +5464,8 @@
     },
     {
       "nid": "5zBnau1uIEo",
-      "resolved_name": "LibNpUniversalDataSystem::NpUniversalDataSystemCreateContext",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpUniversalDataSystemCreateContext",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpUniversalDataSystem",
       "module": "libSceNpUniversalDataSystem",
       "shipped_in": [],
@@ -5481,8 +5481,8 @@
     },
     {
       "nid": "AUIHb7jUX3I",
-      "resolved_name": "LibNpUniversalDataSystem::NpUniversalDataSystemDestroyHandle",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpUniversalDataSystemDestroyHandle",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpUniversalDataSystem",
       "module": "libSceNpUniversalDataSystem",
       "shipped_in": [],
@@ -5498,8 +5498,8 @@
     },
     {
       "nid": "CzkKf7ahIyU",
-      "resolved_name": "LibNpUniversalDataSystem::NpUniversalDataSystemPostEvent",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpUniversalDataSystemPostEvent",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpUniversalDataSystem",
       "module": "libSceNpUniversalDataSystem",
       "shipped_in": [],
@@ -5515,8 +5515,8 @@
     },
     {
       "nid": "MfDb+4Nln64",
-      "resolved_name": "LibNpUniversalDataSystem::NpUniversalDataSystemEventPropertyObjectSetString",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpUniversalDataSystemEventPropertyObjectSetString",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpUniversalDataSystem",
       "module": "libSceNpUniversalDataSystem",
       "shipped_in": [],
@@ -5532,8 +5532,8 @@
     },
     {
       "nid": "YE4dbtbz6OE",
-      "resolved_name": "LibNpUniversalDataSystem::NpUniversalDataSystemEventPropertyObjectSetInt32",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpUniversalDataSystemEventPropertyObjectSetInt32",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpUniversalDataSystem",
       "module": "libSceNpUniversalDataSystem",
       "shipped_in": [],
@@ -5549,8 +5549,8 @@
     },
     {
       "nid": "hT0IAEvN+M0",
-      "resolved_name": "LibNpUniversalDataSystem::NpUniversalDataSystemCreateHandle",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpUniversalDataSystemCreateHandle",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpUniversalDataSystem",
       "module": "libSceNpUniversalDataSystem",
       "shipped_in": [],
@@ -5566,8 +5566,8 @@
     },
     {
       "nid": "p+GcLqwpL9M",
-      "resolved_name": "LibNpUniversalDataSystem::NpUniversalDataSystemCreateEvent",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpUniversalDataSystemCreateEvent",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpUniversalDataSystem",
       "module": "libSceNpUniversalDataSystem",
       "shipped_in": [],
@@ -5583,8 +5583,8 @@
     },
     {
       "nid": "sjaobBgqeB4",
-      "resolved_name": "",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpUniversalDataSystemInitialize",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpUniversalDataSystem",
       "module": "libSceNpUniversalDataSystem",
       "shipped_in": [],
@@ -5600,8 +5600,8 @@
     },
     {
       "nid": "tpFJ8LIKvPw",
-      "resolved_name": "LibNpUniversalDataSystem::NpUniversalDataSystemRegisterContext",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpUniversalDataSystemRegisterContext",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpUniversalDataSystem",
       "module": "libSceNpUniversalDataSystem",
       "shipped_in": [],
@@ -5617,8 +5617,8 @@
     },
     {
       "nid": "wB7IWzGp2v0",
-      "resolved_name": "LibNpUniversalDataSystem::NpUniversalDataSystemDestroyContext",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpUniversalDataSystemDestroyContext",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpUniversalDataSystem",
       "module": "libSceNpUniversalDataSystem",
       "shipped_in": [],
@@ -5634,8 +5634,8 @@
     },
     {
       "nid": "wG+84pnNIuo",
-      "resolved_name": "LibNpUniversalDataSystem::NpUniversalDataSystemDestroyEvent",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpUniversalDataSystemDestroyEvent",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpUniversalDataSystem",
       "module": "libSceNpUniversalDataSystem",
       "shipped_in": [],
@@ -5651,8 +5651,8 @@
     },
     {
       "nid": "+o9816YQhqQ",
-      "resolved_name": "NpWebApi2",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpWebApi2Initialize",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpWebApi2",
       "module": "libSceNpWebApi2",
       "shipped_in": [],
@@ -5668,8 +5668,8 @@
     },
     {
       "nid": "3EI-OSJ65Xc",
-      "resolved_name": "LibNpWebApi2::NpWebApi2CreateRequest",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpWebApi2CreateRequest",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpWebApi2",
       "module": "libSceNpWebApi2",
       "shipped_in": [],
@@ -5685,8 +5685,8 @@
     },
     {
       "nid": "9X9+cneTGUU",
-      "resolved_name": "LibNpWebApi2::NpWebApi2DeleteUserContext",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpWebApi2DeleteUserContext",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpWebApi2",
       "module": "libSceNpWebApi2",
       "shipped_in": [],
@@ -5719,8 +5719,8 @@
     },
     {
       "nid": "KJdPcOGmK58",
-      "resolved_name": "LibNpWebApi2::NpWebApi2PushEventDeleteFilter",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpWebApi2PushEventDeleteFilter",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpWebApi2",
       "module": "libSceNpWebApi2",
       "shipped_in": [],
@@ -5736,8 +5736,8 @@
     },
     {
       "nid": "MsaFhR+lPE4",
-      "resolved_name": "LibNpWebApi2::NpWebApi2PushEventCreateFilter",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpWebApi2PushEventCreateFilter",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpWebApi2",
       "module": "libSceNpWebApi2",
       "shipped_in": [],
@@ -5770,8 +5770,8 @@
     },
     {
       "nid": "OOY9+ObfKec",
-      "resolved_name": "LibNpWebApi2::NpWebApi2ReadData",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpWebApi2ReadData",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpWebApi2",
       "module": "libSceNpWebApi2",
       "shipped_in": [],
@@ -5804,8 +5804,8 @@
     },
     {
       "nid": "QafxeZM3WK4",
-      "resolved_name": "LibNpWebApi2::NpWebApi2PushEventDeletePushContext",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpWebApi2PushEventDeletePushContext",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpWebApi2",
       "module": "libSceNpWebApi2",
       "shipped_in": [],
@@ -5821,8 +5821,8 @@
     },
     {
       "nid": "WV1GwM32NgY",
-      "resolved_name": "LibNpWebApi2::NpWebApi2PushEventCreateHandle",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpWebApi2PushEventCreateHandle",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpWebApi2",
       "module": "libSceNpWebApi2",
       "shipped_in": [],
@@ -5838,8 +5838,8 @@
     },
     {
       "nid": "bEvXpcEk200",
-      "resolved_name": "LibNpWebApi2::NpWebApi2Terminate",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpWebApi2Terminate",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpWebApi2",
       "module": "libSceNpWebApi2",
       "shipped_in": [],
@@ -5855,8 +5855,8 @@
     },
     {
       "nid": "egOOvrnF6mI",
-      "resolved_name": "LibNpWebApi2::NpWebApi2AddHttpRequestHeader",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpWebApi2AddHttpRequestHeader",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpWebApi2",
       "module": "libSceNpWebApi2",
       "shipped_in": [],
@@ -5872,8 +5872,8 @@
     },
     {
       "nid": "fIATVMo4Y1w",
-      "resolved_name": "LibNpWebApi2::NpWebApi2PushEventDeleteHandle",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpWebApi2PushEventDeleteHandle",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpWebApi2",
       "module": "libSceNpWebApi2",
       "shipped_in": [],
@@ -5889,8 +5889,8 @@
     },
     {
       "nid": "fY3QqeNkF8k",
-      "resolved_name": "LibNpWebApi2::NpWebApi2PushEventRegisterCallback",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpWebApi2PushEventRegisterCallback",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpWebApi2",
       "module": "libSceNpWebApi2",
       "shipped_in": [],
@@ -5906,8 +5906,8 @@
     },
     {
       "nid": "hOnIlcGrO6g",
-      "resolved_name": "LibNpWebApi2::NpWebApi2PushEventUnregisterCallback",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpWebApi2PushEventUnregisterCallback",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpWebApi2",
       "module": "libSceNpWebApi2",
       "shipped_in": [],
@@ -5923,8 +5923,8 @@
     },
     {
       "nid": "hksbskNToEA",
-      "resolved_name": "LibNpWebApi2::NpWebApi2GetHttpResponseHeaderValue",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpWebApi2GetHttpResponseHeaderValue",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpWebApi2",
       "module": "libSceNpWebApi2",
       "shipped_in": [],
@@ -5940,8 +5940,8 @@
     },
     {
       "nid": "lQOCF84lvzw",
-      "resolved_name": "LibNpWebApi2::NpWebApi2SendRequest",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpWebApi2SendRequest",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpWebApi2",
       "module": "libSceNpWebApi2",
       "shipped_in": [],
@@ -5974,8 +5974,8 @@
     },
     {
       "nid": "sk54bi6FtYM",
-      "resolved_name": "LibNpWebApi2::NpWebApi2CreateUserContext",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpWebApi2CreateUserContext",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpWebApi2",
       "module": "libSceNpWebApi2",
       "shipped_in": [],
@@ -5991,8 +5991,8 @@
     },
     {
       "nid": "vvzWO-DvG1s",
-      "resolved_name": "LibNpWebApi2::NpWebApi2DeleteRequest",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpWebApi2DeleteRequest",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpWebApi2",
       "module": "libSceNpWebApi2",
       "shipped_in": [],
@@ -6008,8 +6008,8 @@
     },
     {
       "nid": "zpiPsH7dbFQ",
-      "resolved_name": "LibNpWebApi2::NpWebApi2AbortRequest",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceNpWebApi2AbortRequest",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceNpWebApi2",
       "module": "libSceNpWebApi2",
       "shipped_in": [],
@@ -6025,8 +6025,8 @@
     },
     {
       "nid": "DLORcroUqbc",
-      "resolved_name": "LibKernel::KernelGetOpenPsId",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelGetOpenPsId",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceOpenPsId",
       "module": "libkernel",
       "shipped_in": [],
@@ -6042,8 +6042,8 @@
     },
     {
       "nid": "2JgFB2n9oUM",
-      "resolved_name": "Controller::PadSetTriggerEffect",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePadSetTriggerEffect",
+      "resolution_source": "sha1_nid_hash",
       "library": "libScePad",
       "module": "libScePad",
       "shipped_in": [],
@@ -6059,8 +6059,8 @@
     },
     {
       "nid": "6ncge5+l5Qs",
-      "resolved_name": "Controller::PadClose",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePadClose",
+      "resolution_source": "sha1_nid_hash",
       "library": "libScePad",
       "module": "libScePad",
       "shipped_in": [],
@@ -6076,8 +6076,8 @@
     },
     {
       "nid": "DscD1i9HX1w",
-      "resolved_name": "Controller::PadResetLightBar",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePadResetLightBar",
+      "resolution_source": "sha1_nid_hash",
       "library": "libScePad",
       "module": "libScePad",
       "shipped_in": [],
@@ -6093,8 +6093,8 @@
     },
     {
       "nid": "RR4novUEENY",
-      "resolved_name": "Controller::PadSetLightBar",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePadSetLightBar",
+      "resolution_source": "sha1_nid_hash",
       "library": "libScePad",
       "module": "libScePad",
       "shipped_in": [],
@@ -6110,8 +6110,8 @@
     },
     {
       "nid": "W2G-yoyMF5U",
-      "resolved_name": "PadSetVibrationMode",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePadSetVibrationMode",
+      "resolution_source": "sha1_nid_hash",
       "library": "libScePad",
       "module": "libScePad",
       "shipped_in": [],
@@ -6127,8 +6127,8 @@
     },
     {
       "nid": "YndgXqQVV7c",
-      "resolved_name": "Controller::PadReadState",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePadReadState",
+      "resolution_source": "sha1_nid_hash",
       "library": "libScePad",
       "module": "libScePad",
       "shipped_in": [],
@@ -6144,8 +6144,8 @@
     },
     {
       "nid": "gjP9-KQzoUk",
-      "resolved_name": "Controller::PadGetControllerInformation",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePadGetControllerInformation",
+      "resolution_source": "sha1_nid_hash",
       "library": "libScePad",
       "module": "libScePad",
       "shipped_in": [],
@@ -6161,8 +6161,8 @@
     },
     {
       "nid": "hv1luiJrqQM",
-      "resolved_name": "Pad",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePadInit",
+      "resolution_source": "sha1_nid_hash",
       "library": "libScePad",
       "module": "libScePad",
       "shipped_in": [],
@@ -6178,8 +6178,8 @@
     },
     {
       "nid": "rIZnR6eSpvk",
-      "resolved_name": "Controller::PadResetOrientation",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePadResetOrientation",
+      "resolution_source": "sha1_nid_hash",
       "library": "libScePad",
       "module": "libScePad",
       "shipped_in": [],
@@ -6195,8 +6195,8 @@
     },
     {
       "nid": "vDLMoJLde8I",
-      "resolved_name": "PadSetTiltCorrectionState",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePadSetTiltCorrectionState",
+      "resolution_source": "sha1_nid_hash",
       "library": "libScePad",
       "module": "libScePad",
       "shipped_in": [],
@@ -6212,8 +6212,8 @@
     },
     {
       "nid": "xk0AcarP3V4",
-      "resolved_name": "Controller::PadOpen",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePadOpen",
+      "resolution_source": "sha1_nid_hash",
       "library": "libScePad",
       "module": "libScePad",
       "shipped_in": [],
@@ -6229,8 +6229,8 @@
     },
     {
       "nid": "-RJWNMK3fC8",
-      "resolved_name": "PlayGo::PlayGoGetProgress",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePlayGoGetProgress",
+      "resolution_source": "sha1_nid_hash",
       "library": "libScePlayGo",
       "module": "libScePlayGo",
       "shipped_in": [
@@ -6248,8 +6248,8 @@
     },
     {
       "nid": "73fF1MFU8hA",
-      "resolved_name": "PlayGo::PlayGoGetChunkId",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePlayGoGetChunkId",
+      "resolution_source": "sha1_nid_hash",
       "library": "libScePlayGo",
       "module": "libScePlayGo",
       "shipped_in": [
@@ -6267,8 +6267,8 @@
     },
     {
       "nid": "M1Gma1ocrGE",
-      "resolved_name": "PlayGo::PlayGoOpen",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePlayGoOpen",
+      "resolution_source": "sha1_nid_hash",
       "library": "libScePlayGo",
       "module": "libScePlayGo",
       "shipped_in": [
@@ -6286,8 +6286,8 @@
     },
     {
       "nid": "Nn7zKwnA5q0",
-      "resolved_name": "PlayGo::PlayGoGetToDoList",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePlayGoGetToDoList",
+      "resolution_source": "sha1_nid_hash",
       "library": "libScePlayGo",
       "module": "libScePlayGo",
       "shipped_in": [
@@ -6305,8 +6305,8 @@
     },
     {
       "nid": "g4AZyxpSAlA",
-      "resolved_name": "PlayGo::PlayGoGetOptionalChunk",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePlayGoGetOptionalChunk",
+      "resolution_source": "sha1_nid_hash",
       "library": "libScePlayGo",
       "module": "libScePlayGo",
       "shipped_in": [
@@ -6324,8 +6324,8 @@
     },
     {
       "nid": "gUPGiOQ1tmQ",
-      "resolved_name": "PlayGo::PlayGoSetToDoList",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePlayGoSetToDoList",
+      "resolution_source": "sha1_nid_hash",
       "library": "libScePlayGo",
       "module": "libScePlayGo",
       "shipped_in": [
@@ -6343,8 +6343,8 @@
     },
     {
       "nid": "ts6GlZOKRrE",
-      "resolved_name": "PlayGo::PlayGoInitialize",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePlayGoInitialize",
+      "resolution_source": "sha1_nid_hash",
       "library": "libScePlayGo",
       "module": "libScePlayGo",
       "shipped_in": [
@@ -6362,8 +6362,8 @@
     },
     {
       "nid": "uWIYLFkkwqk",
-      "resolved_name": "PlayGo::PlayGoGetLocus",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePlayGoGetLocus",
+      "resolution_source": "sha1_nid_hash",
       "library": "libScePlayGo",
       "module": "libScePlayGo",
       "shipped_in": [
@@ -6381,8 +6381,8 @@
     },
     {
       "nid": "v6EZ-YWRdMs",
-      "resolved_name": "PlayGo::PlayGoGetEta",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePlayGoGetEta",
+      "resolution_source": "sha1_nid_hash",
       "library": "libScePlayGo",
       "module": "libScePlayGo",
       "shipped_in": [
@@ -6502,8 +6502,8 @@
     },
     {
       "nid": "4n51s0zEf0c",
-      "resolved_name": "Posix::inet_pton",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "inet_pton",
+      "resolution_source": "sha1_nid_hash",
       "library": "libScePosix",
       "module": "libkernel",
       "shipped_in": [],
@@ -6519,8 +6519,8 @@
     },
     {
       "nid": "lLMT9vJAck0",
-      "resolved_name": "smIj7eqzZE8",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "clock_gettime",
+      "resolution_source": "sha1_nid_hash",
       "library": "libScePosix",
       "module": "libkernel",
       "shipped_in": [
@@ -6709,8 +6709,8 @@
     },
     {
       "nid": "PI7jIZj4pcE",
-      "resolved_name": "Random",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceRandomGetRandomNumber",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceRandom",
       "module": "libSceRandom",
       "shipped_in": [],
@@ -6726,8 +6726,8 @@
     },
     {
       "nid": "YpkGsMXP3ew",
-      "resolved_name": "LibRazorCpu::RazorCpuPopMarker",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceRazorCpuPopMarker",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceRazorCpu",
       "module": "libSceRazorCpu",
       "shipped_in": [],
@@ -6743,8 +6743,8 @@
     },
     {
       "nid": "uZrOwuNJX-M",
-      "resolved_name": "LibRazorCpu::sceRazorCpuPushMarkerStatic",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceRazorCpuPushMarkerStatic",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceRazorCpu",
       "module": "libSceRazorCpu",
       "shipped_in": [],
@@ -6760,8 +6760,8 @@
     },
     {
       "nid": "18B2NS1y9UU",
-      "resolved_name": "Rtc::RtcGetCurrentTick",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceRtcGetCurrentTick",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceRtc",
       "module": "libSceRtc",
       "shipped_in": [],
@@ -6777,8 +6777,8 @@
     },
     {
       "nid": "8Yr143yEnRo",
-      "resolved_name": "Rtc::RtcConvertLocalTimeToUtc",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceRtcConvertLocalTimeToUtc",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceRtc",
       "module": "libSceRtc",
       "shipped_in": [],
@@ -6794,8 +6794,8 @@
     },
     {
       "nid": "8w-H19ip48I",
-      "resolved_name": "Rtc::RtcGetTick",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceRtcGetTick",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceRtc",
       "module": "libSceRtc",
       "shipped_in": [],
@@ -6811,8 +6811,8 @@
     },
     {
       "nid": "M1TvFst-jrM",
-      "resolved_name": "Rtc::RtcConvertUtcToLocalTime",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceRtcConvertUtcToLocalTime",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceRtc",
       "module": "libSceRtc",
       "shipped_in": [],
@@ -6828,8 +6828,8 @@
     },
     {
       "nid": "NR1J0N7L2xY",
-      "resolved_name": "Rtc::RtcTickAddDays",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceRtcTickAddDays",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceRtc",
       "module": "libSceRtc",
       "shipped_in": [],
@@ -6845,8 +6845,8 @@
     },
     {
       "nid": "bDEVVP4bTjQ",
-      "resolved_name": "Rtc::RtcSetTime_t",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceRtcSetTime_t",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceRtc",
       "module": "libSceRtc",
       "shipped_in": [],
@@ -6862,8 +6862,8 @@
     },
     {
       "nid": "ueega6v3GUw",
-      "resolved_name": "Rtc::RtcSetTick",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceRtcSetTick",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceRtc",
       "module": "libSceRtc",
       "shipped_in": [],
@@ -6879,8 +6879,8 @@
     },
     {
       "nid": "zO9UL3qIINQ",
-      "resolved_name": "Rtc::RtcGetCurrentNetworkTick",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceRtcGetCurrentNetworkTick",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceRtc",
       "module": "libSceRtc",
       "shipped_in": [],
@@ -6896,8 +6896,8 @@
     },
     {
       "nid": "4tPhsP6FpDI",
-      "resolved_name": "SaveDataDialog::SaveDataDialogOpen",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceSaveDataDialogOpen",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceSaveDataDialog.native",
       "module": "libSceSaveDataDialog",
       "shipped_in": [],
@@ -6913,8 +6913,8 @@
     },
     {
       "nid": "KK3Bdg1RWK0",
-      "resolved_name": "SaveDataDialog::SaveDataDialogUpdateStatus",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceSaveDataDialogUpdateStatus",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceSaveDataDialog.native",
       "module": "libSceSaveDataDialog",
       "shipped_in": [],
@@ -6930,8 +6930,8 @@
     },
     {
       "nid": "YuH2FA7azqQ",
-      "resolved_name": "SaveDataDialog::SaveDataDialogTerminate",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceSaveDataDialogTerminate",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceSaveDataDialog.native",
       "module": "libSceSaveDataDialog",
       "shipped_in": [],
@@ -6947,8 +6947,8 @@
     },
     {
       "nid": "s9e3+YpRnzw",
-      "resolved_name": "SaveDataDialog::SaveDataDialogInitialize",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceSaveDataDialogInitialize",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceSaveDataDialog.native",
       "module": "libSceSaveDataDialog",
       "shipped_in": [],
@@ -6964,8 +6964,8 @@
     },
     {
       "nid": "yEiJ-qqr6Cg",
-      "resolved_name": "SaveDataDialog::SaveDataDialogGetResult",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceSaveDataDialogGetResult",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceSaveDataDialog.native",
       "module": "libSceSaveDataDialog",
       "shipped_in": [],
@@ -6981,8 +6981,8 @@
     },
     {
       "nid": "85zul--eGXs",
-      "resolved_name": "::Libs::SaveData::SaveDataSetParam",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceSaveDataSetParam",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceSaveData_native",
       "module": "libSceSaveData_native",
       "shipped_in": [],
@@ -6998,8 +6998,8 @@
     },
     {
       "nid": "QwOO7vegnV8",
-      "resolved_name": "::Libs::SaveData::SaveDataGetSaveDataMemory2",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceSaveDataGetSaveDataMemory2",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceSaveData_native",
       "module": "libSceSaveData_native",
       "shipped_in": [],
@@ -7015,8 +7015,8 @@
     },
     {
       "nid": "S1GkePI17zQ",
-      "resolved_name": "::Libs::SaveData::SaveDataDelete",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceSaveDataDelete",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceSaveData_native",
       "module": "libSceSaveData_native",
       "shipped_in": [],
@@ -7032,8 +7032,8 @@
     },
     {
       "nid": "TywrFKCoLGY",
-      "resolved_name": "",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceSaveDataInitialize3",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceSaveData_native",
       "module": "libSceSaveData_native",
       "shipped_in": [],
@@ -7049,8 +7049,8 @@
     },
     {
       "nid": "ZP4e7rlzOUk",
-      "resolved_name": "::Libs::SaveData::SaveDataMount3",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceSaveDataMount3",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceSaveData_native",
       "module": "libSceSaveData_native",
       "shipped_in": [],
@@ -7066,8 +7066,8 @@
     },
     {
       "nid": "cduy9v4YmT4",
-      "resolved_name": "::Libs::SaveData::SaveDataSetSaveDataMemory2",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceSaveDataSetSaveDataMemory2",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceSaveData_native",
       "module": "libSceSaveData_native",
       "shipped_in": [],
@@ -7083,8 +7083,8 @@
     },
     {
       "nid": "dyIhnXq-0SM",
-      "resolved_name": "::Libs::SaveData::SaveDataDirNameSearch",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceSaveDataDirNameSearch",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceSaveData_native",
       "module": "libSceSaveData_native",
       "shipped_in": [],
@@ -7100,8 +7100,8 @@
     },
     {
       "nid": "gjRZNnw0JPE",
-      "resolved_name": "::Libs::SaveData::SaveDataCreateTransactionResource",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceSaveDataCreateTransactionResource",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceSaveData_native",
       "module": "libSceSaveData_native",
       "shipped_in": [],
@@ -7117,8 +7117,8 @@
     },
     {
       "nid": "ie7qhZ4X0Cc",
-      "resolved_name": "::Libs::SaveData::SaveDataCommit",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceSaveDataCommit",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceSaveData_native",
       "module": "libSceSaveData_native",
       "shipped_in": [],
@@ -7134,8 +7134,8 @@
     },
     {
       "nid": "lJUQuaKqoKY",
-      "resolved_name": "::Libs::SaveData::SaveDataDeleteTransactionResource",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceSaveDataDeleteTransactionResource",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceSaveData_native",
       "module": "libSceSaveData_native",
       "shipped_in": [],
@@ -7151,8 +7151,8 @@
     },
     {
       "nid": "oQySEUfgXRA",
-      "resolved_name": "::Libs::SaveData::SaveDataSetupSaveDataMemory2",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceSaveDataSetupSaveDataMemory2",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceSaveData_native",
       "module": "libSceSaveData_native",
       "shipped_in": [],
@@ -7168,8 +7168,8 @@
     },
     {
       "nid": "sDCBrmc61XU",
-      "resolved_name": "::Libs::SaveData::SaveDataPrepare",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceSaveDataPrepare",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceSaveData_native",
       "module": "libSceSaveData_native",
       "shipped_in": [],
@@ -7185,8 +7185,8 @@
     },
     {
       "nid": "uW4vfTwMQVo",
-      "resolved_name": "::Libs::SaveData::SaveDataUmount2",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceSaveDataUmount2",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceSaveData_native",
       "module": "libSceSaveData_native",
       "shipped_in": [],
@@ -7202,8 +7202,8 @@
     },
     {
       "nid": "wiT9jeC7xPw",
-      "resolved_name": "::Libs::SaveData::SaveDataSyncSaveDataMemory",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceSaveDataSyncSaveDataMemory",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceSaveData_native",
       "module": "libSceSaveData_native",
       "shipped_in": [],
@@ -7219,8 +7219,8 @@
     },
     {
       "nid": "7QZtURYnXG4",
-      "resolved_name": "Share::ShareSetContentParam",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceShareSetContentParam",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceShare",
       "module": "libSceShare",
       "shipped_in": [],
@@ -7236,8 +7236,8 @@
     },
     {
       "nid": "nBDD66kiFW8",
-      "resolved_name": "Share",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceShareInitialize",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceShare",
       "module": "libSceShare",
       "shipped_in": [],
@@ -7253,8 +7253,8 @@
     },
     {
       "nid": "TDfQqO-gMbY",
-      "resolved_name": "Ssl::SslGetCaCerts",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceSslGetCaCerts",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceSsl",
       "module": "libSceSsl",
       "shipped_in": [],
@@ -7270,8 +7270,8 @@
     },
     {
       "nid": "hdpVEUDFW3s",
-      "resolved_name": "Ssl",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceSslInit",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceSsl",
       "module": "libSceSsl",
       "shipped_in": [],
@@ -7287,8 +7287,8 @@
     },
     {
       "nid": "eR2bZFAAU0Q",
-      "resolved_name": "Sysmodule::SysmoduleUnloadModule",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceSysmoduleUnloadModule",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceSysmodule",
       "module": "libSceSysmodule",
       "shipped_in": [],
@@ -7304,8 +7304,8 @@
     },
     {
       "nid": "g8cM39EUZ6o",
-      "resolved_name": "Sysmodule::SysmoduleLoadModule",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceSysmoduleLoadModule",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceSysmodule",
       "module": "libSceSysmodule",
       "shipped_in": [],
@@ -7321,8 +7321,8 @@
     },
     {
       "nid": "1n37q1Bvc5Y",
-      "resolved_name": "SystemService::SystemServiceGetDisplaySafeAreaInfo",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceSystemServiceGetDisplaySafeAreaInfo",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceSystemService",
       "module": "libSceSystemService",
       "shipped_in": [],
@@ -7338,8 +7338,8 @@
     },
     {
       "nid": "3RQ5aQfnstU",
-      "resolved_name": "SystemService::SystemServiceGetNoticeScreenSkipFlag",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceSystemServiceGetNoticeScreenSkipFlag",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceSystemService",
       "module": "libSceSystemService",
       "shipped_in": [],
@@ -7355,8 +7355,8 @@
     },
     {
       "nid": "3s8cHiCBKBE",
-      "resolved_name": "SystemService::SystemServiceReportAbnormalTermination",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceSystemServiceReportAbnormalTermination",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceSystemService",
       "module": "libSceSystemService",
       "shipped_in": [],
@@ -7372,8 +7372,8 @@
     },
     {
       "nid": "656LMQSrg6U",
-      "resolved_name": "SystemService::SystemServiceReceiveEvent",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceSystemServiceReceiveEvent",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceSystemService",
       "module": "libSceSystemService",
       "shipped_in": [],
@@ -7389,8 +7389,8 @@
     },
     {
       "nid": "SsC-m-S9JTA",
-      "resolved_name": "SystemService::SystemServiceParamGetString",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceSystemServiceParamGetString",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceSystemService",
       "module": "libSceSystemService",
       "shipped_in": [],
@@ -7406,8 +7406,8 @@
     },
     {
       "nid": "Vo5V8KAwCmk",
-      "resolved_name": "SystemService::SystemServiceHideSplashScreen",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceSystemServiceHideSplashScreen",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceSystemService",
       "module": "libSceSystemService",
       "shipped_in": [],
@@ -7423,8 +7423,8 @@
     },
     {
       "nid": "fZo48un7LK4",
-      "resolved_name": "SystemService::SystemServiceParamGetInt",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceSystemServiceParamGetInt",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceSystemService",
       "module": "libSceSystemService",
       "shipped_in": [],
@@ -7440,8 +7440,8 @@
     },
     {
       "nid": "m5CYKX20wfg",
-      "resolved_name": "SystemService::SystemServiceInitializePlayerDialogParam",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceSystemServiceInitializePlayerDialogParam",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceSystemService",
       "module": "libSceSystemService",
       "shipped_in": [],
@@ -7457,8 +7457,8 @@
     },
     {
       "nid": "mPpPxv5CZt4",
-      "resolved_name": "SystemService::SystemServiceGetHdrToneMapLuminance",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceSystemServiceGetHdrToneMapLuminance",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceSystemService",
       "module": "libSceSystemService",
       "shipped_in": [],
@@ -7474,8 +7474,8 @@
     },
     {
       "nid": "rPo6tV8D9bM",
-      "resolved_name": "SystemService::SystemServiceGetStatus",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceSystemServiceGetStatus",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceSystemService",
       "module": "libSceSystemService",
       "shipped_in": [],
@@ -7491,8 +7491,8 @@
     },
     {
       "nid": "uaieF+glFPs",
-      "resolved_name": "SystemService::SystemServiceLaunchPlayerDialog",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceSystemServiceLaunchPlayerDialog",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceSystemService",
       "module": "libSceSystemService",
       "shipped_in": [],
@@ -7508,8 +7508,8 @@
     },
     {
       "nid": "-sD02mFDBh4",
-      "resolved_name": "UserService::UserServiceGetGamePresets",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceUserServiceGetGamePresets",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceUserService",
       "module": "libSceUserService",
       "shipped_in": [],
@@ -7525,8 +7525,8 @@
     },
     {
       "nid": "CdWp0oHWGr0",
-      "resolved_name": "UserService::UserServiceGetInitialUser",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceUserServiceGetInitialUser",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceUserService",
       "module": "libSceUserService",
       "shipped_in": [],
@@ -7542,8 +7542,8 @@
     },
     {
       "nid": "fPhymKNvK-A",
-      "resolved_name": "UserService::UserServiceGetLoginUserIdList",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceUserServiceGetLoginUserIdList",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceUserService",
       "module": "libSceUserService",
       "shipped_in": [],
@@ -7559,8 +7559,8 @@
     },
     {
       "nid": "j3YMu1MVNNo",
-      "resolved_name": "UserService",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceUserServiceInitialize",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceUserService",
       "module": "libSceUserService",
       "shipped_in": [],
@@ -7576,8 +7576,8 @@
     },
     {
       "nid": "yH17Q6NWtVg",
-      "resolved_name": "UserService::UserServiceGetEvent",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceUserServiceGetEvent",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceUserService",
       "module": "libSceUserService",
       "shipped_in": [],
@@ -7593,7 +7593,7 @@
     },
     {
       "nid": "D-CzAxQL0XI",
-      "resolved_name": "UserService::UserServicePlatformPrivacyWs1Stub",
+      "resolved_name": "UserService::UserServiceGetAccessibilityZoomFollowFocus",
       "resolution_source": "kyty_hle_table",
       "library": "libSceUserServicePlatformPrivacyWs1",
       "module": "libSceUserService",
@@ -7610,8 +7610,8 @@
     },
     {
       "nid": "5tRaBjtdTzY",
-      "resolved_name": "VideoOut::VideoOutVrrPegToFixedRate",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceVideoOutVrrPegToFixedRate",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceVideoOut",
       "module": "libSceVideoOut",
       "shipped_in": [],
@@ -7627,8 +7627,8 @@
     },
     {
       "nid": "CBiu4mCE1DA",
-      "resolved_name": "VideoOut::VideoOutSetFlipRate",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceVideoOutSetFlipRate",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceVideoOut",
       "module": "libSceVideoOut",
       "shipped_in": [],
@@ -7644,7 +7644,7 @@
     },
     {
       "nid": "DYhhWbJSeRg",
-      "resolved_name": "VideoOut::VideoOutColorSettingsSetGamma",
+      "resolved_name": "VideoOut::VideoOutLatencyMeasureSetStartPoint",
       "resolution_source": "kyty_hle_table",
       "library": "libSceVideoOut",
       "module": "libSceVideoOut",
@@ -7661,8 +7661,8 @@
     },
     {
       "nid": "N5KDtkIjjJ4",
-      "resolved_name": "VideoOut::VideoOutUnregisterBuffers",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceVideoOutUnregisterBuffers",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceVideoOut",
       "module": "libSceVideoOut",
       "shipped_in": [],
@@ -7678,8 +7678,8 @@
     },
     {
       "nid": "Nv8c-Kb+DUM",
-      "resolved_name": "VideoOut::VideoOutIsOutputSupported",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceVideoOutIsOutputSupported",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceVideoOut",
       "module": "libSceVideoOut",
       "shipped_in": [],
@@ -7695,8 +7695,8 @@
     },
     {
       "nid": "PjS5uASwcV8",
-      "resolved_name": "VideoOut::VideoOutSetBufferAttribute2",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceVideoOutSetBufferAttribute2",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceVideoOut",
       "module": "libSceVideoOut",
       "shipped_in": [
@@ -7714,8 +7714,8 @@
     },
     {
       "nid": "SbU3dwp80lQ",
-      "resolved_name": "VideoOut::VideoOutGetFlipStatus",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceVideoOutGetFlipStatus",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceVideoOut",
       "module": "libSceVideoOut",
       "shipped_in": [],
@@ -7731,8 +7731,8 @@
     },
     {
       "nid": "T4ucGB8CsnM",
-      "resolved_name": "VideoOut::VideoOutVrrUnpegFromFixedRate",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceVideoOutVrrUnpegFromFixedRate",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceVideoOut",
       "module": "libSceVideoOut",
       "shipped_in": [],
@@ -7748,8 +7748,8 @@
     },
     {
       "nid": "U46NwOiJpys",
-      "resolved_name": "VideoOut::VideoOutSubmitFlip",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceVideoOutSubmitFlip",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceVideoOut",
       "module": "libSceVideoOut",
       "shipped_in": [],
@@ -7782,7 +7782,7 @@
     },
     {
       "nid": "pv9CI5VC+R0",
-      "resolved_name": "VideoOut::VideoOutAdjustColor",
+      "resolved_name": "VideoOut::VideoOutColorSettingsSetGamma",
       "resolution_source": "kyty_hle_table",
       "library": "libSceVideoOut",
       "module": "libSceVideoOut",
@@ -7799,8 +7799,8 @@
     },
     {
       "nid": "rKBUtgRrtbk",
-      "resolved_name": "VideoOut::VideoOutRegisterBuffers2",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceVideoOutRegisterBuffers2",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceVideoOut",
       "module": "libSceVideoOut",
       "shipped_in": [],
@@ -7816,8 +7816,8 @@
     },
     {
       "nid": "utPrVdxio-8",
-      "resolved_name": "VideoOut::VideoOutGetOutputStatus",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceVideoOutGetOutputStatus",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceVideoOut",
       "module": "libSceVideoOut",
       "shipped_in": [],
@@ -7833,8 +7833,8 @@
     },
     {
       "nid": "w0hLuNarQxY",
-      "resolved_name": "VideoOut::VideoOutConfigureOutput",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceVideoOutConfigureOutput",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceVideoOut",
       "module": "libSceVideoOut",
       "shipped_in": [],
@@ -7850,8 +7850,8 @@
     },
     {
       "nid": "zgXifHT9ErY",
-      "resolved_name": "VideoOut::VideoOutIsFlipPending",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceVideoOutIsFlipPending",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceVideoOut",
       "module": "libSceVideoOut",
       "shipped_in": [],
@@ -7867,7 +7867,7 @@
     },
     {
       "nid": "gWT7X8H0bYs",
-      "resolved_name": "VideoOutVrrStatus_gWT7X8H0bYs",
+      "resolved_name": "VideoOutVrrStatus__q_vbO859Tw",
       "resolution_source": "kyty_hle_table",
       "library": "libSceVideoOutVrrStatus",
       "module": "libSceVideoOut",
@@ -7884,7 +7884,7 @@
     },
     {
       "nid": "kP2L8t3j-aM",
-      "resolved_name": "",
+      "resolved_name": "VideoOut::VideoOutAllowOutputResolutionWqhdDetection",
       "resolution_source": "kyty_hle_table",
       "library": "libSceVideoOutVrrStatus",
       "module": "libSceVideoOut",
@@ -7901,7 +7901,7 @@
     },
     {
       "nid": "852F5+q6+iM",
-      "resolved_name": "TracedDecode",
+      "resolved_name": "TracedDeleteDecoder",
       "resolution_source": "kyty_hle_table",
       "library": "libSceVideodec2",
       "module": "libSceVideodec2",
@@ -7918,7 +7918,7 @@
     },
     {
       "nid": "CNNRoRYd8XI",
-      "resolved_name": "TracedCreateDecoder",
+      "resolved_name": "TracedQueryDecoderMemoryInfo",
       "resolution_source": "kyty_hle_table",
       "library": "libSceVideodec2",
       "module": "libSceVideodec2",
@@ -7935,7 +7935,7 @@
     },
     {
       "nid": "RnDibcGCPKw",
-      "resolved_name": "Videodec2",
+      "resolved_name": "",
       "resolution_source": "kyty_hle_table",
       "library": "libSceVideodec2",
       "module": "libSceVideodec2",
@@ -7952,7 +7952,7 @@
     },
     {
       "nid": "UvtA3FAiF4Y",
-      "resolved_name": "TracedReleaseComputeQueue",
+      "resolved_name": "TracedAllocateComputeQueue",
       "resolution_source": "kyty_hle_table",
       "library": "libSceVideodec2",
       "module": "libSceVideodec2",
@@ -7969,7 +7969,7 @@
     },
     {
       "nid": "eD+X2SmxUt4",
-      "resolved_name": "TracedAllocateComputeQueue",
+      "resolved_name": "TracedQueryComputeMemoryInfo",
       "resolution_source": "kyty_hle_table",
       "library": "libSceVideodec2",
       "module": "libSceVideodec2",
@@ -7986,7 +7986,7 @@
     },
     {
       "nid": "jwImxXRGSKA",
-      "resolved_name": "TracedDeleteDecoder",
+      "resolved_name": "TracedCreateDecoder",
       "resolution_source": "kyty_hle_table",
       "library": "libSceVideodec2",
       "module": "libSceVideodec2",
@@ -8003,7 +8003,7 @@
     },
     {
       "nid": "l1hXwscLuCY",
-      "resolved_name": "TracedFlush",
+      "resolved_name": "TracedDecode",
       "resolution_source": "kyty_hle_table",
       "library": "libSceVideodec2",
       "module": "libSceVideodec2",
@@ -8020,7 +8020,7 @@
     },
     {
       "nid": "qqMCwlULR+E",
-      "resolved_name": "TracedQueryDecoderMemoryInfo",
+      "resolved_name": "TracedReleaseComputeQueue",
       "resolution_source": "kyty_hle_table",
       "library": "libSceVideodec2",
       "module": "libSceVideodec2",
@@ -8037,7 +8037,7 @@
     },
     {
       "nid": "wJXikG6QFN8",
-      "resolved_name": "TracedReset",
+      "resolved_name": "TracedDecode",
       "resolution_source": "kyty_hle_table",
       "library": "libSceVideodec2",
       "module": "libSceVideodec2",
@@ -8139,8 +8139,8 @@
     },
     {
       "nid": "U8IfNl6-Css",
-      "resolved_name": "VoiceQoS",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceVoiceQoSInit",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceVoiceQoS",
       "module": "libSceVoiceQoS",
       "shipped_in": [],
@@ -8292,8 +8292,8 @@
     },
     {
       "nid": "jqb7HntFQFc",
-      "resolved_name": "WebBrowserDialog",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceWebBrowserDialogInitialize",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceWebBrowserDialog",
       "module": "libSceWebBrowserDialog",
       "shipped_in": [],
@@ -8309,8 +8309,8 @@
     },
     {
       "nid": "ocHtyBwHfys",
-      "resolved_name": "LibWebBrowserDialog::WebBrowserDialogTerminate",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceWebBrowserDialogTerminate",
+      "resolution_source": "sha1_nid_hash",
       "library": "libSceWebBrowserDialog",
       "module": "libSceWebBrowserDialog",
       "shipped_in": [],
@@ -8326,8 +8326,8 @@
     },
     {
       "nid": "+P6FRGH4LfA",
-      "resolved_name": "LibcInternal::memmove",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "memmove",
+      "resolution_source": "sha1_nid_hash",
       "library": "libc",
       "module": "libc",
       "shipped_in": [
@@ -8347,8 +8347,8 @@
     },
     {
       "nid": "-P6FNMzk2Kc",
-      "resolved_name": "LibcInternal::cosf",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "cosf",
+      "resolution_source": "sha1_nid_hash",
       "library": "libc",
       "module": "libc",
       "shipped_in": [
@@ -8461,7 +8461,7 @@
     },
     {
       "nid": "1mecP7RgI2A",
-      "resolved_name": "LibC::libc_gmtime",
+      "resolved_name": "LibC::libc_difftime",
       "resolution_source": "kyty_hle_table",
       "library": "libc",
       "module": "libc",
@@ -8518,8 +8518,8 @@
     },
     {
       "nid": "2WE3BTYVwKM",
-      "resolved_name": "LibcInternal::cos",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "cos",
+      "resolution_source": "sha1_nid_hash",
       "library": "libc",
       "module": "libc",
       "shipped_in": [
@@ -8557,7 +8557,7 @@
     },
     {
       "nid": "2sWzhYqFH4E",
-      "resolved_name": "(__acrt_iob_func(1))",
+      "resolved_name": "&LibcInternal::g_need_flag",
       "resolution_source": "kyty_hle_table",
       "library": "libc",
       "module": "libc",
@@ -8715,8 +8715,8 @@
     },
     {
       "nid": "6sJWiWSRuqk",
-      "resolved_name": "LibcInternal::strncpy",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "strncpy",
+      "resolution_source": "sha1_nid_hash",
       "library": "libc",
       "module": "libc",
       "shipped_in": [
@@ -8772,8 +8772,8 @@
     },
     {
       "nid": "8G2LB+A3rzg",
-      "resolved_name": "LibC::atexit",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "atexit",
+      "resolution_source": "sha1_nid_hash",
       "library": "libc",
       "module": "libc",
       "shipped_in": [
@@ -8810,8 +8810,8 @@
     },
     {
       "nid": "8zTFvBIAIN8",
-      "resolved_name": "LibcInternal::memset",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "memset",
+      "resolution_source": "sha1_nid_hash",
       "library": "libc",
       "module": "libc",
       "shipped_in": [
@@ -8875,8 +8875,8 @@
     },
     {
       "nid": "9yDWMxEFdJU",
-      "resolved_name": "LibcInternal::strrchr",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "strrchr",
+      "resolution_source": "sha1_nid_hash",
       "library": "libc",
       "module": "libc",
       "shipped_in": [
@@ -8951,8 +8951,8 @@
     },
     {
       "nid": "DfivPArhucg",
-      "resolved_name": "LibcInternal::memcmp",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "memcmp",
+      "resolution_source": "sha1_nid_hash",
       "library": "libc",
       "module": "libc",
       "shipped_in": [
@@ -9068,8 +9068,8 @@
     },
     {
       "nid": "H8ya2H00jbI",
-      "resolved_name": "LibcInternal::sin",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sin",
+      "resolution_source": "sha1_nid_hash",
       "library": "libc",
       "module": "libc",
       "shipped_in": [
@@ -9163,8 +9163,8 @@
     },
     {
       "nid": "MUjC4lbHrK4",
-      "resolved_name": "LibcInternal::fflush",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "fflush",
+      "resolution_source": "sha1_nid_hash",
       "library": "libc",
       "module": "libc",
       "shipped_in": [
@@ -9261,8 +9261,8 @@
     },
     {
       "nid": "Ovb2dSJOAuE",
-      "resolved_name": "LibcInternal::strcmp",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "strcmp",
+      "resolution_source": "sha1_nid_hash",
       "library": "libc",
       "module": "libc",
       "shipped_in": [
@@ -9280,7 +9280,7 @@
     },
     {
       "nid": "P330P3dFF68",
-      "resolved_name": "&LibC::g_need_flag",
+      "resolved_name": "LibcInternal::LibcHeapErrorReportForGame",
       "resolution_source": "kyty_hle_table",
       "library": "libc",
       "module": "libc",
@@ -9326,8 +9326,8 @@
     },
     {
       "nid": "Q3VBxCXhUHs",
-      "resolved_name": "LibcInternal::memcpy",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "memcpy",
+      "resolution_source": "sha1_nid_hash",
       "library": "libc",
       "module": "libc",
       "shipped_in": [
@@ -9349,8 +9349,8 @@
     },
     {
       "nid": "Q4rRL34CEeE",
-      "resolved_name": "LibcInternal::sinf",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sinf",
+      "resolution_source": "sha1_nid_hash",
       "library": "libc",
       "module": "libc",
       "shipped_in": [
@@ -9711,8 +9711,8 @@
     },
     {
       "nid": "XKRegsFpEpk",
-      "resolved_name": "LibC::catchReturnFromMain",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "catchReturnFromMain",
+      "resolution_source": "sha1_nid_hash",
       "library": "libc",
       "module": "libc",
       "shipped_in": [
@@ -9749,8 +9749,8 @@
     },
     {
       "nid": "YQ0navp+YIc",
-      "resolved_name": "LibC::puts",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "puts",
+      "resolution_source": "sha1_nid_hash",
       "library": "libc",
       "module": "libc",
       "shipped_in": [
@@ -9829,8 +9829,8 @@
     },
     {
       "nid": "aesyjrHVWy4",
-      "resolved_name": "LibcInternal::strncmp",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "strncmp",
+      "resolution_source": "sha1_nid_hash",
       "library": "libc",
       "module": "libc",
       "shipped_in": [
@@ -9887,8 +9887,8 @@
     },
     {
       "nid": "bzQExy189ZI",
-      "resolved_name": "LibC::init_env",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "_init_env",
+      "resolution_source": "sha1_nid_hash",
       "library": "libc",
       "module": "libc",
       "shipped_in": [
@@ -9964,8 +9964,8 @@
     },
     {
       "nid": "eLdDw6l0-bU",
-      "resolved_name": "LibcInternal::snprintf",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "snprintf",
+      "resolution_source": "sha1_nid_hash",
       "library": "libc",
       "module": "libc",
       "shipped_in": [
@@ -10125,8 +10125,8 @@
     },
     {
       "nid": "hcuQgD53UxM",
-      "resolved_name": "LibC::libc_printf",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "printf",
+      "resolution_source": "sha1_nid_hash",
       "library": "libc",
       "module": "libc",
       "shipped_in": [
@@ -10205,8 +10205,8 @@
     },
     {
       "nid": "j4ViWNHEgww",
-      "resolved_name": "LibcInternal::strlen",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "strlen",
+      "resolution_source": "sha1_nid_hash",
       "library": "libc",
       "module": "libc",
       "shipped_in": [
@@ -10227,8 +10227,8 @@
     },
     {
       "nid": "jMB7EFyu30Y",
-      "resolved_name": "LibcInternal::sincos",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sincos",
+      "resolution_source": "sha1_nid_hash",
       "library": "libc",
       "module": "libc",
       "shipped_in": [
@@ -10265,8 +10265,8 @@
     },
     {
       "nid": "kiZSXIWd9vg",
-      "resolved_name": "LibcInternal::strcpy",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "strcpy",
+      "resolution_source": "sha1_nid_hash",
       "library": "libc",
       "module": "libc",
       "shipped_in": [
@@ -10381,8 +10381,8 @@
     },
     {
       "nid": "mXlxhmLNMPg",
-      "resolved_name": "LibcInternal::strtol",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "strtol",
+      "resolution_source": "sha1_nid_hash",
       "library": "libc",
       "module": "libc",
       "shipped_in": [
@@ -10457,8 +10457,8 @@
     },
     {
       "nid": "ob5xAW4ln-0",
-      "resolved_name": "LibcInternal::strchr",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "strchr",
+      "resolution_source": "sha1_nid_hash",
       "library": "libc",
       "module": "libc",
       "shipped_in": [
@@ -10572,8 +10572,8 @@
     },
     {
       "nid": "pztV4AF18iI",
-      "resolved_name": "LibcInternal::sincosf",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sincosf",
+      "resolution_source": "sha1_nid_hash",
       "library": "libc",
       "module": "libc",
       "shipped_in": [
@@ -10766,8 +10766,8 @@
     },
     {
       "nid": "tsvEmnenz48",
-      "resolved_name": "LibC::cxa_atexit",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "__cxa_atexit",
+      "resolution_source": "sha1_nid_hash",
       "library": "libc",
       "module": "libc",
       "shipped_in": [
@@ -10785,8 +10785,8 @@
     },
     {
       "nid": "uMei1W9uyNo",
-      "resolved_name": "LibC::exit",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "exit",
+      "resolution_source": "sha1_nid_hash",
       "library": "libc",
       "module": "libc",
       "shipped_in": [
@@ -10844,8 +10844,8 @@
     },
     {
       "nid": "viiwFMaNamA",
-      "resolved_name": "LibcInternal::strstr",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "strstr",
+      "resolution_source": "sha1_nid_hash",
       "library": "libc",
       "module": "libc",
       "shipped_in": [
@@ -10863,8 +10863,8 @@
     },
     {
       "nid": "wLlFkwG9UcQ",
-      "resolved_name": "LibC::libc_time",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "time",
+      "resolution_source": "sha1_nid_hash",
       "library": "libc",
       "module": "libc",
       "shipped_in": [
@@ -10980,7 +10980,7 @@
     },
     {
       "nid": "zlfEH8FmyUA",
-      "resolved_name": "fPxypibz2MY",
+      "resolved_name": "LibcInternal::strtoul",
       "resolution_source": "kyty_hle_table",
       "library": "libc",
       "module": "libc",
@@ -11673,8 +11673,8 @@
     },
     {
       "nid": "+L98PIbGttk",
-      "resolved_name": "LibKernel::PthreadRwlockUnlock",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadRwlockUnlock",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -11692,8 +11692,8 @@
     },
     {
       "nid": "-2IRUCO--PM",
-      "resolved_name": "LibKernel::KernelReadTsc",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelReadTsc",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -11711,8 +11711,8 @@
     },
     {
       "nid": "-Wreprtu0Qs",
-      "resolved_name": "LibKernel::PthreadAttrSetdetachstate",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadAttrSetdetachstate",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [],
@@ -11728,8 +11728,8 @@
     },
     {
       "nid": "1-LFLmRFxxM",
-      "resolved_name": "FileSystem::KernelMkdir",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelMkdir",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -11747,8 +11747,8 @@
     },
     {
       "nid": "188x57JYp0g",
-      "resolved_name": "Semaphore::KernelCreateSema",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelCreateSema",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [],
@@ -11764,8 +11764,8 @@
     },
     {
       "nid": "1FGvU0i9saQ",
-      "resolved_name": "LibKernel::PthreadMutexattrSetprotocol",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadMutexattrSetprotocol",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [],
@@ -11781,8 +11781,8 @@
     },
     {
       "nid": "1G3lF1Gg1k8",
-      "resolved_name": "FileSystem::KernelOpen",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelOpen",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -11802,8 +11802,8 @@
     },
     {
       "nid": "1j3S3n-tTW4",
-      "resolved_name": "LibKernel::KernelGetTscFrequency",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelGetTscFrequency",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -11821,8 +11821,8 @@
     },
     {
       "nid": "1jfXLRVzisc",
-      "resolved_name": "LibKernel::KernelUsleep",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelUsleep",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -11841,8 +11841,8 @@
     },
     {
       "nid": "1tKyG7RlMJo",
-      "resolved_name": "LibKernel::PthreadGetprio",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadGetprio",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -11860,8 +11860,8 @@
     },
     {
       "nid": "2Of0f+3mhhE",
-      "resolved_name": "LibKernel::PthreadMutexDestroy",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadMutexDestroy",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -11882,8 +11882,8 @@
     },
     {
       "nid": "2SKEx6bSq-4",
-      "resolved_name": "Memory::KernelBatchMap",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelBatchMap",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -11901,8 +11901,8 @@
     },
     {
       "nid": "2Tb92quprl0",
-      "resolved_name": "LibKernel::PthreadCondInit",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadCondInit",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -11921,8 +11921,8 @@
     },
     {
       "nid": "2pOuoWoCxdk",
-      "resolved_name": "o7O4z3jwKzo",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelAioPollRequest",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [],
@@ -11938,8 +11938,8 @@
     },
     {
       "nid": "3PtV6p3QNX4",
-      "resolved_name": "onNY9Byn-W8",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadEqual",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -11957,8 +11957,8 @@
     },
     {
       "nid": "3kg7rT0NQIs",
-      "resolved_name": "LibKernel::PthreadExit",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadExit",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -11976,8 +11976,8 @@
     },
     {
       "nid": "3qxgM4ezETA",
-      "resolved_name": "LibKernel::PthreadAttrSetaffinity",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadAttrSetaffinity",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -11995,8 +11995,8 @@
     },
     {
       "nid": "4J2sUJmuHZQ",
-      "resolved_name": "LibKernel::KernelGetProcessTime",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelGetProcessTime",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12014,8 +12014,8 @@
     },
     {
       "nid": "4R6-OvI2cEA",
-      "resolved_name": "EventQueue::KernelAddUserEvent",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelAddUserEvent",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12034,8 +12034,8 @@
     },
     {
       "nid": "4czppHBiriw",
-      "resolved_name": "Semaphore::KernelSignalSema",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelSignalSema",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [],
@@ -12051,8 +12051,8 @@
     },
     {
       "nid": "4wSze92BhLI",
-      "resolved_name": "FileSystem::KernelWrite",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelWrite",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12071,8 +12071,8 @@
     },
     {
       "nid": "52NcYU9+lEo",
-      "resolved_name": "FileSystem::KernelRename",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelRename",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12091,8 +12091,8 @@
     },
     {
       "nid": "5TgME6AYty4",
-      "resolved_name": "Ft3EtsZzAoY",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelAioDeleteRequest",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [],
@@ -12108,8 +12108,8 @@
     },
     {
       "nid": "62KCwEMmzcM",
-      "resolved_name": "LibKernel::PthreadAttrDestroy",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadAttrDestroy",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12128,8 +12128,8 @@
     },
     {
       "nid": "6ULAa0fq4jA",
-      "resolved_name": "LibKernel::PthreadRwlockInit",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadRwlockInit",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12147,8 +12147,8 @@
     },
     {
       "nid": "6UgtwV+0zb4",
-      "resolved_name": "LibKernel::PthreadCreate",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadCreate",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12169,8 +12169,8 @@
     },
     {
       "nid": "9BcDykPmo1I",
-      "resolved_name": "LibC::libc_error",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "__error",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12191,8 +12191,8 @@
     },
     {
       "nid": "9UK1vLZQft4",
-      "resolved_name": "LibKernel::PthreadMutexLock",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadMutexLock",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12213,8 +12213,8 @@
     },
     {
       "nid": "ASoW5WE-UPo",
-      "resolved_name": "Apr::SubmitCommandBufferAndGetResult",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelAprSubmitCommandBufferAndGetResult",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12232,8 +12232,8 @@
     },
     {
       "nid": "AUXVxWeJU-A",
-      "resolved_name": "FileSystem::KernelUnlink",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelUnlink",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12252,8 +12252,8 @@
     },
     {
       "nid": "ApkYaHb8Sek",
-      "resolved_name": "Apr::GetFileStat",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelAprGetFileStat",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12271,8 +12271,8 @@
     },
     {
       "nid": "B+vc2AO2Zrc",
-      "resolved_name": "Memory::KernelAllocateMainDirectMemory",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelAllocateMainDirectMemory",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [],
@@ -12288,8 +12288,8 @@
     },
     {
       "nid": "BB+kb08Tl9A",
-      "resolved_name": "LibKernel::PthreadRwlockDestroy",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadRwlockDestroy",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12307,8 +12307,8 @@
     },
     {
       "nid": "BmMjYxmew1w",
-      "resolved_name": "LibKernel::PthreadCondTimedwait",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadCondTimedwait",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12327,8 +12327,8 @@
     },
     {
       "nid": "C+Khtbbx2g8",
-      "resolved_name": "Apr::ResolveFilepathsWithPrefixToIdsAndFileSizesForEach",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelAprResolveFilepathsWithPrefixToIdsAndFileSizesForEach",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12346,8 +12346,8 @@
     },
     {
       "nid": "Cg4srZ6TKbU",
-      "resolved_name": "FileSystem::KernelRead",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelRead",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [],
@@ -12363,8 +12363,8 @@
     },
     {
       "nid": "D0OdFMjp46I",
-      "resolved_name": "EventQueue::KernelCreateEqueue",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelCreateEqueue",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12383,8 +12383,8 @@
     },
     {
       "nid": "DzES9hQF4f4",
-      "resolved_name": "LibKernel::PthreadAttrSetschedparam",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadAttrSetschedparam",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12403,8 +12403,8 @@
     },
     {
       "nid": "EI-5-jlq2dE",
-      "resolved_name": "LibKernel::PthreadGetthreadid",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadGetthreadid",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [],
@@ -12420,8 +12420,8 @@
     },
     {
       "nid": "F6e0kwo4cnk",
-      "resolved_name": "EventQueue::KernelTriggerUserEvent",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelTriggerUserEvent",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12440,8 +12440,8 @@
     },
     {
       "nid": "F8bUHwAG284",
-      "resolved_name": "LibKernel::PthreadMutexattrInit",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadMutexattrInit",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12459,8 +12459,8 @@
     },
     {
       "nid": "HgX7+AORI58",
-      "resolved_name": "2pOuoWoCxdk",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelAioSubmitReadCommands",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [],
@@ -12476,8 +12476,8 @@
     },
     {
       "nid": "IafI2PxcPnQ",
-      "resolved_name": "LibKernel::PthreadMutexTimedlock",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadMutexTimedlock",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12495,8 +12495,8 @@
     },
     {
       "nid": "JGgj7Uvrl+A",
-      "resolved_name": "LibKernel::PthreadCondBroadcast",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadCondBroadcast",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12515,8 +12515,8 @@
     },
     {
       "nid": "KOF-oJbQVvc",
-      "resolved_name": "KernelAioWaitRequest",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelAioWaitRequest",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [],
@@ -12532,8 +12532,8 @@
     },
     {
       "nid": "L-Q3LEjIbgA",
-      "resolved_name": "Memory::KernelMapDirectMemory",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelMapDirectMemory",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12552,8 +12552,8 @@
     },
     {
       "nid": "LJDwdSNTnDg",
-      "resolved_name": "EventQueue::KernelDeleteUserEvent",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelDeleteUserEvent",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12571,8 +12571,8 @@
     },
     {
       "nid": "MBuItvba6z8",
-      "resolved_name": "Memory::KernelReleaseDirectMemory",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelReleaseDirectMemory",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12590,8 +12590,8 @@
     },
     {
       "nid": "NH6xARDOVv8",
-      "resolved_name": "LibKernel::KernelGetOperationMode",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelGetOperationMode",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12609,8 +12609,8 @@
     },
     {
       "nid": "NcaWUxfMNIQ",
-      "resolved_name": "Memory::KernelMapNamedDirectMemory",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelMapNamedDirectMemory",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12630,8 +12630,8 @@
     },
     {
       "nid": "Ou3iL1abvng",
-      "resolved_name": "LibKernel::stack_chk_fail",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "__stack_chk_fail",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12653,8 +12653,8 @@
     },
     {
       "nid": "Ox9i0c7L5w0",
-      "resolved_name": "LibKernel::PthreadRwlockRdlock",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadRwlockRdlock",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12672,8 +12672,8 @@
     },
     {
       "nid": "QvsZxomvUHs",
-      "resolved_name": "LibKernel::KernelNanosleep",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelNanosleep",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12692,8 +12692,8 @@
     },
     {
       "nid": "QzB4O+bJQyA",
-      "resolved_name": "Apr::ResolveFilepathsToIdsAndFileSizesForEach",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelAprResolveFilepathsToIdsAndFileSizesForEach",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12711,8 +12711,8 @@
     },
     {
       "nid": "R1Jvn8bSCW8",
-      "resolved_name": "Semaphore::KernelDeleteSema",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelDeleteSema",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [],
@@ -12728,8 +12728,8 @@
     },
     {
       "nid": "Ru36fiTtJzA",
-      "resolved_name": "LibKernel::PthreadAttrGetstackaddr",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadAttrGetstackaddr",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [],
@@ -12745,8 +12745,8 @@
     },
     {
       "nid": "UK2Tl2DWUns",
-      "resolved_name": "FileSystem::KernelClose",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelClose",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12766,8 +12766,8 @@
     },
     {
       "nid": "UTXzJbWhhTE",
-      "resolved_name": "LibKernel::PthreadAttrSetstacksize",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadAttrSetstacksize",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12786,8 +12786,8 @@
     },
     {
       "nid": "VB-BtuIW8Xc",
-      "resolved_name": "Apr::ResolveFilepathsWithPrefixToIdsForEach",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelAprResolveFilepathsWithPrefixToIdsForEach",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12805,8 +12805,8 @@
     },
     {
       "nid": "W0Hpm2X0uPE",
-      "resolved_name": "LibKernel::PthreadSetprio",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadSetprio",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12824,8 +12824,8 @@
     },
     {
       "nid": "WKAXJ4XBPQ4",
-      "resolved_name": "LibKernel::PthreadCondWait",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadCondWait",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12863,8 +12863,8 @@
     },
     {
       "nid": "WvEu7yl3Ivg",
-      "resolved_name": "Apr::GetFileSize",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelAprGetFileSize",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12882,8 +12882,8 @@
     },
     {
       "nid": "XQ8C8y+de+E",
-      "resolved_name": "nu4a0-arQis",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelAioSubmitWriteCommands",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [],
@@ -12899,8 +12899,8 @@
     },
     {
       "nid": "Zxa0VhQVTsk",
-      "resolved_name": "Semaphore::KernelWaitSema",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelWaitSema",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [],
@@ -12916,8 +12916,8 @@
     },
     {
       "nid": "aI+OeCz8xrQ",
-      "resolved_name": "LibKernel::PthreadSelf",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadSelf",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12936,8 +12936,8 @@
     },
     {
       "nid": "bt3CTBKmGyI",
-      "resolved_name": "LibKernel::PthreadSetaffinity",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadSetaffinity",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12955,8 +12955,8 @@
     },
     {
       "nid": "cQke9UuBQOk",
-      "resolved_name": "Memory::KernelMunmap",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelMunmap",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12975,8 +12975,8 @@
     },
     {
       "nid": "cmo1RIYva9o",
-      "resolved_name": "LibKernel::PthreadMutexInit",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadMutexInit",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -12997,8 +12997,8 @@
     },
     {
       "nid": "eE4Szl8sil8",
-      "resolved_name": "Apr::SubmitCommandBuffer",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelAprSubmitCommandBuffer",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -13016,8 +13016,8 @@
     },
     {
       "nid": "eV9wAD2riIA",
-      "resolved_name": "FileSystem::KernelStat",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelStat",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -13036,8 +13036,8 @@
     },
     {
       "nid": "eXbUSpEaTsA",
-      "resolved_name": "LibKernel::PthreadAttrSetinheritsched",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadAttrSetinheritsched",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -13055,8 +13055,8 @@
     },
     {
       "nid": "eYAh2vlCY-U",
-      "resolved_name": "Apr::ResolveFilepathsToIdsForEach",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelAprResolveFilepathsToIdsForEach",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -13074,8 +13074,8 @@
     },
     {
       "nid": "ejekcaNQNq0",
-      "resolved_name": "LibKernel::KernelGettimeofday",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelGettimeofday",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -13093,7 +13093,7 @@
     },
     {
       "nid": "f7uOxY9mM1U",
-      "resolved_name": "&LibKernel::g_stack_chk_guard",
+      "resolved_name": "Posix::UmtxOp",
       "resolution_source": "kyty_hle_table",
       "library": "libkernel",
       "module": "libkernel",
@@ -13116,8 +13116,8 @@
     },
     {
       "nid": "fTx66l5iWIA",
-      "resolved_name": "FileSystem::KernelFsync",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelFsync",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -13135,8 +13135,8 @@
     },
     {
       "nid": "fzyMKs9kim0",
-      "resolved_name": "EventQueue::KernelWaitEqueue",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelWaitEqueue",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -13155,8 +13155,8 @@
     },
     {
       "nid": "g+PZd2hiacg",
-      "resolved_name": "LibKernel::PthreadCondDestroy",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadCondDestroy",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -13175,8 +13175,8 @@
     },
     {
       "nid": "gEpBkcwxUjw",
-      "resolved_name": "Apr::ResolveFilepathsToIdsAndFileSizes",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelAprResolveFilepathsToIdsAndFileSizes",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -13194,8 +13194,8 @@
     },
     {
       "nid": "hwVSPCmp5tM",
-      "resolved_name": "Memory::KernelCheckedReleaseDirectMemory",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelCheckedReleaseDirectMemory",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [],
@@ -13211,8 +13211,8 @@
     },
     {
       "nid": "i3HWvW35jao",
-      "resolved_name": "Apr::ResolveFilepathsWithPrefixToIds",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelAprResolveFilepathsWithPrefixToIds",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -13230,8 +13230,8 @@
     },
     {
       "nid": "iMp8QpE+XO4",
-      "resolved_name": "LibKernel::PthreadMutexattrSettype",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadMutexattrSettype",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -13249,8 +13249,8 @@
     },
     {
       "nid": "j2AIqSqJP0w",
-      "resolved_name": "FileSystem::KernelGetdents",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelGetdents",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -13269,8 +13269,8 @@
     },
     {
       "nid": "kBJzF8x4SyE",
-      "resolved_name": "Memory::KernelBatchMap2",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelBatchMap2",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -13289,8 +13289,8 @@
     },
     {
       "nid": "kBwCPsYX-m4",
-      "resolved_name": "FileSystem::KernelFstat",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelFstat",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -13308,8 +13308,8 @@
     },
     {
       "nid": "kDh-NfxgMtE",
-      "resolved_name": "LibKernel::PthreadCondSignal",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadCondSignal",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -13328,8 +13328,8 @@
     },
     {
       "nid": "m5-2bsNfv7s",
-      "resolved_name": "LibKernel::PthreadCondattrInit",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadCondattrInit",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [],
@@ -13345,8 +13345,8 @@
     },
     {
       "nid": "mqdNorrB+gI",
-      "resolved_name": "LibKernel::PthreadRwlockWrlock",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadRwlockWrlock",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -13364,8 +13364,8 @@
     },
     {
       "nid": "n1-v6FgU7MQ",
-      "resolved_name": "Memory::KernelConfiguredFlexibleMemorySize",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelConfiguredFlexibleMemorySize",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -13383,8 +13383,8 @@
     },
     {
       "nid": "naInUjYt3so",
-      "resolved_name": "FileSystem::KernelRmdir",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelRmdir",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [],
@@ -13400,8 +13400,8 @@
     },
     {
       "nid": "nsYoNRywwNg",
-      "resolved_name": "LibKernel::PthreadAttrInit",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadAttrInit",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -13420,8 +13420,8 @@
     },
     {
       "nid": "nu4a0-arQis",
-      "resolved_name": "il03nluKfMk",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelAioInitializeParam",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -13439,8 +13439,8 @@
     },
     {
       "nid": "oib76F-12fk",
-      "resolved_name": "FileSystem::KernelLseek",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelLseek",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [],
@@ -13456,8 +13456,8 @@
     },
     {
       "nid": "onNY9Byn-W8",
-      "resolved_name": "LibKernel::PthreadJoin",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadJoin",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -13477,8 +13477,8 @@
     },
     {
       "nid": "pO96TwzOm5E",
-      "resolved_name": "Memory::KernelGetDirectMemorySize",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelGetDirectMemorySize",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -13498,8 +13498,8 @@
     },
     {
       "nid": "qvMUCyyaCSI",
-      "resolved_name": "Apr::SubmitCommandBufferAndGetId",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelAprSubmitCommandBufferAndGetId",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -13517,8 +13517,8 @@
     },
     {
       "nid": "rTXw65xmLIA",
-      "resolved_name": "Memory::KernelAllocateDirectMemory",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelAllocateDirectMemory",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -13537,8 +13537,8 @@
     },
     {
       "nid": "rVjRvHJ0X6c",
-      "resolved_name": "Memory::KernelVirtualQuery",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelVirtualQuery",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -13556,8 +13556,8 @@
     },
     {
       "nid": "rcrVFJsQWRY",
-      "resolved_name": "LibKernel::PthreadGetaffinity",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadGetaffinity",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [],
@@ -13573,8 +13573,8 @@
     },
     {
       "nid": "rqwFKI4PAiM",
-      "resolved_name": "Apr::WaitCommandBuffer",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelAprWaitCommandBuffer",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -13592,8 +13592,8 @@
     },
     {
       "nid": "smWEktiyyG0",
-      "resolved_name": "LibKernel::PthreadMutexattrDestroy",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadMutexattrDestroy",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -13611,8 +13611,8 @@
     },
     {
       "nid": "tU5e3f9gSiU",
-      "resolved_name": "LibKernel::KernelIsTrinityMode",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelIsTrinityMode",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -13631,8 +13631,8 @@
     },
     {
       "nid": "tn3VlD0hG60",
-      "resolved_name": "LibKernel::PthreadMutexUnlock",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadMutexUnlock",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -13653,8 +13653,8 @@
     },
     {
       "nid": "upoVrzMHFeE",
-      "resolved_name": "LibKernel::PthreadMutexTrylock",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadMutexTrylock",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -13672,8 +13672,8 @@
     },
     {
       "nid": "vNe1w4diLCs",
-      "resolved_name": "LibKernel::tls_get_addr",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "__tls_get_addr",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -13684,8 +13684,8 @@
     },
     {
       "nid": "vSMAm3cxYTY",
-      "resolved_name": "Memory::KernelMprotect",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelMprotect",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -13706,8 +13706,8 @@
     },
     {
       "nid": "vYU8P9Td2Zo",
-      "resolved_name": "WhCc1w3EhSI",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelAioInitializeImpl",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -13725,8 +13725,8 @@
     },
     {
       "nid": "w5fcCG+t31g",
-      "resolved_name": "Apr::ResolveFilepathsWithPrefixToIdsAndFileSizes",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "sceKernelAprResolveFilepathsWithPrefixToIdsAndFileSizes",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [
@@ -13744,8 +13744,8 @@
     },
     {
       "nid": "waPcxYiR3WA",
-      "resolved_name": "LibKernel::PthreadCondattrDestroy",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadCondattrDestroy",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [],
@@ -13761,8 +13761,8 @@
     },
     {
       "nid": "x1X76arYMxU",
-      "resolved_name": "LibKernel::PthreadAttrGet",
-      "resolution_source": "kyty_hle_table",
+      "resolved_name": "scePthreadAttrGet",
+      "resolution_source": "sha1_nid_hash",
       "library": "libkernel",
       "module": "libkernel",
       "shipped_in": [

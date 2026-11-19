@@ -155,11 +155,9 @@ def main():
     all_nul_strings = [s.decode("ascii", errors="ignore") for s in exe.split(b"\x00")]
 
     resolved = {}
-    for i, s in enumerate(all_nul_strings):
-        if s in target_map and i + 1 < len(all_nul_strings):
-            nxt = all_nul_strings[i + 1]
-            resolved[s] = {"name": nxt, "source": "kyty_hle_table"}
+    nid_like_re = re.compile(r"^[A-Za-z0-9+\-]{11}$")
 
+    # 1. Exact cryptographic SHA-1 + Sony salt resolution first (authoritative for all standard Sony/POSIX/C functions)
     words = set(
         s.decode("ascii")
         for s in re.findall(rb"[A-Za-z_][A-Za-z0-9_]{1,90}", exe)
@@ -170,7 +168,6 @@ def main():
             for s in re.findall(rb"[A-Za-z_][A-Za-z0-9_]{2,90}", p.read_bytes())
         )
 
-    # Extra known Sony symbols for VoiceQoS, NpSessionSignaling, PlayGoDialog, Coredump, etc.
     extra_prefixes = [
         "sceVoiceQoSInit", "sceVoiceQoSEnd", "sceVoiceQoSCreateLocalEndpoint",
         "sceVoiceQoSDeleteLocalEndpoint", "sceVoiceQoSCreateRemoteEndpoint",
@@ -191,6 +188,21 @@ def main():
         "sceNpSessionSignalingActivateConnection", "sceNpSessionSignalingDeactivateConnection",
         "sceNpSessionSignalingGetConnectionStatus", "sceNpSessionSignalingGetConnectionInfo",
         "sceNpSessionSignalingGetLocalNetInfo", "sceNpSessionSignalingSetCallback",
+        "sceKernelSetVirtualRangeName", "sceKernelBatchMap", "sceKernelBatchMap2",
+        "sceKernelAllocateDirectMemory", "sceKernelGetDirectMemorySize",
+        "sceKernelAvailableFlexibleMemorySize", "sceKernelConfiguredFlexibleMemorySize",
+        "sceKernelMapDirectMemory", "sceKernelMapNamedFlexibleMemory",
+        "sceKernelIsTrinityMode", "sceKernelGetProcParam",
+        "scePthreadMutexInit", "scePthreadMutexDestroy", "scePthreadMutexLock",
+        "scePthreadMutexTrylock", "scePthreadMutexUnlock",
+        "scePthreadMutexattrInit", "scePthreadMutexattrDestroy", "scePthreadMutexattrSettype",
+        "scePthreadRwlockInit", "scePthreadRwlockDestroy", "scePthreadRwlockRdlock",
+        "scePthreadRwlockWrlock", "scePthreadRwlockUnlock",
+        "scePthreadAttrInit", "scePthreadAttrDestroy", "scePthreadAttrGet",
+        "scePthreadAttrSetstacksize", "scePthreadSelf", "scePthreadGetprio",
+        "scePthreadSetprio", "scePthreadSetaffinity",
+        "strlen", "strncpy", "strncmp", "strcmp", "strcpy", "strcat",
+        "memcpy", "memmove", "memset", "memcmp", "malloc", "free", "calloc", "realloc",
     ]
     words.update(extra_prefixes)
 
@@ -199,6 +211,14 @@ def main():
             n = calc_nid(cand)
             if n in target_map and n not in resolved:
                 resolved[n] = {"name": cand, "source": "sha1_nid_hash"}
+
+    # 2. Fallback to Kyty HLE registration table for C++ mangled symbols (Ampr::*, Gen5::*)
+    for i, s in enumerate(all_nul_strings):
+        if s in target_map and s not in resolved and i > 0:
+            j = i - 1
+            while j > 0 and nid_like_re.match(all_nul_strings[j]) and "::" not in all_nul_strings[j]:
+                j -= 1
+            resolved[s] = {"name": all_nul_strings[j], "source": "kyty_hle_table"}
 
     entries = []
     for nid, info in sorted(

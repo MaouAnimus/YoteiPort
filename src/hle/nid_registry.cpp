@@ -1,4 +1,6 @@
 #include "hle/nid_registry.h"
+#include "graphics/pm4_decoder.h"
+#include "hle/ampr_hle.h"
 #include "kernel/filesystem.h"
 #include "kernel/memory.h"
 #include <cstring>
@@ -60,6 +62,21 @@ extern "C" uint64_t __fastcall HleDispatchTrampoline(
 
     auto& mem_mgr = kernel::GuestMemoryManager::Instance();
     auto& vfs = kernel::VirtualFileSystem::Instance();
+
+    // 1. Delegate AMPR / APR asynchronous streaming calls
+    uint64_t sub_ret = 0;
+    if (AmprHleManager::Instance().DispatchNid(
+            meta.nid, meta.resolved_name,
+            guest_rdi, guest_rsi, guest_rdx, guest_rcx, guest_r8, guest_r9, &sub_ret)) {
+        return sub_ret;
+    }
+
+    // 2. Delegate AGC / AgcDriver / VideoOut graphics calls
+    if (graphics::AgcPm4Backend::Instance().DispatchNid(
+            meta.library, meta.nid, meta.resolved_name,
+            guest_rdi, guest_rsi, guest_rdx, guest_rcx, guest_r8, guest_r9, &sub_ret)) {
+        return sub_ret;
+    }
 
     // Specific early boot & kernel HLE handlers:
     if (meta.nid == "tU5e3f9gSiU" && meta.resolved_name.find("GetProcParam") != std::string::npos) {
