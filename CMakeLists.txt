@@ -12,6 +12,8 @@ add_executable(yotei_runtime
     src/main.cpp
     src/loader/elf_mapper.cpp
     src/hle/nid_registry.cpp
+    src/kernel/memory.cpp
+    src/kernel/filesystem.cpp
 )
 
 target_include_directories(yotei_runtime PRIVATE src)

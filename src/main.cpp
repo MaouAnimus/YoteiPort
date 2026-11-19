@@ -1,4 +1,6 @@
 #include "hle/nid_registry.h"
+#include "kernel/filesystem.h"
+#include "kernel/memory.h"
 #include "loader/elf_mapper.h"
 #include <cstring>
 #include <iomanip>
@@ -102,6 +104,26 @@ int main(int argc, char** argv) {
         std::cerr << "[!] Failed to set PAGE_EXECUTE_READWRITE on guest span\n";
         return 1;
     }
+
+    // Mount virtual filesystems (/app0, /cache_ps5) and load AMPRIDX3 index
+    auto& vfs = yotei::kernel::VirtualFileSystem::Instance();
+    std::filesystem::path app0_dir = root / "PPSA26344" / "PPSA26344-app";
+    if (std::filesystem::exists(app0_dir)) {
+        vfs.Mount("/app0", app0_dir);
+        vfs.Mount("/cache_ps5", app0_dir / "cache_ps5");
+        vfs.Mount("/app0/cache_ps5", app0_dir / "cache_ps5");
+        std::cout << "[+] Mounted Guest VFS: /app0 -> " << app0_dir.string() << "\n";
+        if (vfs.LoadAmprIndex(app0_dir / "ampr_emu.index")) {
+            std::cout << "[+] Loaded AMPRIDX3  : " << vfs.GetAmprEntryCount()
+                      << " streaming files indexed\n";
+            uint32_t shader_pack_id = 0;
+            uint64_t shader_pack_sz = 0;
+            if (vfs.AprResolvePath("/app0/cache_ps5/all_shaders.xpps", &shader_pack_id, &shader_pack_sz) == 0) {
+                std::cout << "    Verified APR Resolve '/app0/cache_ps5/all_shaders.xpps' -> ID="
+                          << shader_pack_id << " (" << shader_pack_sz << " bytes)\n";
+            }
+        }
+    }
     std::cout << std::flush;
 
 #ifdef _WIN32
@@ -114,11 +136,21 @@ int main(int argc, char** argv) {
     std::cout << "[*] Calling sub_cd85f0 (Engine Memory & Virtual Path Table Init) @ 0x"
               << std::hex << sub_mutex_init << std::dec << "...\n" << std::flush;
     InvokeGuestSysV(sub_mutex_init, reinterpret_cast<uint64_t>(dummy_mutex_obj), 0);
-    std::cout << "[+] sub_cd85f0 returned cleanly after 96 HLE calls!\n" << std::flush;
+    std::cout << "[+] sub_cd85f0 returned cleanly!\n";
+    const auto& regions = yotei::kernel::GuestMemoryManager::Instance().GetMappedRegions();
+    std::cout << "[+] Active Guest Direct/Flexible Memory Regions (" << regions.size() << "):\n";
+    for (const auto& reg : regions) {
+        std::cout << "    [" << std::setw(12) << std::left << reg.name << "] vaddr=0x"
+                  << std::hex << reg.guest_vaddr << " size=0x" << reg.size
+                  << " (" << std::dec << (reg.size / (1024 * 1024)) << " MiB) phys=0x"
+                  << std::hex << reg.phys_offset << std::dec << "\n";
+    }
+    std::cout << std::flush;
 
     RemoveVectoredExceptionHandler(veh);
 #endif
 
+    yotei::kernel::GuestMemoryManager::Instance().ReleaseAll();
     registry.FreeTrampolines();
     mapper.Unmap();
     std::cout << "\n[+] Guest native execution probe completed and memory cleanly unmapped.\n";

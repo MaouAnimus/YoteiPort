@@ -1,4 +1,6 @@
 #include "hle/nid_registry.h"
+#include "kernel/filesystem.h"
+#include "kernel/memory.h"
 #include <cstring>
 #include <fstream>
 #include <iomanip>
@@ -40,7 +42,10 @@ extern "C" uint64_t __fastcall HleDispatchTrampoline(
     uint64_t slot_index,
     uint64_t guest_rdi,
     uint64_t guest_rsi,
-    uint64_t guest_rdx) {
+    uint64_t guest_rdx,
+    uint64_t guest_rcx,
+    uint64_t guest_r8,
+    uint64_t guest_r9) {
     if (slot_index >= g_bound_slots.size()) return 0;
     const auto& meta = g_bound_slots[slot_index];
     ++g_call_counter;
@@ -53,21 +58,89 @@ extern "C" uint64_t __fastcall HleDispatchTrampoline(
                   << " rsi=0x" << guest_rsi << " rdx=0x" << guest_rdx << std::dec << std::endl;
     }
 
-    // Specific early boot HLE handlers:
+    auto& mem_mgr = kernel::GuestMemoryManager::Instance();
+    auto& vfs = kernel::VirtualFileSystem::Instance();
+
+    // Specific early boot & kernel HLE handlers:
     if (meta.nid == "tU5e3f9gSiU" && meta.resolved_name.find("GetProcParam") != std::string::npos) {
-        // Return PT_SCE_PROCPARAM virtual address (base + 0x1e7bfd8)
         return g_guest_base + 0x1e7bfd8ULL;
     }
     if (meta.nid == "n1-v6FgU7MQ") {
-        // sceKernelAvailableFlexibleMemorySize / ConfiguredFlexibleMemorySize (from param.json: 165675008)
+        // sceKernelAvailableFlexibleMemorySize / ConfiguredFlexibleMemorySize
         if (guest_rdi != 0 && guest_rdi >= g_guest_base) {
-            *reinterpret_cast<uint64_t*>(guest_rdi) = 165675008ULL;
+            *reinterpret_cast<uint64_t*>(guest_rdi) = mem_mgr.GetFlexibleMemorySize();
         }
         return 0;
     }
     if (meta.nid == "pO96TwzOm5E") {
-        // sceKernelGetDirectMemorySize -> 12 GiB
-        return 12ULL * 1024ULL * 1024ULL * 1024ULL;
+        // sceKernelGetDirectMemorySize
+        return mem_mgr.GetDirectMemorySize();
+    }
+    if (meta.nid == "rTXw65xmLIA") {
+        // sceKernelAllocateDirectMemory(searchStart, searchEnd, len, alignment, memoryType, physAddrOut)
+        return static_cast<uint64_t>(mem_mgr.AllocateDirectMemory(
+            static_cast<int64_t>(guest_rdi),
+            static_cast<int64_t>(guest_rsi),
+            guest_rdx,
+            guest_rcx,
+            static_cast<uint32_t>(guest_r8),
+            reinterpret_cast<uint64_t*>(guest_r9)));
+    }
+    if (meta.nid == "2SKEx6bSq-4") {
+        // sceKernelBatchMap(entries, numEntries, numHandledOut) / sceKernelBatchMap2
+        return static_cast<uint64_t>(mem_mgr.BatchMap(
+            reinterpret_cast<const kernel::SceKernelBatchMapEntry*>(guest_rdi),
+            static_cast<int32_t>(guest_rsi),
+            reinterpret_cast<int32_t*>(guest_rdx)));
+    }
+    if (meta.nid == "L-Q3LEjIbgA" || meta.nid == "NcaWUxfMNIQ") {
+        // sceKernelMapDirectMemory / sceKernelMapNamedFlexibleMemory
+        return static_cast<uint64_t>(mem_mgr.MapMemory(
+            reinterpret_cast<uint64_t*>(guest_rdi),
+            guest_rsi,
+            static_cast<uint32_t>(guest_rdx),
+            static_cast<uint32_t>(guest_rcx),
+            guest_r8,
+            guest_r9));
+    }
+    if (meta.nid == "-hn1tcVHq5Q") {
+        // sceKernelSetVirtualRangeName(vaddr, len, name) or internal label helper(name, vaddr, len)
+        if (guest_rdi >= g_guest_base && guest_rsi >= 0x100000000ULL) {
+            mem_mgr.SetVirtualRangeName(guest_rsi, guest_rdx, reinterpret_cast<const char*>(guest_rdi));
+        }
+        return 0;
+    }
+    if (meta.nid == "1jfXLRVzisc" || meta.resolved_name == "FileSystem::KernelOpen") {
+        return static_cast<uint64_t>(vfs.Open(
+            reinterpret_cast<const char*>(guest_rdi),
+            static_cast<int32_t>(guest_rsi),
+            static_cast<int32_t>(guest_rdx)));
+    }
+    if (meta.resolved_name == "FileSystem::KernelRead") {
+        return static_cast<uint64_t>(vfs.Read(
+            static_cast<int32_t>(guest_rdi),
+            reinterpret_cast<void*>(guest_rsi),
+            guest_rdx));
+    }
+    if (meta.resolved_name == "FileSystem::KernelPread") {
+        return static_cast<uint64_t>(vfs.Pread(
+            static_cast<int32_t>(guest_rdi),
+            reinterpret_cast<void*>(guest_rsi),
+            guest_rdx,
+            static_cast<int64_t>(guest_rcx)));
+    }
+    if (meta.resolved_name == "FileSystem::KernelClose") {
+        return static_cast<uint64_t>(vfs.Close(static_cast<int32_t>(guest_rdi)));
+    }
+    if (meta.resolved_name == "FileSystem::KernelStat") {
+        return static_cast<uint64_t>(vfs.Stat(
+            reinterpret_cast<const char*>(guest_rdi),
+            reinterpret_cast<kernel::SceKernelStat*>(guest_rsi)));
+    }
+    if (meta.resolved_name == "FileSystem::KernelFstat") {
+        return static_cast<uint64_t>(vfs.Fstat(
+            static_cast<int32_t>(guest_rdi),
+            reinterpret_cast<kernel::SceKernelStat*>(guest_rsi)));
     }
     if (meta.nid == "9BcDykPmo1I") {
         // __error() -> thread-local errno pointer
@@ -216,7 +289,7 @@ size_t NidRegistry::BindImportsToGuestGot(
 
 #ifdef _WIN32
     // Allocate 64-byte executable stub per import (SysV AMD64 -> MS x64 bridge preserving non-volatile regs)
-    size_t slab_size = (imports.size() + 16) * 64;
+    size_t slab_size = (imports.size() + 16) * 96;
     trampoline_slab_ = VirtualAlloc(
         nullptr, slab_size, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
 #endif
@@ -233,22 +306,23 @@ size_t NidRegistry::BindImportsToGuestGot(
 
         g_bound_slots.push_back({imp.library, imp.nid, res_name, imp.got_vaddr});
 
-        // Emit 64-byte SysV AMD64 -> Windows x64 bridge stub:
-        // Saves RDI, RSI, RBX, R12-R15; moves SysV args (RDI, RSI, RDX) to MS x64 (RDX, R8, R9),
-        // loads slot_idx into RCX, allocates 32-byte shadow space, aligns stack, calls HleDispatchTrampoline.
-        uint8_t* stub = slab + slot_idx * 64;
+        // Emit 96-byte SysV AMD64 -> Windows x64 bridge stub forwarding all 6 SysV args (RDI, RSI, RDX, RCX, R8, R9)
+        uint8_t* stub = slab + slot_idx * 96;
         uint8_t code[] = {
             0x55,                                     // push rbp
             0x48, 0x89, 0xE5,                         // mov rbp, rsp
             0x57,                                     // push rdi
             0x56,                                     // push rsi
-            0x49, 0x89, 0xD1,                         // mov r9, rdx   (arg3 = guest_rdx)
-            0x49, 0x89, 0xF0,                         // mov r8, rsi   (arg2 = guest_rsi)
-            0x48, 0x89, 0xFA,                         // mov rdx, rdi  (arg1 = guest_rdi)
-            0xB9, 0x00, 0x00, 0x00, 0x00,             // mov ecx, slot_idx (offset 16)
             0x48, 0x83, 0xE4, 0xF0,                   // and rsp, -16
-            0x48, 0x83, 0xEC, 0x20,                   // sub rsp, 32
-            0x48, 0xB8, 0, 0, 0, 0, 0, 0, 0, 0,       // movabs rax, &HleDispatchTrampoline (offset 30)
+            0x48, 0x83, 0xEC, 0x40,                   // sub rsp, 64 (32 shadow + 3 stack args + align)
+            0x48, 0x89, 0x4C, 0x24, 0x20,             // mov [rsp+0x20], rcx (arg4 = guest_rcx)
+            0x4C, 0x89, 0x44, 0x24, 0x28,             // mov [rsp+0x28], r8  (arg5 = guest_r8)
+            0x4C, 0x89, 0x4C, 0x24, 0x30,             // mov [rsp+0x30], r9  (arg6 = guest_r9)
+            0x49, 0x89, 0xD1,                         // mov r9, rdx         (arg3 = guest_rdx)
+            0x49, 0x89, 0xF0,                         // mov r8, rsi         (arg2 = guest_rsi)
+            0x48, 0x89, 0xFA,                         // mov rdx, rdi        (arg1 = guest_rdi)
+            0xB9, 0x00, 0x00, 0x00, 0x00,             // mov ecx, slot_idx   (offset 39)
+            0x48, 0xB8, 0, 0, 0, 0, 0, 0, 0, 0,       // movabs rax, &HleDispatchTrampoline (offset 44)
             0xFF, 0xD0,                               // call rax
             0x48, 0x8D, 0x65, 0xF0,                   // lea rsp, [rbp - 16]
             0x5E,                                     // pop rsi
@@ -256,9 +330,9 @@ size_t NidRegistry::BindImportsToGuestGot(
             0x5D,                                     // pop rbp
             0xC3                                      // ret
         };
-        std::memcpy(code + 16, &slot_idx, sizeof(uint32_t));
+        std::memcpy(code + 39, &slot_idx, sizeof(uint32_t));
         uint64_t fn_addr = reinterpret_cast<uint64_t>(&HleDispatchTrampoline);
-        std::memcpy(code + 30, &fn_addr, sizeof(uint64_t));
+        std::memcpy(code + 45, &fn_addr, sizeof(uint64_t));
         std::memcpy(stub, code, sizeof(code));
 
         auto* got_slot = reinterpret_cast<uint64_t*>(guest_base + imp.got_vaddr);
