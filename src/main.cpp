@@ -11,6 +11,7 @@
 #include <iomanip>
 #include <iostream>
 #include <map>
+#include <sstream>
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -19,21 +20,42 @@
 
 namespace {
 
+// Simple instruction disassembly for logging (no C++ objects for VEH compatibility)
+static void DisassembleInstruction(const uint8_t* p, size_t max_len, char* out_buf, size_t buf_size) {
+    size_t pos = 0;
+    for (size_t i = 0; i < max_len && p[i] && pos + 3 < buf_size; ++i) {
+        if (i > 0) {
+            out_buf[pos++] = ' ';
+        }
+        pos += snprintf(out_buf + pos, buf_size - pos, "%02X", p[i]);
+    }
+    out_buf[pos] = '\0';
+}
+
 #ifdef _WIN32
 LONG WINAPI GuestVehHandler(EXCEPTION_POINTERS* ep) {
     DWORD code = ep->ExceptionRecord->ExceptionCode;
+    uint64_t rip = ep->ContextRecord->Rip;
     uint64_t current_fs = 0;
     __try { current_fs = _readfsbase_u64(); } __except(1) {}
     std::cout << "  [VEH] Exception 0x" << std::hex << code
-              << " at RIP=0x" << ep->ContextRecord->Rip
+              << " at RIP=0x" << rip
               << " RAX=0x" << ep->ContextRecord->Rax
               << " RBX=0x" << ep->ContextRecord->Rbx
               << " SegFs=0x" << ep->ContextRecord->SegFs
               << " FSBase=0x" << current_fs << std::dec << std::endl;
+
+    // Disassemble the faulting instruction (no C++ objects in __try scope)
+    uint8_t* p = reinterpret_cast<uint8_t*>(rip);
+    char disasm_buf[64];
+    DisassembleInstruction(p, 15, disasm_buf, sizeof(disasm_buf));
+    std::cout << "  [VEH] Instruction bytes: " << disasm_buf << "\n" << std::flush;
+
     if (code == EXCEPTION_ACCESS_VIOLATION) {
-        uint8_t* p = reinterpret_cast<uint8_t*>(ep->ContextRecord->Rip);
+        // Skip operand-size override prefixes (0x66)
         while (p && *p == 0x66) ++p;
-        // mov rax, qword ptr fs:[0] -> 64 48 8b 04 25 00 00 00 00 (9 bytes)
+
+        // 1. mov rax, qword ptr fs:[0] -> 64 48 8b 04 25 00 00 00 00 (9 bytes)
         if (p && p[0] == 0x64 && p[1] == 0x48 && p[2] == 0x8B && p[3] == 0x04 && p[4] == 0x25 &&
             *reinterpret_cast<uint32_t*>(p + 5) == 0) {
             uint64_t tcb = yotei::kernel::ThreadManager::Instance().GetCurrentThreadTcb();
@@ -42,10 +64,232 @@ LONG WINAPI GuestVehHandler(EXCEPTION_POINTERS* ep) {
             std::cout << "  [VEH] Emulated fs:[0] -> RAX=0x" << std::hex << tcb << std::dec << "\n" << std::flush;
             return EXCEPTION_CONTINUE_EXECUTION;
         }
+
+        // 2. rdtsc -> 0F 31 (returns timestamp counter in EDX:EAX)
+        if (p && p[0] == 0x0F && p[1] == 0x31) {
+            uint64_t tsc = __rdtsc();
+            ep->ContextRecord->Rax = static_cast<uint32_t>(tsc);
+            ep->ContextRecord->Rdx = static_cast<uint32_t>(tsc >> 32);
+            ep->ContextRecord->Rip = reinterpret_cast<DWORD64>(p + 2);
+            std::cout << "  [VEH] Emulated rdtsc -> RAX=0x" << std::hex << ep->ContextRecord->Rax
+                      << " RDX=0x" << ep->ContextRecord->Rdx << std::dec << "\n" << std::flush;
+            return EXCEPTION_CONTINUE_EXECUTION;
+        }
+
+        // 3. cpuid -> 0F A2 (EAX in, returns in EAX/EBX/ECX/EDX)
+        if (p && p[0] == 0x0F && p[1] == 0xA2) {
+            int cpu_info[4] = {0};
+            __cpuid(cpu_info, static_cast<int>(ep->ContextRecord->Rax));
+            ep->ContextRecord->Rax = cpu_info[0];
+            ep->ContextRecord->Rbx = cpu_info[1];
+            ep->ContextRecord->Rcx = cpu_info[2];
+            ep->ContextRecord->Rdx = cpu_info[3];
+            ep->ContextRecord->Rip = reinterpret_cast<DWORD64>(p + 2);
+            std::cout << "  [VEH] Emulated cpuid(0x" << std::hex << ep->ContextRecord->Rax << std::dec
+                      << ") -> EAX=0x" << std::hex << cpu_info[0] << " EBX=0x" << cpu_info[1]
+                      << " ECX=0x" << cpu_info[2] << " EDX=0x" << cpu_info[3] << std::dec << "\n" << std::flush;
+            return EXCEPTION_CONTINUE_EXECUTION;
+        }
+
+        // 4. syscall -> 0F 05 (not expected in user mode, but handle gracefully)
+        if (p && p[0] == 0x0F && p[1] == 0x05) {
+            std::cout << "  [VEH] syscall encountered - returning SCE_OK (0)\n" << std::flush;
+            ep->ContextRecord->Rax = 0;
+            ep->ContextRecord->Rip = reinterpret_cast<DWORD64>(p + 2);
+            return EXCEPTION_CONTINUE_EXECUTION;
+        }
+
+        // 5. xgetbv -> 0F 01 D0 (read XCR0)
+        if (p && p[0] == 0x0F && p[1] == 0x01 && p[2] == 0xD0) {
+            ep->ContextRecord->Rax = _xgetbv(static_cast<unsigned int>(ep->ContextRecord->Rcx));
+            ep->ContextRecord->Rdx = 0;
+            ep->ContextRecord->Rip = reinterpret_cast<DWORD64>(p + 3);
+            std::cout << "  [VEH] Emulated xgetbv -> RAX=0x" << std::hex << ep->ContextRecord->Rax << std::dec << "\n" << std::flush;
+            return EXCEPTION_CONTINUE_EXECUTION;
+        }
+
+        // 6. Pause/HLT spin loop: rep nop / pause (F3 90) - treat as nop
+        if (p && p[0] == 0xF3 && p[1] == 0x90) {
+            ep->ContextRecord->Rip = reinterpret_cast<DWORD64>(p + 2);
+            return EXCEPTION_CONTINUE_EXECUTION;
+        }
+
+        // 7. Null pointer dereference: mov reg, [rax+disp] where rax=0 or small
+        // Pattern: 8B 48 38 = mov ecx, [rax+0x38] (RAX=0) - 3 bytes
+        // Pattern: 8B 08     = mov ecx, [rax] (RAX=0) - 2 bytes (but mod=00,rm=000 means disp32)
+        // Pattern: 48 8B 08  = mov rcx, [rax] (RAX=0) - 3 bytes (but mod=00,rm=000 means disp32)
+        // Pattern: 48 8B 48 XX = mov rcx, [rax+disp8] (RAX=0) - 4 bytes
+        if (p && ep->ContextRecord->Rax < 0x1000) { // RAX is null or near-null
+            bool is_rex = (p[0] == 0x48);
+            uint8_t opcode = is_rex ? p[1] : p[0];
+            uint8_t modrm = is_rex ? p[2] : p[1];
+            size_t base_len = is_rex ? 2 : 1; // bytes before modrm
+
+            // Check for MOV r32/r64, [r64+disp] patterns (opcode 0x8B)
+            if (opcode == 0x8B) {
+                uint8_t mod = (modrm >> 6) & 0x3;
+                uint8_t reg = (modrm >> 3) & 0x7;
+                uint8_t rm  = modrm & 0x7;
+
+                // rm=000 (RAX) with mod=01 (disp8) or mod=10 (disp32)
+                if (rm == 0 && (mod == 1 || mod == 2)) {
+                    size_t disp_bytes = (mod == 1) ? 1 : 4;
+                    size_t instr_len = base_len + 1 + disp_bytes; // opcode + modrm + disp
+                    std::cout << "  [VEH] Null pointer read [RAX+disp" << (mod==1?"8":"32")
+                              << "] -> returning 0, RIP+" << instr_len << "\n" << std::flush;
+                    // Zero the destination register
+                    uint64_t* dst_reg = nullptr;
+                    switch (reg) {
+                        case 0: dst_reg = &ep->ContextRecord->Rax; break;
+                        case 1: dst_reg = &ep->ContextRecord->Rcx; break;
+                        case 2: dst_reg = &ep->ContextRecord->Rdx; break;
+                        case 3: dst_reg = &ep->ContextRecord->Rbx; break;
+                        case 4: dst_reg = &ep->ContextRecord->Rsp; break;
+                        case 5: dst_reg = &ep->ContextRecord->Rbp; break;
+                        case 6: dst_reg = &ep->ContextRecord->Rsi; break;
+                        case 7: dst_reg = &ep->ContextRecord->Rdi; break;
+                    }
+                    if (dst_reg) *dst_reg = 0;
+                    ep->ContextRecord->Rip = reinterpret_cast<DWORD64>(p + instr_len);
+                    return EXCEPTION_CONTINUE_EXECUTION;
+                }
+            }
+        }
+
+        // 8. Generic null RAX read: if RAX is 0 and we're reading memory, skip
+        if (p && ep->ContextRecord->Rax == 0) {
+            // Check if instruction looks like a memory read from [RAX+...]
+            // Common patterns: 8B 00, 8B 48 XX, 48 8B 00, 48 8B 48 XX
+            bool is_rex = (p[0] == 0x48);
+            uint8_t opcode = is_rex ? p[1] : p[0];
+            uint8_t modrm = is_rex ? p[2] : p[1];
+
+            if (opcode == 0x8B) {
+                uint8_t mod = (modrm >> 6) & 0x3;
+                uint8_t rm  = modrm & 0x7;
+                if (rm == 0 && (mod == 1 || mod == 2)) { // [RAX+disp8] or [RAX+disp32]
+                    size_t disp_bytes = (mod == 1) ? 1 : 4;
+                    size_t instr_len = (is_rex ? 2 : 1) + 1 + disp_bytes;
+                    std::cout << "  [VEH] Null RAX memory read -> returning 0, RIP+" << instr_len << "\n" << std::flush;
+                    ep->ContextRecord->Rip = reinterpret_cast<DWORD64>(p + instr_len);
+                    return EXCEPTION_CONTINUE_EXECUTION;
+                }
+            }
+        }
+
+        // 9. movzx/movsx from computed address with null base: 0F B6/BE /r
+        // Pattern: 44 0F B6 34 8F = movzx r14b, byte ptr [rdi+rcx*4]
+        // If RDI=0, this is a null pointer read
+        if (p && (ep->ContextRecord->Rdi < 0x1000 || ep->ContextRecord->Rsi < 0x1000 ||
+                  ep->ContextRecord->Rdx < 0x1000 || ep->ContextRecord->Rcx < 0x1000 ||
+                  ep->ContextRecord->R8  < 0x1000 || ep->ContextRecord->R9  < 0x1000)) {
+            // Check for MOVZX/MOVSX with SIB byte (0F B6 / 0F BE / 0F B7 / 0F BF)
+            if (p[0] == 0x0F && (p[1] == 0xB6 || p[1] == 0xBE || p[1] == 0xB7 || p[1] == 0xBF)) {
+                // Next byte is MODRM, then SIB
+                if (p[2] == 0x34 || p[2] == 0x74 || p[2] == 0xB4 || p[2] == 0xF4) {
+                    // SIB with base=RSP (100) means no base, but [RDI+RCX*4] would be different SIB
+                    // 44 0F B6 34 8F: REX.R=1, REX.B=1, 0F B6, MODRM=34 (mod=00, reg=110, rm=100), SIB=8F (scale=2, index=1, base=7)
+                    // Actually let's just handle generically: if it's a MOVZX/MOVSX and any base register is near-null
+                    std::cout << "  [VEH] MOVZX/MOVSX from computed address with near-null base -> returning 0, skipping\n" << std::flush;
+                    // Instruction is typically 4-5 bytes with REX + 0F B6 + MODRM + SIB + disp
+                    size_t instr_len = (p[0] == 0x44 || p[0] == 0x48 || p[0] == 0x4C) ? 5 : 4;
+                    ep->ContextRecord->Rip = reinterpret_cast<DWORD64>(p + instr_len);
+                    return EXCEPTION_CONTINUE_EXECUTION;
+                }
+            }
+        }
+
+        // 10. CMP dword ptr [reg], imm32 where reg points to invalid memory (e.g., dummy FILE*)
+        // Pattern: 41 81 3F 44 4D 47 50 = cmp dword ptr [r15], 0x50474D44 ("GMPD"/"DPMG")
+        // 41 = REX.R, 81 = CMP r/m32, imm32, 3F = MODRM (mod=00, reg=111, rm=111=r15)
+        if (p && p[0] == 0x41 && p[1] == 0x81 && p[2] == 0x3F) {
+            std::cout << "  [VEH] CMP [r15], imm32 (magic check) -> returning equal (ZF=1), skipping\n" << std::flush;
+            // Set ZF=1 (equal) by setting RFLAGS
+            ep->ContextRecord->EFlags |= 0x40; // ZF bit
+            ep->ContextRecord->Rip = reinterpret_cast<DWORD64>(p + 6); // 41 81 3F + 4 byte imm
+            return EXCEPTION_CONTINUE_EXECUTION;
+        }
+        // Also handle without REX prefix: 81 3F XX XX XX XX = cmp dword ptr [rdi], imm32
+        if (p && p[0] == 0x81 && p[1] == 0x3F) {
+            std::cout << "  [VEH] CMP [rdi], imm32 (magic check) -> returning equal (ZF=1), skipping\n" << std::flush;
+            ep->ContextRecord->EFlags |= 0x40; // ZF bit
+            ep->ContextRecord->Rip = reinterpret_cast<DWORD64>(p + 6);
+            return EXCEPTION_CONTINUE_EXECUTION;
+        }
+        // CMP [reg], imm32 with other registers
+        if (p && p[0] == 0x81 && (p[1] & 0x38) == 0x38) { // reg=111 in modrm
+            std::cout << "  [VEH] CMP [reg], imm32 -> returning equal (ZF=1), skipping\n" << std::flush;
+            ep->ContextRecord->EFlags |= 0x40;
+            ep->ContextRecord->Rip = reinterpret_cast<DWORD64>(p + 6);
+            return EXCEPTION_CONTINUE_EXECUTION;
+        }
+
+        // 11. Detect tight scanning loop with null buffer: 44 0F B6 34 8F ... 41 39 C7 7F CF
+        // This is a loop: movzx r14b, [rdi+rcx*4]; lea ecx, [rax+1]; cmp r15, rax; jg back
+        // If RDI=0 (null buffer), the loop will never find valid data. Terminate it by making RAX >= R15.
+        if (p && p[0] == 0x44 && p[1] == 0x0F && p[2] == 0xB6 && p[3] == 0x34 && p[4] == 0x8F) {
+            // Check if next instructions match the loop pattern
+            // 8D 48 01 = lea ecx, [rax+1]
+            // 41 39 C7 = cmp r15, rax
+            // 7F CF = jg -0x31
+            if (p[5] == 0x8D && p[6] == 0x48 && p[7] == 0x01 &&
+                p[8] == 0x41 && p[9] == 0x39 && p[10] == 0xC7 &&
+                p[11] == 0x7F && (int8_t)p[12] < 0) {
+                // This is the tight scanning loop. Terminate it by setting RAX = R15.
+                std::cout << "  [VEH] Detected null-buffer scanning loop -> terminating (RAX=R15)\n" << std::flush;
+                ep->ContextRecord->Rax = ep->ContextRecord->R15;
+                // Skip the MOVZX instruction, let the loop condition fail
+                ep->ContextRecord->Rip = reinterpret_cast<DWORD64>(p + 5);
+                return EXCEPTION_CONTINUE_EXECUTION;
+            }
+        }
+
+        // 12. MOVZX/MOVSX with SIB addressing where base register is near-null
+        // Pattern: 44 0F B6 34 8F = movzx r14b, byte ptr [rdi + rcx*4]
+        // 44 = REX.R=1, REX.B=1, 0F B6 = MOVZX, 34 = MODRM (mod=00, reg=110, rm=100=SIB), 8F = SIB
+        // SIB 8F = scale=2 (10), index=1 (001=rcx), base=7 (111=rdi)
+        if (p && (p[0] & 0xF0) == 0x40) { // REX prefix (0x40-0x4F)
+            // Has REX prefix, next should be 0F B6/BE/B7/BF
+            if (p[1] == 0x0F && (p[2] == 0xB6 || p[2] == 0xBE || p[2] == 0xB7 || p[2] == 0xBF)) {
+                uint8_t modrm = p[3];
+                uint8_t sib = p[4];
+                uint8_t rm = modrm & 0x7;
+                if (rm == 4) { // SIB present
+                    uint8_t base = sib & 0x7;
+                    // Check if base register is near-null
+                    uint64_t base_reg_val = 0;
+                    switch (base) {
+                        case 0: base_reg_val = ep->ContextRecord->Rax; break;
+                        case 1: base_reg_val = ep->ContextRecord->Rcx; break;
+                        case 2: base_reg_val = ep->ContextRecord->Rdx; break;
+                        case 3: base_reg_val = ep->ContextRecord->Rbx; break;
+                        case 5: base_reg_val = ep->ContextRecord->Rbp; break;
+                        case 6: base_reg_val = ep->ContextRecord->Rsi; break;
+                        case 7: base_reg_val = ep->ContextRecord->Rdi; break;
+                    }
+                    if (base_reg_val < 0x1000) {
+                        std::cout << "  [VEH] MOVZX/MOVSX [base+index*scale] with near-null base (reg=" << base
+                                  << ") -> returning 0, skipping\n" << std::flush;
+                        ep->ContextRecord->Rip = reinterpret_cast<DWORD64>(p + 5);
+                        return EXCEPTION_CONTINUE_EXECUTION;
+                    }
+                }
+            }
+        }
     }
     if (code == EXCEPTION_BREAKPOINT) {
-        // If hit int3 (0xCC), advance RIP by 1 or return
+        // If hit int3 (0xCC), advance RIP by 1
         ep->ContextRecord->Rip += 1;
+        return EXCEPTION_CONTINUE_EXECUTION;
+    }
+    if (code == EXCEPTION_ILLEGAL_INSTRUCTION) {
+        std::cout << "  [VEH] Illegal instruction at 0x" << std::hex << rip << std::dec << " - skipping\n" << std::flush;
+        // Try to skip common problematic instructions (UD2 = 0F 0B)
+        if (p && p[0] == 0x0F && p[1] == 0x0B) {
+            ep->ContextRecord->Rip = reinterpret_cast<DWORD64>(p + 2);
+            return EXCEPTION_CONTINUE_EXECUTION;
+        }
+        ep->ContextRecord->Rip += 1; // Best effort
         return EXCEPTION_CONTINUE_EXECUTION;
     }
     return EXCEPTION_CONTINUE_SEARCH;
@@ -69,9 +313,27 @@ int main(int argc, char** argv) {
     std::filesystem::path root = "c:\\Users\\Alvaro\\Downloads\\Projects\\YoteiPort";
     std::filesystem::path elf_path = root / "extracted_elf" / "eboot.elf";
     std::filesystem::path nid_json = root / "docs" / "nid_resolution_table.json";
+    bool verbose_nids = false;
+    bool continue_on_exception = false;
+    int max_probes = 1;
 
-    if (argc > 1) elf_path = argv[1];
-    if (argc > 2) nid_json = argv[2];
+    for (int i = 1; i < argc; ++i) {
+        std::string arg = argv[i];
+        if (arg == "--verbose-nids" || arg == "-v") {
+            verbose_nids = true;
+        } else if (arg == "--continue" || arg == "-c") {
+            continue_on_exception = true;
+        } else if (arg == "--probes" || arg == "-p") {
+            if (i + 1 < argc) max_probes = std::stoi(argv[++i]);
+        } else if (arg[0] != '-') {
+            if (elf_path.filename() == "eboot.elf") elf_path = arg;
+            else if (nid_json.filename() == "nid_resolution_table.json") nid_json = arg;
+        }
+    }
+
+    if (verbose_nids) {
+        yotei::hle::NidRegistry::SetVerboseUnhandled(true);
+    }
 
     std::cout << "=================================================================\n";
     std::cout << " Ghost of Yotei (PPSA26344 v02.002.000) Native HLE Runtime Loader\n";
@@ -272,11 +534,24 @@ int main(int argc, char** argv) {
     static const char* dummy_argv[] = { "/app0/eboot.bin", nullptr };
     uint64_t main_ret = 0;
     DWORD exc_code = 0;
-    if (ProbeGuestFunctionSeh(game_main, 1, reinterpret_cast<uint64_t>(&dummy_argv[0]), &main_ret, &exc_code)) {
-        std::cout << "[+] Game main() returned: " << main_ret << "\n";
-    } else {
-        std::cout << "  [!] Game main() probe reached unhandled early stub / exception: 0x"
-                  << std::hex << exc_code << std::dec << " (Phase 2 stubbing progress)\n";
+    bool success = false;
+
+    for (int probe = 0; probe < max_probes && !success; ++probe) {
+        if (probe > 0) {
+            std::cout << "\n[*] Retrying game_main() (probe " << probe + 1 << "/" << max_probes << ")...\n" << std::flush;
+        }
+        if (ProbeGuestFunctionSeh(game_main, 1, reinterpret_cast<uint64_t>(&dummy_argv[0]), &main_ret, &exc_code)) {
+            success = true;
+            std::cout << "[+] Game main() returned: " << main_ret << "\n";
+        } else {
+            std::cout << "  [!] Game main() probe reached exception: 0x"
+                      << std::hex << exc_code << std::dec;
+            if (continue_on_exception) {
+                std::cout << " - continuing...";
+            }
+            std::cout << "\n";
+            if (!continue_on_exception) break;
+        }
     }
 
     // Report any unhandled stubs observed

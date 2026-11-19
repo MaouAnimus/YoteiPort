@@ -37,6 +37,7 @@ public:
 
     static void PrintUnhandledStubSummary();
     static size_t GetUnhandledStubCount();
+    static void SetVerboseUnhandled(bool enabled);
 
 private:
     std::unordered_map<std::string, NidEntry> table_;

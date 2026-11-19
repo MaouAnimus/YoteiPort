@@ -22,3 +22,29 @@ add_executable(yotei_runtime
 )
 
 target_include_directories(yotei_runtime PRIVATE src)
+
+if(MSVC)
+    # Explicitly add Windows SDK and UCRT include paths (vcvars may not set them up in BuildTools)
+    # Windows SDK 10.0.26100.0
+    target_include_directories(yotei_runtime PRIVATE
+        "C:/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/ucrt"
+        "C:/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/um"
+        "C:/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/shared"
+    )
+
+    # MSVC CRT headers
+    target_include_directories(yotei_runtime PRIVATE
+        "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/include"
+    )
+
+    # Windows SDK library paths for linking
+    target_link_directories(yotei_runtime PRIVATE
+        "C:/Program Files (x86)/Windows Kits/10/Lib/10.0.26100.0/um/x64"
+        "C:/Program Files (x86)/Windows Kits/10/Lib/10.0.26100.0/ucrt/x64"
+    )
+
+    # MSVC CRT library path
+    target_link_directories(yotei_runtime PRIVATE
+        "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/lib/x64"
+    )
+endif()
