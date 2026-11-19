@@ -1,4 +1,6 @@
 #include "graphics/pm4_decoder.h"
+#include "graphics/rdna2_shader.h"
+#include "graphics/vk_backend.h"
 #include "hle/ampr_hle.h"
 #include "hle/nid_registry.h"
 #include "kernel/filesystem.h"
@@ -32,20 +34,29 @@ LONG WINAPI GuestVehHandler(EXCEPTION_POINTERS* ep) {
 }
 
 uint64_t InvokeGuestSysV(uint64_t fn_addr, uint64_t rdi_arg, uint64_t rsi_arg) {
-    // Notice our caller_code uses standard push/sub rsp without changing RBP until after!
-    //Even better: allocate a simple function that doesn't modify RSP/RBP across the call so Windows x64 SEH can unwind!
     uint8_t caller_code[] = {
+        0x55,                                     // push rbp
+        0x48, 0x89, 0xE5,                         // mov rbp, rsp
+        0x41, 0x57,                               // push r15
+        0x41, 0x56,                               // push r14
+        0x41, 0x55,                               // push r13
+        0x41, 0x54,                               // push r12
         0x57,                                     // push rdi
         0x56,                                     // push rsi
         0x53,                                     // push rbx
-        0x48, 0x83, 0xEC, 0x20,                   // sub rsp, 32 (16-byte aligned because 3 pushes + ret addr = 32 bytes)
+        0x48, 0x83, 0xEC, 0x08,                   // sub rsp, 8 (16-byte align)
         0x48, 0x89, 0xD7,                         // mov rdi, rdx (rdi_arg)
         0x4C, 0x89, 0xC6,                         // mov rsi, r8  (rsi_arg)
         0xFF, 0xD1,                               // call rcx     (fn_addr)
-        0x48, 0x83, 0xC4, 0x20,                   // add rsp, 32
+        0x48, 0x8D, 0x65, 0xC8,                   // lea rsp, [rbp - 56]
         0x5B,                                     // pop rbx
         0x5E,                                     // pop rsi
         0x5F,                                     // pop rdi
+        0x41, 0x5C,                               // pop r12
+        0x41, 0x5D,                               // pop r13
+        0x41, 0x5E,                               // pop r14
+        0x41, 0x5F,                               // pop r15
+        0x5D,                                     // pop rbp
         0xC3                                      // ret
     };
     void* exec_mem = VirtualAlloc(nullptr, 64, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
@@ -133,7 +144,7 @@ int main(int argc, char** argv) {
     std::cout << "\n--- Executing Guest Early Boot Functions (Native x86-64) ---\n";
 
     // 1. Test sub_cd85f0 (Engine Memory Pool & Virtual Path Table Init: /app0, /cache_ps5, /host/%ART%)
-    static uint8_t dummy_mutex_obj[256] = {0};
+    void* dummy_mutex_obj = VirtualAlloc(nullptr, 65536, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
     uint64_t sub_mutex_init = mapper.GetBaseAddress() + 0xcd85f0ULL;
     std::cout << "[*] Calling sub_cd85f0 (Engine Memory & Virtual Path Table Init) @ 0x"
               << std::hex << sub_mutex_init << std::dec << "...\n" << std::flush;
@@ -181,6 +192,39 @@ int main(int argc, char** argv) {
         for (const auto& p : pkts) {
             std::cout << "    [" << std::setw(18) << std::left << p.name << "] ("
                       << p.dword_count << " dwords) " << p.details << "\n";
+        }
+
+        // 3. Scan real RDNA2 shaders inside all_shaders.xpps and emit/verify SPIR-V 1.6 on Host Vulkan 1.3 GPU
+        std::cout << "\n--- Testing RDNA2 ISA Disassembler & Host Vulkan 1.3 SPIR-V Pipeline ---\n";
+        auto shaders = yotei::graphics::Rdna2ShaderAnalyzer::ScanShaderPack(
+            app0_dir / "cache_ps5" / "all_shaders.xpps", 4);
+        std::cout << "[+] Decoded " << shaders.size()
+                  << " RDNA2 Shader Kernels from 'all_shaders.xpps':\n";
+        for (size_t s = 0; s < shaders.size(); ++s) {
+            const auto& sh = shaders[s];
+            std::cout << "    Shader[" << s << "] hash=0x" << std::hex << sh.code_hash << std::dec
+                      << " | insns=" << sh.total_instructions
+                      << " (SALU=" << sh.salu_count << " VALU=" << sh.valu_count
+                      << " SMEM=" << sh.smem_count << " VMEM/MIMG=" << sh.vmem_mimg_count << ")\n";
+            for (const auto& ins : sh.sample_disassembly) {
+                std::cout << "      +" << std::setw(3) << ins.offset_bytes << ": "
+                          << std::setw(22) << std::left << ins.mnemonic << " " << ins.operands << "\n";
+            }
+        }
+        std::cout << std::flush;
+
+        auto& vk = yotei::graphics::VulkanHostBackend::Instance();
+        if (vk.Initialize()) {
+            const auto& gpu = vk.GetGpuInfo();
+            auto spirv = yotei::graphics::Rdna2ShaderAnalyzer::EmitMinimalSpirvCompute(64, 1, 1);
+            bool sm_ok = vk.VerifySpirvShaderModule(spirv);
+            std::cout << "[+] Initialized Host Vulkan " << gpu.api_version_major << "."
+                      << gpu.api_version_minor << "." << gpu.api_version_patch << " Device:\n"
+                      << "    GPU Name      : " << gpu.device_name << "\n"
+                      << "    Dedicated VRAM: " << (gpu.vram_bytes / (1024 * 1024)) << " MiB\n"
+                      << "    SPIR-V Module : " << (sm_ok ? "VkShaderModule compiled & verified on GPU!" : "failed")
+                      << " (" << spirv.size() * 4 << " bytes)\n";
+            vk.Shutdown();
         }
     }
     std::cout << std::flush;

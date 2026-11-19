@@ -324,32 +324,43 @@ size_t NidRegistry::BindImportsToGuestGot(
         g_bound_slots.push_back({imp.library, imp.nid, res_name, imp.got_vaddr});
 
         // Emit 96-byte SysV AMD64 -> Windows x64 bridge stub forwarding all 6 SysV args (RDI, RSI, RDX, RCX, R8, R9)
+        // and preserving RBX, R12, R13, R14, R15 (SysV callee-saved) across HleDispatchTrampoline
         uint8_t* stub = slab + slot_idx * 96;
         uint8_t code[] = {
             0x55,                                     // push rbp
             0x48, 0x89, 0xE5,                         // mov rbp, rsp
+            0x41, 0x57,                               // push r15
+            0x41, 0x56,                               // push r14
+            0x41, 0x55,                               // push r13
+            0x41, 0x54,                               // push r12
             0x57,                                     // push rdi
             0x56,                                     // push rsi
+            0x53,                                     // push rbx
             0x48, 0x83, 0xE4, 0xF0,                   // and rsp, -16
-            0x48, 0x83, 0xEC, 0x40,                   // sub rsp, 64 (32 shadow + 3 stack args + align)
-            0x48, 0x89, 0x4C, 0x24, 0x20,             // mov [rsp+0x20], rcx (arg4 = guest_rcx)
-            0x4C, 0x89, 0x44, 0x24, 0x28,             // mov [rsp+0x28], r8  (arg5 = guest_r8)
-            0x4C, 0x89, 0x4C, 0x24, 0x30,             // mov [rsp+0x30], r9  (arg6 = guest_r9)
-            0x49, 0x89, 0xD1,                         // mov r9, rdx         (arg3 = guest_rdx)
-            0x49, 0x89, 0xF0,                         // mov r8, rsi         (arg2 = guest_rsi)
-            0x48, 0x89, 0xFA,                         // mov rdx, rdi        (arg1 = guest_rdi)
-            0xB9, 0x00, 0x00, 0x00, 0x00,             // mov ecx, slot_idx   (offset 39)
-            0x48, 0xB8, 0, 0, 0, 0, 0, 0, 0, 0,       // movabs rax, &HleDispatchTrampoline (offset 44)
+            0x48, 0x83, 0xEC, 0x40,                   // sub rsp, 64
+            0x48, 0x89, 0x4C, 0x24, 0x20,             // mov [rsp+0x20], rcx
+            0x4C, 0x89, 0x44, 0x24, 0x28,             // mov [rsp+0x28], r8
+            0x4C, 0x89, 0x4C, 0x24, 0x30,             // mov [rsp+0x30], r9
+            0x49, 0x89, 0xD1,                         // mov r9, rdx
+            0x49, 0x89, 0xF0,                         // mov r8, rsi
+            0x48, 0x89, 0xFA,                         // mov rdx, rdi
+            0xB9, 0x00, 0x00, 0x00, 0x00,             // mov ecx, slot_idx   (offset 48)
+            0x48, 0xB8, 0, 0, 0, 0, 0, 0, 0, 0,       // movabs rax, &HleDispatchTrampoline (offset 54)
             0xFF, 0xD0,                               // call rax
-            0x48, 0x8D, 0x65, 0xF0,                   // lea rsp, [rbp - 16]
+            0x48, 0x8D, 0x65, 0xC8,                   // lea rsp, [rbp - 56] (7 pushes * 8 = 56)
+            0x5B,                                     // pop rbx
             0x5E,                                     // pop rsi
             0x5F,                                     // pop rdi
+            0x41, 0x5C,                               // pop r12
+            0x41, 0x5D,                               // pop r13
+            0x41, 0x5E,                               // pop r14
+            0x41, 0x5F,                               // pop r15
             0x5D,                                     // pop rbp
             0xC3                                      // ret
         };
-        std::memcpy(code + 39, &slot_idx, sizeof(uint32_t));
+        std::memcpy(code + 48, &slot_idx, sizeof(uint32_t));
         uint64_t fn_addr = reinterpret_cast<uint64_t>(&HleDispatchTrampoline);
-        std::memcpy(code + 45, &fn_addr, sizeof(uint64_t));
+        std::memcpy(code + 54, &fn_addr, sizeof(uint64_t));
         std::memcpy(stub, code, sizeof(code));
 
         auto* got_slot = reinterpret_cast<uint64_t*>(guest_base + imp.got_vaddr);
