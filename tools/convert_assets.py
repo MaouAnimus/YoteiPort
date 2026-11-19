@@ -41,11 +41,12 @@ def load_oodle(dll_path: Path):
 
 
 def oodle_decompress(fn, comp_bytes: bytes, raw_len: int) -> bytes:
+    comp_buf = ctypes.create_string_buffer(comp_bytes)
     out_buf = ctypes.create_string_buffer(raw_len)
     res = fn(
-        comp_bytes,
+        ctypes.byref(comp_buf),
         len(comp_bytes),
-        out_buf,
+        ctypes.byref(out_buf),
         raw_len,
         1,
         0,
@@ -198,14 +199,14 @@ def convert_xmesh_to_obj(xmesh_path: Path, out_dir: Path, oodle_fn=None) -> dict
                     | stream_data[hdr_start + 4]
                 )
                 raw_len = q_comp_len + 1
-                comp_slice = stream_data[hdr_start : hdr_start + 5 + q_comp_len]
+                comp_slice = stream_data[hdr_start : hdr_start + 6 + q_comp_len]
                 try:
                     raw_bvh = oodle_decompress(oodle_fn, comp_slice, raw_len)
                     bvh_out = out_dir / f"{xmesh_path.stem}_bvh{bvh_extracted}.bvhc"
                     bvh_out.write_bytes(raw_bvh)
                     bvh_extracted += 1
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"[!] BVH decompress error at {hex(hdr_start)}: {e}")
             bvh_pos = idx_bvh + 8
 
     obj_path = out_dir / f"{xmesh_path.stem}.obj"
