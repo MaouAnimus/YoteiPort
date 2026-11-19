@@ -183,6 +183,31 @@ def convert_xmesh_to_obj(xmesh_path: Path, out_dir: Path, oodle_fn=None) -> dict
                 except Exception:
                     pass
 
+    # Also scan stream_data for all embedded Oodle Kraken PSR_BVHC ray-tracing BVH chunks
+    if oodle_fn:
+        bvh_pos = 0
+        while True:
+            idx_bvh = stream_data.find(b"PSR_BVHC", bvh_pos)
+            if idx_bvh == -1 or idx_bvh < 8:
+                break
+            hdr_start = idx_bvh - 8
+            if stream_data[hdr_start] == 0x8C:
+                q_comp_len = (
+                    (stream_data[hdr_start + 2] << 16)
+                    | (stream_data[hdr_start + 3] << 8)
+                    | stream_data[hdr_start + 4]
+                )
+                raw_len = q_comp_len + 1
+                comp_slice = stream_data[hdr_start : hdr_start + 5 + q_comp_len]
+                try:
+                    raw_bvh = oodle_decompress(oodle_fn, comp_slice, raw_len)
+                    bvh_out = out_dir / f"{xmesh_path.stem}_bvh{bvh_extracted}.bvhc"
+                    bvh_out.write_bytes(raw_bvh)
+                    bvh_extracted += 1
+                except Exception:
+                    pass
+            bvh_pos = idx_bvh + 8
+
     obj_path = out_dir / f"{xmesh_path.stem}.obj"
     obj_path.write_text("\n".join(obj_lines), encoding="utf-8")
     return {
