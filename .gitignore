@@ -1,0 +1,63 @@
+# =============================================================================
+# YoteiPort - Clean Room Ignore Rules
+# NEVER commit copyrighted game dumps, decrypted ELFs, assets, or 3rd-party SDKs
+# =============================================================================
+
+# Game dump & archives
+/PPSA26344/
+/PPSA26344*.7z
+/PPSA26344*.zip
+/PPSA26344*.zar
+*.pkg
+*.fpkg
+
+# Extracted game binaries & assets (generated locally from user's dump)
+/extracted_elf/
+/extracted_assets/
+*.elf
+*.sprx
+*.prx
+*.bin
+*.xpps
+*.xmesh
+*.sps
+*.texmeshman
+*.xvag
+*.at9
+*.larc
+*.bsf
+*.psp
+*.index
+*.dds
+*.obj
+*.bvhc
+
+# External binary tools / packages in workspace root
+/PS5PKGTool*/
+/KytyPS5-Yotei*/
+/*.zip
+/*.rar
+/*.7z
+oo2core*.dll
+
+# CMake & C++ Build outputs
+/build/
+/out/
+/dist/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+compile_commands.json
+*.obj
+*.lib
+*.exp
+*.pdb
+*.ilk
+*.exe
+
+# Python / IDE caches
+__pycache__/
+*.py[cod]
+.vscode/
+.vs/
+.idea/

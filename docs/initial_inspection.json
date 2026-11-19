@@ -1,0 +1,380 @@
+{
+  "elf": {
+    "entry_point": "0x70",
+    "program_headers": [
+      {
+        "index": 0,
+        "type": "0x1",
+        "type_name": "PT_LOAD",
+        "flags": "--X",
+        "offset": "0x4000",
+        "vaddr": "0x0",
+        "filesz": "0x17e8d0c",
+        "memsz": "0x17e8d0c"
+      },
+      {
+        "index": 1,
+        "type": "0x1",
+        "type_name": "PT_LOAD",
+        "flags": "R--",
+        "offset": "0x17f0000",
+        "vaddr": "0x17ec000",
+        "filesz": "0x4a7270",
+        "memsz": "0x4a7270"
+      },
+      {
+        "index": 2,
+        "type": "0x6474e550",
+        "type_name": "PT_GNU_EH_FRAME",
+        "flags": "R--",
+        "offset": "0x17f0000",
+        "vaddr": "0x17ec000",
+        "filesz": "0x68a1c",
+        "memsz": "0x68a1c"
+      },
+      {
+        "index": 3,
+        "type": "0x1",
+        "type_name": "PT_LOAD",
+        "flags": "RW-",
+        "offset": "0x1c98000",
+        "vaddr": "0x1c94000",
+        "filesz": "0x1e8038",
+        "memsz": "0x1ec000"
+      },
+      {
+        "index": 4,
+        "type": "0x6474e552",
+        "type_name": "PT_GNU_RELRO",
+        "flags": "R--",
+        "offset": "0x1c98000",
+        "vaddr": "0x1c94000",
+        "filesz": "0x1e8038",
+        "memsz": "0x1ec000"
+      },
+      {
+        "index": 5,
+        "type": "0x7",
+        "type_name": "PT_TLS",
+        "flags": "R--",
+        "offset": "0x1c98000",
+        "vaddr": "0x1c94000",
+        "filesz": "0x5c",
+        "memsz": "0x188"
+      },
+      {
+        "index": 6,
+        "type": "0x61000001",
+        "type_name": "PT_SCE_PROCPARAM",
+        "flags": "R--",
+        "offset": "0x1e7ffd8",
+        "vaddr": "0x1e7bfd8",
+        "filesz": "0x60",
+        "memsz": "0x60"
+      },
+      {
+        "index": 7,
+        "type": "0x1",
+        "type_name": "PT_LOAD",
+        "flags": "RW-",
+        "offset": "0x1e84000",
+        "vaddr": "0x1e80000",
+        "filesz": "0x2be0c0",
+        "memsz": "0x52fd605"
+      },
+      {
+        "index": 8,
+        "type": "0x1",
+        "type_name": "PT_LOAD",
+        "flags": "---",
+        "offset": "0x2145610",
+        "vaddr": "0x717d610",
+        "filesz": "0x4fc1a0",
+        "memsz": "0x4fc1a0"
+      },
+      {
+        "index": 9,
+        "type": "0x4",
+        "type_name": "PT_NOTE",
+        "flags": "---",
+        "offset": "0x2640878",
+        "vaddr": "0x7678878",
+        "filesz": "0x24",
+        "memsz": "0x24"
+      },
+      {
+        "index": 10,
+        "type": "0x2",
+        "type_name": "PT_DYNAMIC",
+        "flags": "RW-",
+        "offset": "0x26408a0",
+        "vaddr": "0x76788a0",
+        "filesz": "0xf10",
+        "memsz": "0xf10"
+      },
+      {
+        "index": 11,
+        "type": "0x6fffff00",
+        "type_name": "PT_SCE_LIBVERSION",
+        "flags": "---",
+        "offset": "0x26417b0",
+        "vaddr": "0x0",
+        "filesz": "0x38",
+        "memsz": "0x0"
+      },
+      {
+        "index": 12,
+        "type": "0x6fffff01",
+        "type_name": "PT_SCE_COMMENT",
+        "flags": "---",
+        "offset": "0x26417e8",
+        "vaddr": "0x0",
+        "filesz": "0x14cb",
+        "memsz": "0x14cb"
+      },
+      {
+        "index": 13,
+        "type": "0x4",
+        "type_name": "PT_NOTE",
+        "flags": "---",
+        "offset": "0x2642cb4",
+        "vaddr": "0x0",
+        "filesz": "0x48",
+        "memsz": "0x0"
+      }
+    ],
+    "needed_prx": [
+      "libSceAcm.prx",
+      "libSceAgc.prx",
+      "libSceAgcDriver.prx",
+      "libSceAjm.native.prx",
+      "libSceAppContent.prx",
+      "libSceAudioIn.prx",
+      "libSceAudioOut.prx",
+      "libSceCommonDialog.prx",
+      "libkernel.prx",
+      "libSceErrorDialog.prx",
+      "libSceGameLiveStreaming.prx",
+      "libSceGameUpdate.prx",
+      "libSceHttp.prx",
+      "libSceHttp2.prx",
+      "libSceIme.prx",
+      "libSceImeDialog.prx",
+      "libSceMouse.prx",
+      "libSceMsgDialog.native.prx",
+      "libSceNet.prx",
+      "libSceNetCtl.prx",
+      "libSceNpAuth.prx",
+      "libSceNpCommerce.prx",
+      "libSceNpEntitlementAccess.prx",
+      "libSceNpGameIntent.prx",
+      "libSceNpManager.prx",
+      "libSceNpSessionSignaling.prx",
+      "libSceNpTrophy2.prx",
+      "libSceNpWebApi2.prx",
+      "libScePad.prx",
+      "libScePlayGo.prx",
+      "libScePlayGoDialog.prx",
+      "libScePsml_debug.prx",
+      "libSceRandom.prx",
+      "libSceRazorCpu.prx",
+      "libSceRtc.prx",
+      "libSceSaveData.native.prx",
+      "libSceSaveDataDialog.native.prx",
+      "libSceShare.prx",
+      "libSceSsl.prx",
+      "libSceSysmodule.prx",
+      "libSceSystemService.prx",
+      "libSceUsbd.prx",
+      "libSceNpUniversalDataSystem.prx",
+      "libSceUserService.prx",
+      "libSceVideodec2.prx",
+      "libSceVideoOut.prx",
+      "libSceVoiceQoS.prx",
+      "libSceWebBrowserDialog.prx",
+      "libc.prx",
+      "libSceAmpr.prx"
+    ],
+    "imported_libraries_summary": {
+      "libc (libc)": 138,
+      "libkernel (libkernel)": 110,
+      "libSceAgc (libSceAgc)": 69,
+      "libSceAmpr (libSceAmpr)": 60,
+      "libSceNet (libSceNet)": 25,
+      "libSceNpWebApi2 (libSceNpWebApi2)": 22,
+      "libSceAudioOut2 (libSceAudioOut)": 18,
+      "libSceAjm (libSceAjm)": 17,
+      "libSceHttp (libSceHttp)": 16,
+      "libSceVideoOut (libSceVideoOut)": 15,
+      "libSceNpManager (libSceNpManager)": 15,
+      "libSceSaveData_native (libSceSaveData_native)": 14,
+      "libSceNpUniversalDataSystem (libSceNpUniversalDataSystem)": 12,
+      "libSceVoiceQoS (libSceVoiceQoS)": 12,
+      "libSceSystemService (libSceSystemService)": 11,
+      "libScePad (libScePad)": 11,
+      "libSceNpSessionSignaling (libSceNpSessionSignaling)": 10,
+      "libSceVideodec2 (libSceVideodec2)": 9,
+      "libScePlayGo (libScePlayGo)": 9,
+      "libScePsml_mfsr2 (libScePsml)": 9,
+      "libSceRtc (libSceRtc)": 8,
+      "libSceNpCommerce (libSceNpCommerce)": 8,
+      "libSceAgcDriver (libSceAgcDriver)": 8,
+      "libSceNpTrophy2 (libSceNpTrophy2)": 7,
+      "libSceCoredump (libkernel)": 6,
+      "libScePlayGoDialog (libScePlayGoDialog)": 6,
+      "libSceMsgDialog.native (libSceMsgDialog)": 6,
+      "libSceNetCtl (libSceNetCtl)": 5,
+      "libSceUserService (libSceUserService)": 5,
+      "libSceSaveDataDialog.native (libSceSaveDataDialog)": 5,
+      "libSceAcm (libSceAcm)": 5,
+      "libSceGameUpdate (libSceGameUpdate)": 4,
+      "libSceErrorDialog (libSceErrorDialog)": 4,
+      "libSceAudioIn (libSceAudioIn)": 4,
+      "libSceWebBrowserDialog (libSceWebBrowserDialog)": 4,
+      "libSceNpGameIntent (libSceNpGameIntent)": 3,
+      "libSceNpAuth (libSceNpAuth)": 3,
+      "libSceSysmodule (libSceSysmodule)": 2,
+      "libSceAppContent (libSceAppContentUtil)": 2,
+      "libSceNpEntitlementAccess (libSceNpEntitlementAccess)": 2,
+      "libSceShare (libSceShare)": 2,
+      "libSceVideoOutVrrStatus (libSceVideoOut)": 2,
+      "libSceSsl (libSceSsl)": 2,
+      "libSceRazorCpu (libSceRazorCpu)": 2,
+      "libScePosix (libkernel)": 2,
+      "libSceOpenPsId (libkernel)": 1,
+      "libSceGameLiveStreaming (libSceGameLiveStreaming)": 1,
+      "libSceUserServicePlatformPrivacyWs1 (libSceUserService)": 1,
+      "libSceHttp2 (libSceHttp2)": 1,
+      "libSceCommonDialog (libSceCommonDialog)": 1,
+      "libSceRandom (libSceRandom)": 1
+    },
+    "total_imported_nids": 715
+  },
+  "ampr_index": {
+    "magic": "AMPRIDX3",
+    "version": 3,
+    "total_files": 105803,
+    "total_indexed_bytes": 218938811442,
+    "by_extension_count": {
+      ".sps": 46148,
+      ".xvag": 25446,
+      ".xmesh": 14866,
+      ".xpps": 9989,
+      ".larc": 5593,
+      ".at9": 3321,
+      ".bsf": 335,
+      ".mid": 42,
+      "<no_ext>": 26,
+      ".dat": 7,
+      ".sprx": 6,
+      ".dds": 4,
+      ".png": 4,
+      ".texmeshman": 3,
+      ".json": 2,
+      ".ucp": 2,
+      ".packman": 1,
+      ".log": 1,
+      ".pgm": 1,
+      ".prx": 1
+    },
+    "by_extension_bytes": {
+      ".sps": 146105438570,
+      ".xvag": 2431700096,
+      ".xmesh": 7524072527,
+      ".xpps": 26619732024,
+      ".larc": 21200866793,
+      ".at9": 6891435600,
+      ".bsf": 7751635860,
+      ".mid": 10402,
+      "<no_ext>": 44273755,
+      ".dat": 6028,
+      ".sprx": 2149099,
+      ".dds": 25145936,
+      ".png": 17148292,
+      ".texmeshman": 283687515,
+      ".json": 3493,
+      ".ucp": 33308112,
+      ".packman": 106614,
+      ".log": 3348,
+      ".pgm": 5757816,
+      ".prx": 1882570
+    },
+    "sample_entries": [
+      {
+        "hash": "0x6abef068",
+        "size": 426578,
+        "entry": "all_shaders.texmeshman -> /app0/cache_ps5"
+      },
+      {
+        "hash": "0x6ac3f39e",
+        "size": 4417984,
+        "entry": "all_shaders.xpps -> /app0/cache_ps5"
+      },
+      {
+        "hash": "0x6ac3f39e",
+        "size": 632588,
+        "entry": "atsu_capture_drag#tandem#0.xpps -> /app0/cache_ps5"
+      },
+      {
+        "hash": "0x6ac3f39e",
+        "size": 4177,
+        "entry": "bitmaps/#000000.0.sps -> /app0/cache_ps5"
+      },
+      {
+        "hash": "0x6ac3d538",
+        "size": 4214,
+        "entry": "bitmaps/#000000.459d81fb478f2e205e0ad8d8545d683c.sps -> /app0/cache_ps5"
+      },
+      {
+        "hash": "0x6ac3d538",
+        "size": 4186,
+        "entry": "bitmaps/#0000000.0.sps -> /app0/cache_ps5"
+      },
+      {
+        "hash": "0x6ac3d538",
+        "size": 4186,
+        "entry": "bitmaps/#00000000.0.sps -> /app0/cache_ps5"
+      },
+      {
+        "hash": "0x6ac3d538",
+        "size": 4186,
+        "entry": "bitmaps/#00000080.0.sps -> /app0/cache_ps5"
+      },
+      {
+        "hash": "0x6ac3d538",
+        "size": 4186,
+        "entry": "bitmaps/#00000088.0.sps -> /app0/cache_ps5"
+      },
+      {
+        "hash": "0x6ac3d538",
+        "size": 4186,
+        "entry": "bitmaps/#000000ff.0.sps -> /app0/cache_ps5"
+      },
+      {
+        "hash": "0x6ac3d538",
+        "size": 4186,
+        "entry": "bitmaps/#00003380.0.sps -> /app0/cache_ps5"
+      },
+      {
+        "hash": "0x6ac3d538",
+        "size": 4186,
+        "entry": "bitmaps/#000033ff.0.sps -> /app0/cache_ps5"
+      },
+      {
+        "hash": "0x6ac3d538",
+        "size": 4186,
+        "entry": "bitmaps/#00006680.0.sps -> /app0/cache_ps5"
+      },
+      {
+        "hash": "0x6ac3d538",
+        "size": 4186,
+        "entry": "bitmaps/#000066ff.0.sps -> /app0/cache_ps5"
+      },
+      {
+        "hash": "0x6ac3d538",
+        "size": 4186,
+        "entry": "bitmaps/#0000ff80.0.sps -> /app0/cache_ps5"
+      }
+    ]
+  }
+}
