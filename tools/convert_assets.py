@@ -164,7 +164,7 @@ def convert_xmesh_to_obj(xmesh_path: Path, out_dir: Path, oodle_fn=None) -> dict
         global_v_offset += n_verts
         exported_submeshes += 1
 
-        # Check for Oodle Kraken compressed PSR_BVHC ray-tracing BVH chunk
+        # Check for Oodle Kraken compressed PSR_BVHC ray-tracing BVH chunk in norm_end..bvh_start
         if (
             oodle_fn
             and sm["norm_end"] != 0xFFFFFFFF
@@ -174,7 +174,9 @@ def convert_xmesh_to_obj(xmesh_path: Path, out_dir: Path, oodle_fn=None) -> dict
             bvh_chunk = stream_data[sm["norm_end"] : sm["bvh_start"]]
             if len(bvh_chunk) > 8 and bvh_chunk[0] == 0x8C:
                 try:
-                    raw_bvh = oodle_decompress(oodle_fn, bvh_chunk, len(bvh_chunk) * 8)
+                    # 24-bit big-endian quantum length at bytes 2..5 (+ 1)
+                    q_len = ((bvh_chunk[2] << 16) | (bvh_chunk[3] << 8) | bvh_chunk[4]) + 1
+                    raw_bvh = oodle_decompress(oodle_fn, bvh_chunk, q_len)
                     bvh_out = out_dir / f"{xmesh_path.stem}_submesh{sm['index']}.bvhc"
                     bvh_out.write_bytes(raw_bvh)
                     bvh_extracted += 1
