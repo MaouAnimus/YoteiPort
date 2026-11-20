@@ -370,8 +370,29 @@ static bool ProbeGuestFunctionSeh(uint64_t fn, uint64_t arg0, uint64_t arg1, uin
 
 } // namespace
 
+// Locate the project root: $YOTEI_ROOT, else walk up from the exe / cwd until
+// docs/nid_resolution_table.json is found (works from build/ on any machine).
+static std::filesystem::path FindProjectRoot() {
+    if (const char* env = std::getenv("YOTEI_ROOT")) {
+        if (*env) return std::filesystem::path(env);
+    }
+    wchar_t exe_buf[MAX_PATH] = {};
+    GetModuleFileNameW(nullptr, exe_buf, MAX_PATH);
+    std::filesystem::path starts[2] = { std::filesystem::path(exe_buf).parent_path(),
+                                        std::filesystem::current_path() };
+    for (auto dir : starts) {
+        for (int depth = 0; depth < 6 && !dir.empty(); ++depth) {
+            if (std::filesystem::exists(dir / "docs" / "nid_resolution_table.json")) return dir;
+            auto parent = dir.parent_path();
+            if (parent == dir) break;
+            dir = parent;
+        }
+    }
+    return std::filesystem::current_path();
+}
+
 int main(int argc, char** argv) {
-    std::filesystem::path root = "c:\\Users\\Alvaro\\Downloads\\Projects\\YoteiPort";
+    std::filesystem::path root = FindProjectRoot();
     std::filesystem::path elf_path = root / "extracted_elf" / "eboot.elf";
     std::filesystem::path nid_json = root / "docs" / "nid_resolution_table.json";
     bool verbose_nids = false;
