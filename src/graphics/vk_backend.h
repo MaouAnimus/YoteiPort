@@ -28,6 +28,13 @@ public:
     bool IsInitialized() const { return initialized_; }
     const VulkanGpuInfo& GetGpuInfo() const { return gpu_info_; }
 
+    void* GetInstance() const { return vk_instance_; }
+    void* GetPhysicalDevice() const { return vk_phys_device_; }
+    void* GetDevice() const { return vk_device_; }
+    void* GetQueue() const { return vk_queue_; }
+    uint32_t GetQueueFamily() const { return queue_family_index_; }
+    void* GetProcAddress(const char* name);
+
 private:
     VulkanHostBackend() = default;
 
@@ -36,6 +43,8 @@ private:
     void* vk_instance_ = nullptr;
     void* vk_phys_device_ = nullptr;
     void* vk_device_ = nullptr;
+    void* vk_queue_ = nullptr;
+    uint32_t queue_family_index_ = 0;
     VulkanGpuInfo gpu_info_{};
 };
 

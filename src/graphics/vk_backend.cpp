@@ -152,7 +152,7 @@ bool VulkanHostBackend::Initialize() {
     vulkan_dll_ = dll;
 
     auto get_proc = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
-        GetProcAddress(dll, "vkGetInstanceProcAddr"));
+        ::GetProcAddress(dll, "vkGetInstanceProcAddr"));
     if (!get_proc) return false;
 
     auto create_inst = reinterpret_cast<PFN_vkCreateInstance>(
@@ -167,13 +167,25 @@ bool VulkanHostBackend::Initialize() {
     app_info.engineVersion = MakeVkApiVersion(0, 0, 1, 0);
     app_info.apiVersion = MakeVkApiVersion(0, 1, 3, 0);
 
+    const char* const inst_extensions[] = {
+        "VK_KHR_surface",
+        "VK_KHR_win32_surface",
+    };
+
     VkInstanceCreateInfo inst_ci{};
     inst_ci.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     inst_ci.pApplicationInfo = &app_info;
+    inst_ci.enabledExtensionCount = 2;
+    inst_ci.ppEnabledExtensionNames = inst_extensions;
 
     VkInstance inst = nullptr;
     if (create_inst(&inst_ci, nullptr, &inst) != VK_SUCCESS || !inst) {
-        return false;
+        // Fallback without extensions if surface extension is missing
+        inst_ci.enabledExtensionCount = 0;
+        inst_ci.ppEnabledExtensionNames = nullptr;
+        if (create_inst(&inst_ci, nullptr, &inst) != VK_SUCCESS || !inst) {
+            return false;
+        }
     }
     vk_instance_ = inst;
 
@@ -234,15 +246,34 @@ bool VulkanHostBackend::Initialize() {
     qci.queueCount = 1;
     qci.pQueuePriorities = &queue_prio;
 
+    const char* const dev_extensions[] = {
+        "VK_KHR_swapchain",
+    };
+
     VkDeviceCreateInfo dci{};
     dci.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     dci.queueCreateInfoCount = 1;
     dci.pQueueCreateInfos = &qci;
+    dci.enabledExtensionCount = 1;
+    dci.ppEnabledExtensionNames = dev_extensions;
 
     VkDevice dev = nullptr;
-    if (create_dev(chosen, &dci, nullptr, &dev) == VK_SUCCESS && dev) {
+    if (create_dev(chosen, &dci, nullptr, &dev) != VK_SUCCESS || !dev) {
+        // Fallback without extension
+        dci.enabledExtensionCount = 0;
+        dci.ppEnabledExtensionNames = nullptr;
+        create_dev(chosen, &dci, nullptr, &dev);
+    }
+
+    if (dev) {
         vk_device_ = dev;
         gpu_info_.device_created = true;
+
+        using PFN_vkGetDeviceQueue = void (VKAPI_PTR*)(VkDevice, uint32_t, uint32_t, void**);
+        auto get_queue = reinterpret_cast<PFN_vkGetDeviceQueue>(get_proc(inst, "vkGetDeviceQueue"));
+        if (get_queue) {
+            get_queue(dev, 0, 0, &vk_queue_);
+        }
     }
 
     initialized_ = true;
@@ -252,11 +283,23 @@ bool VulkanHostBackend::Initialize() {
 #endif
 }
 
+void* VulkanHostBackend::GetProcAddress(const char* name) {
+#ifdef _WIN32
+    if (!vulkan_dll_) return nullptr;
+    auto get_proc = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
+        ::GetProcAddress(static_cast<HMODULE>(vulkan_dll_), "vkGetInstanceProcAddr"));
+    if (!get_proc) return nullptr;
+    return get_proc(vk_instance_, name);
+#else
+    return nullptr;
+#endif
+}
+
 bool VulkanHostBackend::VerifySpirvShaderModule(const std::vector<uint32_t>& spirv_words) {
 #ifdef _WIN32
     if (!initialized_ || !vk_device_ || !vulkan_dll_ || spirv_words.empty()) return false;
     auto get_proc = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
-        GetProcAddress(static_cast<HMODULE>(vulkan_dll_), "vkGetInstanceProcAddr"));
+        ::GetProcAddress(static_cast<HMODULE>(vulkan_dll_), "vkGetInstanceProcAddr"));
     if (!get_proc) return false;
 
     auto create_sm = reinterpret_cast<PFN_vkCreateShaderModule>(
@@ -284,7 +327,7 @@ void VulkanHostBackend::Shutdown() {
 #ifdef _WIN32
     if (!initialized_ || !vulkan_dll_) return;
     auto get_proc = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
-        GetProcAddress(static_cast<HMODULE>(vulkan_dll_), "vkGetInstanceProcAddr"));
+        ::GetProcAddress(static_cast<HMODULE>(vulkan_dll_), "vkGetInstanceProcAddr"));
     if (get_proc) {
         if (vk_device_) {
             auto destroy_dev = reinterpret_cast<PFN_vkDestroyDevice>(

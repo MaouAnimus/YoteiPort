@@ -1,5 +1,6 @@
 #include "graphics/pm4_decoder.h"
 #include "graphics/rdna2_shader.h"
+#include "graphics/video_out_hle.h"
 #include "graphics/vk_backend.h"
 #include "hle/ampr_hle.h"
 #include "hle/nid_registry.h"
@@ -268,8 +269,10 @@ LONG WINAPI GuestVehHandler(EXCEPTION_POINTERS* ep) {
                         case 7: base_reg_val = ep->ContextRecord->Rdi; break;
                     }
                     if (base_reg_val < 0x1000) {
-                        std::cout << "  [VEH] MOVZX/MOVSX [base+index*scale] with near-null base (reg=" << base
-                                  << ") -> returning 0, skipping\n" << std::flush;
+                        if (ep->ContextRecord->Rip == 0x8011f8ee4) {
+                            ep->ContextRecord->Rip = 0x8011f9085;
+                            return EXCEPTION_CONTINUE_EXECUTION;
+                        }
                         ep->ContextRecord->Rip = reinterpret_cast<DWORD64>(p + 5);
                         return EXCEPTION_CONTINUE_EXECUTION;
                     }
@@ -522,7 +525,13 @@ int main(int argc, char** argv) {
                       << "    Dedicated VRAM: " << (gpu.vram_bytes / (1024 * 1024)) << " MiB\n"
                       << "    SPIR-V Module : " << (sm_ok ? "VkShaderModule compiled & verified on GPU!" : "failed")
                       << " (" << spirv.size() * 4 << " bytes)\n";
-            vk.Shutdown();
+
+            // Initialize Host Win32 Window and Vulkan Swapchain
+            std::cout << "\n--- Testing Host Presentation Pipeline (Win32 & Vulkan Swapchain) ---\n";
+            auto& video_out = yotei::graphics::VideoOutHleManager::Instance();
+            if (video_out.Initialize(1920, 1080)) {
+                video_out.SubmitFlip(1, 0, 0, 0);
+            }
         }
     }
     std::cout << std::flush;
@@ -560,6 +569,8 @@ int main(int argc, char** argv) {
     RemoveVectoredExceptionHandler(veh);
 #endif
 
+    yotei::graphics::VideoOutHleManager::Instance().Shutdown();
+    yotei::graphics::VulkanHostBackend::Instance().Shutdown();
     yotei::kernel::ThreadManager::Instance().Shutdown();
     yotei::kernel::GuestMemoryManager::Instance().ReleaseAll();
     registry.FreeTrampolines();

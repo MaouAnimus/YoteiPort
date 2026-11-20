@@ -1,5 +1,6 @@
 #include "hle/nid_registry.h"
 #include "graphics/pm4_decoder.h"
+#include "graphics/video_out_hle.h"
 #include "hle/ampr_hle.h"
 #include "kernel/filesystem.h"
 #include "kernel/memory.h"
@@ -80,6 +81,13 @@ extern "C" uint64_t __fastcall HleDispatchTrampoline(
 
     // 2. Delegate AGC / AgcDriver / VideoOut graphics calls
     if (graphics::AgcPm4Backend::Instance().DispatchNid(
+            meta.library, meta.nid, meta.resolved_name,
+            guest_rdi, guest_rsi, guest_rdx, guest_rcx, guest_r8, guest_r9, &sub_ret)) {
+        return sub_ret;
+    }
+
+    // 2.5. Delegate libSceVideoOut / Swapchain presentation calls
+    if (graphics::VideoOutHleManager::Instance().DispatchNid(
             meta.library, meta.nid, meta.resolved_name,
             guest_rdi, guest_rsi, guest_rdx, guest_rcx, guest_r8, guest_r9, &sub_ret)) {
         return sub_ret;

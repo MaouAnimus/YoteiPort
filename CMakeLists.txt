@@ -19,6 +19,7 @@ add_executable(yotei_runtime
     src/graphics/pm4_decoder.cpp
     src/graphics/rdna2_shader.cpp
     src/graphics/vk_backend.cpp
+    src/graphics/video_out_hle.cpp
 )
 
 target_include_directories(yotei_runtime PRIVATE src)
