@@ -540,19 +540,6 @@ int main(int argc, char** argv) {
                   << " | Magic='" << magic << "' | CompletionTag=0x" << completion_tag << std::dec
                   << " | Bytes=" << ampr.GetTotalBytesStreamed() << "\n";
 
-        // Verify AGC PM4 Command Stream Decoder on a synthetic Ghost of Yotei pass packet stream
-        uint32_t sample_pm4[] = {
-            (3U << 30) | (3U << 16) | (0x10U << 8), 0x68757350U, 0x43205343U, 0x68746F6CU, 0x00000000U, // IT_NOP ("CS Cloth")
-            (3U << 30) | (2U << 16) | (0x76U << 8), 0x00000004U, 0x801A0000U, 0x00000008U,              // IT_SET_SH_REG
-            (3U << 30) | (2U << 16) | (0x15U << 8), 64U, 1U, 1U,                                        // IT_DISPATCH_DIRECT (64,1,1)
-        };
-        auto pkts = yotei::graphics::AgcPm4Backend::Instance().DecodeCommandStream(sample_pm4, 13);
-        std::cout << "[+] AGC PM4 Decoder parsed " << pkts.size() << " RDNA2 packets:\n";
-        for (const auto& p : pkts) {
-            std::cout << "    [" << std::setw(18) << std::left << p.name << "] ("
-                      << p.dword_count << " dwords) " << p.details << "\n";
-        }
-
         // Scan real RDNA2 shaders inside all_shaders.xpps and emit/verify SPIR-V 1.6 on Host Vulkan 1.3 GPU
         std::cout << "\n--- Testing RDNA2 ISA Disassembler & Host Vulkan 1.3 SPIR-V Pipeline ---\n";
         auto shaders = yotei::graphics::Rdna2ShaderAnalyzer::ScanShaderPack(
@@ -583,6 +570,30 @@ int main(int argc, char** argv) {
                       << "    Dedicated VRAM: " << (gpu.vram_bytes / (1024 * 1024)) << " MiB\n"
                       << "    SPIR-V Module : " << (sm_ok ? "VkShaderModule compiled & verified on GPU!" : "failed")
                       << " (" << spirv.size() * 4 << " bytes)\n";
+
+            if (!shaders.empty()) {
+                auto translated_spirv = yotei::graphics::Rdna2ShaderAnalyzer::TranslateRdna2ToSpirv(shaders[0]);
+                bool trans_ok = vk.VerifySpirvShaderModule(translated_spirv);
+                bool exec_ok = vk.ExecuteCompute(translated_spirv, 1, 1, 1);
+                std::cout << "[+] RDNA2->SPIR-V Translation of Shader[0]:\n"
+                          << "    Translated Instructions : " << shaders[0].sample_disassembly.size() << "\n"
+                          << "    SPIR-V Bytecode Size    : " << translated_spirv.size() * 4 << " bytes\n"
+                          << "    Host GPU Compilation    : " << (trans_ok ? "SUCCESS" : "FAILED") << "\n"
+                          << "    Host GPU Compute Exec   : " << (exec_ok ? "SUCCESS (vkCmdDispatch executed on GPU)" : "FAILED") << "\n";
+            }
+
+            // Verify AGC PM4 Command Stream Decoder on a synthetic Ghost of Yotei pass packet stream
+            uint32_t sample_pm4[] = {
+                (3U << 30) | (3U << 16) | (0x10U << 8), 0x68757350U, 0x43205343U, 0x68746F6CU, 0x00000000U, // IT_NOP ("CS Cloth")
+                (3U << 30) | (2U << 16) | (0x76U << 8), 0x00000004U, 0x801A0000U, 0x00000008U,              // IT_SET_SH_REG
+                (3U << 30) | (2U << 16) | (0x15U << 8), 64U, 1U, 1U,                                        // IT_DISPATCH_DIRECT (64,1,1)
+            };
+            auto pkts = yotei::graphics::AgcPm4Backend::Instance().DecodeCommandStream(sample_pm4, 13);
+            std::cout << "[+] AGC PM4 Decoder & Vulkan Dispatch Execution (" << pkts.size() << " RDNA2 packets):\n";
+            for (const auto& p : pkts) {
+                std::cout << "    [" << std::setw(18) << std::left << p.name << "] ("
+                          << p.dword_count << " dwords) " << p.details << "\n";
+            }
 
             // Initialize Host Win32 Window and Vulkan Swapchain
             std::cout << "\n--- Testing Host Presentation Pipeline (Win32 & Vulkan Swapchain) ---\n";

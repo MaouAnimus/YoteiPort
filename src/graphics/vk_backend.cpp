@@ -21,6 +21,7 @@ using VkDeviceSize = uint64_t;
 using VkInstance = void*;
 using VkPhysicalDevice = void*;
 using VkDevice = void*;
+using VkQueue = void*;
 using VkShaderModule = uint64_t;
 
 constexpr VkResult VK_SUCCESS = 0;
@@ -135,6 +136,100 @@ using PFN_vkCreateDevice = VkResult (VKAPI_PTR*)(VkPhysicalDevice, const VkDevic
 using PFN_vkDestroyDevice = void (VKAPI_PTR*)(VkDevice, const void*);
 using PFN_vkCreateShaderModule = VkResult (VKAPI_PTR*)(VkDevice, const VkShaderModuleCreateInfo*, const void*, VkShaderModule*);
 using PFN_vkDestroyShaderModule = void (VKAPI_PTR*)(VkDevice, VkShaderModule, const void*);
+
+using VkCommandPool = uint64_t;
+using VkCommandBuffer = void*;
+using VkPipelineLayout = uint64_t;
+using VkPipeline = uint64_t;
+using VkPipelineCache = uint64_t;
+using VkFence = uint64_t;
+
+constexpr uint32_t VK_STRUCTURE_TYPE_SUBMIT_INFO = 4;
+constexpr uint32_t VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO = 18;
+constexpr uint32_t VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO = 29;
+constexpr uint32_t VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO = 30;
+constexpr uint32_t VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO = 39;
+constexpr uint32_t VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO = 40;
+constexpr uint32_t VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO = 42;
+
+struct VkPipelineShaderStageCreateInfo {
+    uint32_t        sType;
+    const void*     pNext;
+    VkFlags         flags;
+    uint32_t        stage; // 0x00000020 for VK_SHADER_STAGE_COMPUTE_BIT
+    VkShaderModule  module;
+    const char*     pName;
+    const void*     pSpecializationInfo;
+};
+
+struct VkComputePipelineCreateInfo {
+    uint32_t                        sType;
+    const void*                     pNext;
+    VkFlags                         flags;
+    VkPipelineShaderStageCreateInfo stage;
+    VkPipelineLayout                layout;
+    VkPipeline                      basePipelineHandle;
+    int32_t                         basePipelineIndex;
+};
+
+struct VkPipelineLayoutCreateInfo {
+    uint32_t    sType;
+    const void* pNext;
+    VkFlags     flags;
+    uint32_t    setLayoutCount;
+    const void* pSetLayouts;
+    uint32_t    pushConstantRangeCount;
+    const void* pPushConstantRanges;
+};
+
+struct VkCommandPoolCreateInfo {
+    uint32_t    sType;
+    const void* pNext;
+    VkFlags     flags;
+    uint32_t    queueFamilyIndex;
+};
+
+struct VkCommandBufferAllocateInfo {
+    uint32_t        sType;
+    const void*     pNext;
+    VkCommandPool   commandPool;
+    uint32_t        level;
+    uint32_t        commandBufferCount;
+};
+
+struct VkCommandBufferBeginInfo {
+    uint32_t    sType;
+    const void* pNext;
+    VkFlags     flags;
+    const void* pInheritanceInfo;
+};
+
+struct VkSubmitInfo {
+    uint32_t                sType;
+    const void*             pNext;
+    uint32_t                waitSemaphoreCount;
+    const void*             pWaitSemaphores;
+    const VkFlags*          pWaitDstStageMask;
+    uint32_t                commandBufferCount;
+    const VkCommandBuffer*  pCommandBuffers;
+    uint32_t                signalSemaphoreCount;
+    const void*             pSignalSemaphores;
+};
+
+using PFN_vkCreatePipelineLayout = VkResult (VKAPI_PTR*)(VkDevice, const VkPipelineLayoutCreateInfo*, const void*, VkPipelineLayout*);
+using PFN_vkDestroyPipelineLayout = void (VKAPI_PTR*)(VkDevice, VkPipelineLayout, const void*);
+using PFN_vkCreateComputePipelines = VkResult (VKAPI_PTR*)(VkDevice, VkPipelineCache, uint32_t, const VkComputePipelineCreateInfo*, const void*, VkPipeline*);
+using PFN_vkDestroyPipeline = void (VKAPI_PTR*)(VkDevice, VkPipeline, const void*);
+using PFN_vkCreateCommandPool = VkResult (VKAPI_PTR*)(VkDevice, const VkCommandPoolCreateInfo*, const void*, VkCommandPool*);
+using PFN_vkDestroyCommandPool = void (VKAPI_PTR*)(VkDevice, VkCommandPool, const void*);
+using PFN_vkAllocateCommandBuffers = VkResult (VKAPI_PTR*)(VkDevice, const VkCommandBufferAllocateInfo*, VkCommandBuffer*);
+using PFN_vkFreeCommandBuffers = void (VKAPI_PTR*)(VkDevice, VkCommandPool, uint32_t, const VkCommandBuffer*);
+using PFN_vkBeginCommandBuffer = VkResult (VKAPI_PTR*)(VkCommandBuffer, const VkCommandBufferBeginInfo*);
+using PFN_vkEndCommandBuffer = VkResult (VKAPI_PTR*)(VkCommandBuffer);
+using PFN_vkCmdBindPipeline = void (VKAPI_PTR*)(VkCommandBuffer, uint32_t, VkPipeline);
+using PFN_vkCmdDispatch = void (VKAPI_PTR*)(VkCommandBuffer, uint32_t, uint32_t, uint32_t);
+using PFN_vkQueueSubmit = VkResult (VKAPI_PTR*)(VkQueue, uint32_t, const VkSubmitInfo*, VkFence);
+using PFN_vkQueueWaitIdle = VkResult (VKAPI_PTR*)(VkQueue);
 
 } // namespace
 
@@ -321,6 +416,127 @@ bool VulkanHostBackend::VerifySpirvShaderModule(const std::vector<uint32_t>& spi
     }
 #endif
     return false;
+}
+
+bool VulkanHostBackend::ExecuteCompute(
+    const std::vector<uint32_t>& spirv_words,
+    uint32_t groups_x,
+    uint32_t groups_y,
+    uint32_t groups_z) {
+#ifdef _WIN32
+    if (!initialized_ || !vk_device_ || !vk_queue_ || !vulkan_dll_ || spirv_words.empty()) return false;
+    auto get_proc = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
+        ::GetProcAddress(static_cast<HMODULE>(vulkan_dll_), "vkGetInstanceProcAddr"));
+    if (!get_proc) return false;
+
+    auto create_sm = reinterpret_cast<PFN_vkCreateShaderModule>(get_proc(vk_instance_, "vkCreateShaderModule"));
+    auto destroy_sm = reinterpret_cast<PFN_vkDestroyShaderModule>(get_proc(vk_instance_, "vkDestroyShaderModule"));
+    auto create_pl = reinterpret_cast<PFN_vkCreatePipelineLayout>(get_proc(vk_instance_, "vkCreatePipelineLayout"));
+    auto destroy_pl = reinterpret_cast<PFN_vkDestroyPipelineLayout>(get_proc(vk_instance_, "vkDestroyPipelineLayout"));
+    auto create_cp = reinterpret_cast<PFN_vkCreateComputePipelines>(get_proc(vk_instance_, "vkCreateComputePipelines"));
+    auto destroy_pip = reinterpret_cast<PFN_vkDestroyPipeline>(get_proc(vk_instance_, "vkDestroyPipeline"));
+    auto create_pool = reinterpret_cast<PFN_vkCreateCommandPool>(get_proc(vk_instance_, "vkCreateCommandPool"));
+    auto destroy_pool = reinterpret_cast<PFN_vkDestroyCommandPool>(get_proc(vk_instance_, "vkDestroyCommandPool"));
+    auto alloc_cb = reinterpret_cast<PFN_vkAllocateCommandBuffers>(get_proc(vk_instance_, "vkAllocateCommandBuffers"));
+    auto begin_cb = reinterpret_cast<PFN_vkBeginCommandBuffer>(get_proc(vk_instance_, "vkBeginCommandBuffer"));
+    auto end_cb = reinterpret_cast<PFN_vkEndCommandBuffer>(get_proc(vk_instance_, "vkEndCommandBuffer"));
+    auto bind_pip = reinterpret_cast<PFN_vkCmdBindPipeline>(get_proc(vk_instance_, "vkCmdBindPipeline"));
+    auto cmd_dispatch = reinterpret_cast<PFN_vkCmdDispatch>(get_proc(vk_instance_, "vkCmdDispatch"));
+    auto queue_submit = reinterpret_cast<PFN_vkQueueSubmit>(get_proc(vk_instance_, "vkQueueSubmit"));
+    auto queue_wait = reinterpret_cast<PFN_vkQueueWaitIdle>(get_proc(vk_instance_, "vkQueueWaitIdle"));
+
+    if (!create_sm || !destroy_sm || !create_pl || !destroy_pl || !create_cp || !destroy_pip ||
+        !create_pool || !destroy_pool || !alloc_cb || !begin_cb || !end_cb || !bind_pip ||
+        !cmd_dispatch || !queue_submit || !queue_wait) {
+        return false;
+    }
+
+    // 1. Create Shader Module
+    VkShaderModuleCreateInfo sm_ci{};
+    sm_ci.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    sm_ci.codeSize = spirv_words.size() * sizeof(uint32_t);
+    sm_ci.pCode = spirv_words.data();
+    VkShaderModule mod = 0;
+    if (create_sm(vk_device_, &sm_ci, nullptr, &mod) != VK_SUCCESS || !mod) return false;
+
+    // 2. Create Pipeline Layout
+    VkPipelineLayoutCreateInfo pl_ci{};
+    pl_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    VkPipelineLayout layout = 0;
+    if (create_pl(vk_device_, &pl_ci, nullptr, &layout) != VK_SUCCESS || !layout) {
+        destroy_sm(vk_device_, mod, nullptr);
+        return false;
+    }
+
+    // 3. Create Compute Pipeline
+    VkComputePipelineCreateInfo cp_ci{};
+    cp_ci.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    cp_ci.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    cp_ci.stage.stage = 0x00000020; // VK_SHADER_STAGE_COMPUTE_BIT
+    cp_ci.stage.module = mod;
+    cp_ci.stage.pName = "main";
+    cp_ci.layout = layout;
+    VkPipeline pipeline = 0;
+    if (create_cp(vk_device_, 0, 1, &cp_ci, nullptr, &pipeline) != VK_SUCCESS || !pipeline) {
+        destroy_pl(vk_device_, layout, nullptr);
+        destroy_sm(vk_device_, mod, nullptr);
+        return false;
+    }
+
+    // 4. Create Command Pool
+    VkCommandPoolCreateInfo pool_ci{};
+    pool_ci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    pool_ci.flags = 0x00000002; // VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
+    pool_ci.queueFamilyIndex = queue_family_index_;
+    VkCommandPool pool = 0;
+    if (create_pool(vk_device_, &pool_ci, nullptr, &pool) != VK_SUCCESS || !pool) {
+        destroy_pip(vk_device_, pipeline, nullptr);
+        destroy_pl(vk_device_, layout, nullptr);
+        destroy_sm(vk_device_, mod, nullptr);
+        return false;
+    }
+
+    // 5. Allocate Command Buffer
+    VkCommandBufferAllocateInfo cb_ai{};
+    cb_ai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    cb_ai.commandPool = pool;
+    cb_ai.level = 0; // VK_COMMAND_BUFFER_LEVEL_PRIMARY
+    cb_ai.commandBufferCount = 1;
+    VkCommandBuffer cmd_buf = nullptr;
+    if (alloc_cb(vk_device_, &cb_ai, &cmd_buf) != VK_SUCCESS || !cmd_buf) {
+        destroy_pool(vk_device_, pool, nullptr);
+        destroy_pip(vk_device_, pipeline, nullptr);
+        destroy_pl(vk_device_, layout, nullptr);
+        destroy_sm(vk_device_, mod, nullptr);
+        return false;
+    }
+
+    // 6. Record & Dispatch
+    VkCommandBufferBeginInfo begin_info{};
+    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    begin_info.flags = 0x00000001; // VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
+    begin_cb(cmd_buf, &begin_info);
+    bind_pip(cmd_buf, 1 /* VK_PIPELINE_BIND_POINT_COMPUTE */, pipeline);
+    cmd_dispatch(cmd_buf, groups_x, groups_y, groups_z);
+    end_cb(cmd_buf);
+
+    // 7. Submit & Wait
+    VkSubmitInfo submit_info{};
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit_info.commandBufferCount = 1;
+    submit_info.pCommandBuffers = &cmd_buf;
+    queue_submit(vk_queue_, 1, &submit_info, 0);
+    queue_wait(vk_queue_);
+
+    // 8. Cleanup
+    destroy_pool(vk_device_, pool, nullptr);
+    destroy_pip(vk_device_, pipeline, nullptr);
+    destroy_pl(vk_device_, layout, nullptr);
+    destroy_sm(vk_device_, mod, nullptr);
+    return true;
+#else
+    return false;
+#endif
 }
 
 void VulkanHostBackend::Shutdown() {

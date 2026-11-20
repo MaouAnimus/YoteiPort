@@ -1,4 +1,6 @@
 #include "graphics/pm4_decoder.h"
+#include "graphics/rdna2_shader.h"
+#include "graphics/vk_backend.h"
 #include <cstring>
 #include <iomanip>
 #include <iostream>
@@ -111,8 +113,18 @@ std::vector<DecodedPm4Packet> AgcPm4Backend::DecodeCommandStream(
             }
             case Pm4Opcode::IT_DISPATCH_DIRECT: {
                 if (body_dwords >= 3) {
-                    detail << "groups=(" << body[0] << ", " << body[1] << ", " << body[2] << ")";
+                    uint32_t gx = body[0];
+                    uint32_t gy = body[1];
+                    uint32_t gz = body[2];
+                    detail << "groups=(" << gx << ", " << gy << ", " << gz << ")";
                     ++stats_.dispatches;
+
+                    // If Vulkan host backend is initialized, dispatch to host GPU
+                    auto& vk = VulkanHostBackend::Instance();
+                    if (vk.IsInitialized()) {
+                        auto spirv = Rdna2ShaderAnalyzer::EmitMinimalSpirvCompute(64, 1, 1);
+                        vk.ExecuteCompute(spirv, (gx > 0 ? gx : 1), (gy > 0 ? gy : 1), (gz > 0 ? gz : 1));
+                    }
                 }
                 break;
             }

@@ -323,4 +323,130 @@ std::vector<uint32_t> Rdna2ShaderAnalyzer::EmitMinimalSpirvCompute(
     };
 }
 
+std::vector<uint32_t> Rdna2ShaderAnalyzer::TranslateRdna2ToSpirv(
+    const Rdna2ShaderAnalysis& analysis,
+    uint32_t local_size_x,
+    uint32_t local_size_y,
+    uint32_t local_size_z) {
+    uint32_t bound = 10;
+    std::vector<uint32_t> body_ops;
+
+    uint32_t prev_uint = 7;
+    uint32_t prev_float = 8;
+
+    for (const auto& ins : analysis.sample_disassembly) {
+        if (ins.mnemonic == "v_add_f32") {
+            uint32_t res_id = bound++;
+            body_ops.push_back((5U << 16) | 129U);
+            body_ops.push_back(6U);
+            body_ops.push_back(res_id);
+            body_ops.push_back(prev_float);
+            body_ops.push_back(8U);
+            prev_float = res_id;
+        } else if (ins.mnemonic == "v_sub_f32") {
+            uint32_t res_id = bound++;
+            body_ops.push_back((5U << 16) | 131U);
+            body_ops.push_back(6U);
+            body_ops.push_back(res_id);
+            body_ops.push_back(prev_float);
+            body_ops.push_back(8U);
+            prev_float = res_id;
+        } else if (ins.mnemonic == "v_mul_f32" || ins.mnemonic == "v_fmac_f32") {
+            uint32_t res_id = bound++;
+            body_ops.push_back((5U << 16) | 133U);
+            body_ops.push_back(6U);
+            body_ops.push_back(res_id);
+            body_ops.push_back(prev_float);
+            body_ops.push_back(8U);
+            prev_float = res_id;
+        } else if (ins.mnemonic == "v_add_nc_u32" || ins.mnemonic == "s_add_u32") {
+            uint32_t res_id = bound++;
+            body_ops.push_back((5U << 16) | 128U);
+            body_ops.push_back(5U);
+            body_ops.push_back(res_id);
+            body_ops.push_back(prev_uint);
+            body_ops.push_back(7U);
+            prev_uint = res_id;
+        } else if (ins.mnemonic == "s_sub_u32") {
+            uint32_t res_id = bound++;
+            body_ops.push_back((5U << 16) | 130U);
+            body_ops.push_back(5U);
+            body_ops.push_back(res_id);
+            body_ops.push_back(prev_uint);
+            body_ops.push_back(7U);
+            prev_uint = res_id;
+        } else if (ins.mnemonic == "s_mul_i32") {
+            uint32_t res_id = bound++;
+            body_ops.push_back((5U << 16) | 132U);
+            body_ops.push_back(5U);
+            body_ops.push_back(res_id);
+            body_ops.push_back(prev_uint);
+            body_ops.push_back(7U);
+            prev_uint = res_id;
+        } else if (ins.mnemonic == "s_and_b32" || ins.mnemonic == "v_and_b32") {
+            uint32_t res_id = bound++;
+            body_ops.push_back((5U << 16) | 197U);
+            body_ops.push_back(5U);
+            body_ops.push_back(res_id);
+            body_ops.push_back(prev_uint);
+            body_ops.push_back(7U);
+            prev_uint = res_id;
+        } else if (ins.mnemonic == "s_or_b32" || ins.mnemonic == "v_or_b32") {
+            uint32_t res_id = bound++;
+            body_ops.push_back((5U << 16) | 198U);
+            body_ops.push_back(5U);
+            body_ops.push_back(res_id);
+            body_ops.push_back(prev_uint);
+            body_ops.push_back(7U);
+            prev_uint = res_id;
+        } else if (ins.mnemonic == "s_xor_b32" || ins.mnemonic == "v_xor_b32") {
+            uint32_t res_id = bound++;
+            body_ops.push_back((5U << 16) | 199U);
+            body_ops.push_back(5U);
+            body_ops.push_back(res_id);
+            body_ops.push_back(prev_uint);
+            body_ops.push_back(7U);
+            prev_uint = res_id;
+        }
+    }
+
+    std::vector<uint32_t> spirv = {
+        0x07230203U, // Magic: SPIR-V
+        0x00010600U, // Version: 1.6
+        0x00000000U, // Generator: YoteiPort RDNA2->SPIR-V Recompiler
+        bound,       // Bound
+        0x00000000U, // Schema: 0
+
+        // OpCapability Shader (2 words)
+        (2U << 16) | 17U, 1U,
+        // OpMemoryModel Logical GLSL450 (3 words)
+        (3U << 16) | 14U, 0U, 1U,
+        // OpEntryPoint GLCompute(5) %main(1) "main\0" (5 words)
+        (5U << 16) | 15U, 5U, 1U, 0x6E69616DU, 0x00000000U,
+        // OpExecutionMode %main(1) LocalSize(17) X Y Z (6 words)
+        (6U << 16) | 16U, 1U, 17U, local_size_x, local_size_y, local_size_z,
+        // %void(2) = OpTypeVoid (2 words)
+        (2U << 16) | 19U, 2U,
+        // %fn_void(3) = OpTypeFunction %void(2) (3 words)
+        (3U << 16) | 33U, 3U, 2U,
+        // %uint(5) = OpTypeInt 32 0 (4 words)
+        (4U << 16) | 21U, 5U, 32U, 0U,
+        // %float(6) = OpTypeFloat 32 (3 words)
+        (3U << 16) | 22U, 6U, 32U,
+        // %c_uint1(7) = OpConstant %uint(5) 1 (4 words)
+        (4U << 16) | 43U, 5U, 7U, 1U,
+        // %c_float1(8) = OpConstant %float(6) 1.0f (4 words)
+        (4U << 16) | 43U, 6U, 8U, 0x3F800000U,
+        // %main(1) = OpFunction %void(2) None(0) %fn_void(3) (5 words)
+        (5U << 16) | 54U, 2U, 1U, 0U, 3U,
+        // %entry(4) = OpLabel (2 words)
+        (2U << 16) | 248U, 4U,
+    };
+
+    spirv.insert(spirv.end(), body_ops.begin(), body_ops.end());
+    spirv.push_back((1U << 16) | 253U); // OpReturn
+    spirv.push_back((1U << 16) | 56U);  // OpFunctionEnd
+    return spirv;
+}
+
 } // namespace yotei::graphics

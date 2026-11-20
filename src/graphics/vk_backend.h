@@ -23,6 +23,11 @@ public:
 
     bool Initialize();
     bool VerifySpirvShaderModule(const std::vector<uint32_t>& spirv_words);
+    bool ExecuteCompute(
+        const std::vector<uint32_t>& spirv_words,
+        uint32_t groups_x = 1,
+        uint32_t groups_y = 1,
+        uint32_t groups_z = 1);
     void Shutdown();
 
     bool IsInitialized() const { return initialized_; }
