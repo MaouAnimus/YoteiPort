@@ -4,6 +4,7 @@
 #include "graphics/vk_backend.h"
 #include "hle/ampr_hle.h"
 #include "hle/nid_registry.h"
+#include "input/pad_hle.h"
 #include "kernel/filesystem.h"
 #include "kernel/memory.h"
 #include "kernel/threads.h"
@@ -34,16 +35,50 @@ static void DisassembleInstruction(const uint8_t* p, size_t max_len, char* out_b
 }
 
 #ifdef _WIN32
+static std::mutex g_veh_mutex;
+
+static uint64_t SafeReadFsBase() {
+    __try { return _readfsbase_u64(); } __except(1) { return 0; }
+}
+
+static uint64_t SafeReadPtr(uint64_t ptr) {
+    if (!ptr) return 0;
+    __try { return *reinterpret_cast<uint64_t*>(ptr); } __except(1) { return 0; }
+}
+
 LONG WINAPI GuestVehHandler(EXCEPTION_POINTERS* ep) {
     DWORD code = ep->ExceptionRecord->ExceptionCode;
+    if (code == 0x406D1388) {
+        // MS_VC_EXCEPTION: debugger thread naming exception
+        return EXCEPTION_CONTINUE_EXECUTION;
+    }
+    std::lock_guard<std::mutex> lock(g_veh_mutex);
     uint64_t rip = ep->ContextRecord->Rip;
-    uint64_t current_fs = 0;
-    __try { current_fs = _readfsbase_u64(); } __except(1) {}
-    std::cout << "  [VEH] Exception 0x" << std::hex << code
+    DWORD win_tid = GetCurrentThreadId();
+    uint64_t current_fs = SafeReadFsBase();
+    uint64_t ret_addr = SafeReadPtr(ep->ContextRecord->Rsp);
+    uint64_t exe_base = reinterpret_cast<uint64_t>(GetModuleHandleW(nullptr));
+    uint64_t rva = (ret_addr >= exe_base) ? (ret_addr - exe_base) : 0;
+    std::cout << "  [VEH] (WinTID=" << win_tid << ") Exception 0x" << std::hex << code
               << " at RIP=0x" << rip
-              << " RAX=0x" << ep->ContextRecord->Rax
+              << " ReturnAddr=0x" << ret_addr << " (RVA=0x" << rva << ")"
+              << "\n    RAX=0x" << ep->ContextRecord->Rax
               << " RBX=0x" << ep->ContextRecord->Rbx
-              << " SegFs=0x" << ep->ContextRecord->SegFs
+              << " RCX=0x" << ep->ContextRecord->Rcx
+              << " RDX=0x" << ep->ContextRecord->Rdx
+              << "\n    RSI=0x" << ep->ContextRecord->Rsi
+              << " RDI=0x" << ep->ContextRecord->Rdi
+              << " RBP=0x" << ep->ContextRecord->Rbp
+              << " RSP=0x" << ep->ContextRecord->Rsp
+              << "\n    R8 =0x" << ep->ContextRecord->R8
+              << " R9 =0x" << ep->ContextRecord->R9
+              << " R10=0x" << ep->ContextRecord->R10
+              << " R11=0x" << ep->ContextRecord->R11
+              << "\n    R12=0x" << ep->ContextRecord->R12
+              << " R13=0x" << ep->ContextRecord->R13
+              << " R14=0x" << ep->ContextRecord->R14
+              << " R15=0x" << ep->ContextRecord->R15
+              << "\n    SegFs=0x" << ep->ContextRecord->SegFs
               << " FSBase=0x" << current_fs << std::dec << std::endl;
 
     // Disassemble the faulting instruction (no C++ objects in __try scope)
@@ -226,21 +261,16 @@ LONG WINAPI GuestVehHandler(EXCEPTION_POINTERS* ep) {
         }
 
         // 11. Detect tight scanning loop with null buffer: 44 0F B6 34 8F ... 41 39 C7 7F CF
-        // This is a loop: movzx r14b, [rdi+rcx*4]; lea ecx, [rax+1]; cmp r15, rax; jg back
-        // If RDI=0 (null buffer), the loop will never find valid data. Terminate it by making RAX >= R15.
+        // This is a loop: movzx r14d, [rdi+rcx*4]; lea ecx, [rax+1]; cmp r15d, eax; jg back
+        // If RDI=0 (null buffer), the loop will never find valid data.
+        // Break out cleanly to the loop exit at +0x1A1 (0x8011f9085).
         if (p && p[0] == 0x44 && p[1] == 0x0F && p[2] == 0xB6 && p[3] == 0x34 && p[4] == 0x8F) {
-            // Check if next instructions match the loop pattern
-            // 8D 48 01 = lea ecx, [rax+1]
-            // 41 39 C7 = cmp r15, rax
-            // 7F CF = jg -0x31
             if (p[5] == 0x8D && p[6] == 0x48 && p[7] == 0x01 &&
                 p[8] == 0x41 && p[9] == 0x39 && p[10] == 0xC7 &&
                 p[11] == 0x7F && (int8_t)p[12] < 0) {
-                // This is the tight scanning loop. Terminate it by setting RAX = R15.
-                std::cout << "  [VEH] Detected null-buffer scanning loop -> terminating (RAX=R15)\n" << std::flush;
-                ep->ContextRecord->Rax = ep->ContextRecord->R15;
-                // Skip the MOVZX instruction, let the loop condition fail
-                ep->ContextRecord->Rip = reinterpret_cast<DWORD64>(p + 5);
+                std::cout << "  [VEH] Detected null-buffer scanning loop -> breaking out cleanly to loop exit\n" << std::flush;
+                ep->ContextRecord->R13 = ep->ContextRecord->Rbx;
+                ep->ContextRecord->Rip = rip + 0x1A1;
                 return EXCEPTION_CONTINUE_EXECUTION;
             }
         }
@@ -277,6 +307,34 @@ LONG WINAPI GuestVehHandler(EXCEPTION_POINTERS* ep) {
                         return EXCEPTION_CONTINUE_EXECUTION;
                     }
                 }
+            }
+        }
+
+        // 13. CMP byte ptr [reg + disp8], imm8 (80 7B ... disp8 imm8) where base reg is near-null
+        if (p && p[0] == 0x80 && ((p[1] >> 6) & 3) == 1 && ((p[1] >> 3) & 7) == 7) {
+            uint8_t rm = p[1] & 7;
+            uint64_t base_val = 0;
+            switch (rm) {
+                case 0: base_val = ep->ContextRecord->Rax; break;
+                case 1: base_val = ep->ContextRecord->Rcx; break;
+                case 2: base_val = ep->ContextRecord->Rdx; break;
+                case 3: base_val = ep->ContextRecord->Rbx; break;
+                case 4: base_val = ep->ContextRecord->Rsp; break;
+                case 5: base_val = ep->ContextRecord->Rbp; break;
+                case 6: base_val = ep->ContextRecord->Rsi; break;
+                case 7: base_val = ep->ContextRecord->Rdi; break;
+            }
+            if (base_val < 0x1000) {
+                uint8_t imm = p[3];
+                std::cout << "  [VEH] CMP byte ptr [reg" << (int)rm << "+disp8], 0x" << std::hex << (int)imm
+                          << " with near-null base -> simulating (imm!=0 -> ZF=0)\n" << std::flush;
+                if (imm == 0) {
+                    ep->ContextRecord->EFlags |= 0x40; // ZF=1 (equal)
+                } else {
+                    ep->ContextRecord->EFlags &= ~0x40; // ZF=0 (not equal)
+                }
+                ep->ContextRecord->Rip = rip + 4;
+                return EXCEPTION_CONTINUE_EXECUTION;
             }
         }
     }
@@ -536,6 +594,9 @@ int main(int argc, char** argv) {
     }
     std::cout << std::flush;
 
+    // Initialize Host Input Subsystem (libScePad XInput)
+    yotei::input::PadHleManager::Instance().Initialize();
+
     // 4. Test Calling Game main() @ 0x800f3d320
     uint64_t game_main = mapper.GetMainAddress();
     std::cout << "\n--- Testing Game main() Entry Point (Native x86-64) ---\n";
@@ -569,6 +630,7 @@ int main(int argc, char** argv) {
     RemoveVectoredExceptionHandler(veh);
 #endif
 
+    yotei::input::PadHleManager::Instance().Shutdown();
     yotei::graphics::VideoOutHleManager::Instance().Shutdown();
     yotei::graphics::VulkanHostBackend::Instance().Shutdown();
     yotei::kernel::ThreadManager::Instance().Shutdown();

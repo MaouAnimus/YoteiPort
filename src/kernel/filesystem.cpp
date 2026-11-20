@@ -126,7 +126,7 @@ bool VirtualFileSystem::LoadAmprIndex(const std::filesystem::path& index_path) {
 }
 
 int32_t VirtualFileSystem::Open(const char* guest_path, int32_t /*flags*/, int32_t /*mode*/) {
-    if (!guest_path) return -14; // EFAULT
+    if (!guest_path || reinterpret_cast<uintptr_t>(guest_path) < 0x1000) return -14; // EFAULT
     auto host_path = ResolveGuestPath(guest_path);
     std::error_code ec;
     if (host_path.empty() || !std::filesystem::exists(host_path, ec)) {
@@ -156,7 +156,7 @@ int32_t VirtualFileSystem::Close(int32_t fd) {
 }
 
 int64_t VirtualFileSystem::Read(int32_t fd, void* buf, uint64_t count) {
-    if (!buf) return -14;
+    if (!buf || reinterpret_cast<uintptr_t>(buf) < 0x1000) return -14;
     std::lock_guard<std::mutex> lock(mutex_);
     auto it = open_fds_.find(fd);
     if (it == open_fds_.end() || !it->second.stream) return -9;
@@ -165,7 +165,7 @@ int64_t VirtualFileSystem::Read(int32_t fd, void* buf, uint64_t count) {
 }
 
 int64_t VirtualFileSystem::Pread(int32_t fd, void* buf, uint64_t count, int64_t offset) {
-    if (!buf || offset < 0) return -22;
+    if (!buf || reinterpret_cast<uintptr_t>(buf) < 0x1000 || offset < 0) return -22;
     std::lock_guard<std::mutex> lock(mutex_);
     auto it = open_fds_.find(fd);
     if (it == open_fds_.end() || !it->second.stream) return -9;
@@ -176,7 +176,7 @@ int64_t VirtualFileSystem::Pread(int32_t fd, void* buf, uint64_t count, int64_t 
 }
 
 int32_t VirtualFileSystem::Stat(const char* guest_path, SceKernelStat* sb) {
-    if (!guest_path || !sb) return -14;
+    if (!guest_path || reinterpret_cast<uintptr_t>(guest_path) < 0x1000 || !sb || reinterpret_cast<uintptr_t>(sb) < 0x1000) return -14;
     auto host_path = ResolveGuestPath(guest_path);
     std::error_code ec;
     if (host_path.empty() || !std::filesystem::exists(host_path, ec)) return -2;
@@ -190,7 +190,7 @@ int32_t VirtualFileSystem::Stat(const char* guest_path, SceKernelStat* sb) {
 }
 
 int32_t VirtualFileSystem::Fstat(int32_t fd, SceKernelStat* sb) {
-    if (!sb) return -14;
+    if (!sb || reinterpret_cast<uintptr_t>(sb) < 0x1000) return -14;
     std::lock_guard<std::mutex> lock(mutex_);
     auto it = open_fds_.find(fd);
     if (it == open_fds_.end()) return -9;

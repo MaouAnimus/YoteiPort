@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(MSVC)
     add_compile_options(/W4 /EHsc /utf-8 /arch:AVX2)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /MAP:yotei_runtime.map")
 endif()
 
 add_executable(yotei_runtime
@@ -20,6 +21,7 @@ add_executable(yotei_runtime
     src/graphics/rdna2_shader.cpp
     src/graphics/vk_backend.cpp
     src/graphics/video_out_hle.cpp
+    src/input/pad_hle.cpp
 )
 
 target_include_directories(yotei_runtime PRIVATE src)

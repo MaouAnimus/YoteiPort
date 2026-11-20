@@ -24,9 +24,13 @@ DWORD WINAPI GuestThreadEntry(LPVOID param) {
     g_current_guest_tid = th->thread_id;
     ThreadManager::Instance().SetCurrentThreadTls(th->tcb_address);
 
-    std::cout << "  [THREAD] Started Guest Thread ID=" << th->thread_id
-              << " ('" << th->name << "') Entry=0x" << std::hex << th->entry_fn
-              << " Arg=0x" << th->arg << std::dec << "\n" << std::flush;
+    {
+        static std::mutex g_thread_log_lock;
+        std::lock_guard<std::mutex> log_lock(g_thread_log_lock);
+        std::cout << "  [THREAD] Started Guest Thread ID=" << th->thread_id
+                  << " ('" << th->name << "') Entry=0x" << std::hex << th->entry_fn
+                  << " Arg=0x" << th->arg << std::dec << "\n" << std::flush;
+    }
 
     th->return_value = InvokeGuestSysV(th->entry_fn, th->arg, 0, 0, 0);
 

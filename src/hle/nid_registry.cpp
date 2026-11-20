@@ -2,6 +2,7 @@
 #include "graphics/pm4_decoder.h"
 #include "graphics/video_out_hle.h"
 #include "hle/ampr_hle.h"
+#include "input/pad_hle.h"
 #include "kernel/filesystem.h"
 #include "kernel/memory.h"
 #include "kernel/threads.h"
@@ -149,34 +150,64 @@ extern "C" uint64_t __fastcall HleDispatchTrampoline(
         }
         return 0;
     }
-    if (meta.nid == "1jfXLRVzisc" || meta.resolved_name == "FileSystem::KernelOpen") {
+    // Sleep operations
+    if (meta.nid == "1jfXLRVzisc" || meta.resolved_name == "sceKernelUsleep" || meta.resolved_name == "usleep") {
+        uint32_t usec = static_cast<uint32_t>(guest_rdi);
+        if (usec >= 1000) {
+            Sleep(usec / 1000);
+        } else if (usec > 0) {
+            Sleep(0); // Yield remainder of quantum
+        }
+        return 0; // SCE_OK
+    }
+    if (meta.nid == "QvsZxomvUHs" || meta.resolved_name == "sceKernelNanosleep" || meta.resolved_name == "nanosleep") {
+        if (guest_rdi >= 0x1000) {
+            struct SceTimespec { int64_t sec; int64_t nsec; };
+            auto* ts = reinterpret_cast<const SceTimespec*>(guest_rdi);
+            int64_t ms = ts->sec * 1000 + ts->nsec / 1000000;
+            if (ms > 0) {
+                Sleep(static_cast<DWORD>(ms));
+            } else {
+                Sleep(0);
+            }
+        }
+        return 0; // SCE_OK
+    }
+
+    // File I/O operations
+    if (meta.nid == "1G3lF1Gg1k8" || meta.resolved_name == "sceKernelOpen" || meta.resolved_name == "FileSystem::KernelOpen" || meta.resolved_name == "open") {
+        if (guest_rdi < 0x1000) return static_cast<uint64_t>(-14); // EFAULT
         return static_cast<uint64_t>(vfs.Open(
             reinterpret_cast<const char*>(guest_rdi),
             static_cast<int32_t>(guest_rsi),
             static_cast<int32_t>(guest_rdx)));
     }
-    if (meta.resolved_name == "FileSystem::KernelRead") {
+    if (meta.nid == "Cg4srZ6TKbU" || meta.resolved_name == "sceKernelRead" || meta.resolved_name == "FileSystem::KernelRead" || meta.resolved_name == "read") {
+        if (guest_rsi < 0x1000) return static_cast<uint64_t>(-14);
         return static_cast<uint64_t>(vfs.Read(
             static_cast<int32_t>(guest_rdi),
             reinterpret_cast<void*>(guest_rsi),
             guest_rdx));
     }
-    if (meta.resolved_name == "FileSystem::KernelPread") {
+    if (meta.resolved_name == "sceKernelPread" || meta.resolved_name == "FileSystem::KernelPread" || meta.resolved_name == "pread") {
+        if (guest_rsi < 0x1000) return static_cast<uint64_t>(-14);
         return static_cast<uint64_t>(vfs.Pread(
             static_cast<int32_t>(guest_rdi),
             reinterpret_cast<void*>(guest_rsi),
             guest_rdx,
             static_cast<int64_t>(guest_rcx)));
     }
-    if (meta.resolved_name == "FileSystem::KernelClose") {
+    if (meta.nid == "UK2Tl2DWUns" || meta.resolved_name == "sceKernelClose" || meta.resolved_name == "FileSystem::KernelClose" || meta.resolved_name == "close") {
         return static_cast<uint64_t>(vfs.Close(static_cast<int32_t>(guest_rdi)));
     }
-    if (meta.resolved_name == "FileSystem::KernelStat") {
+    if (meta.nid == "eV9wAD2riIA" || meta.resolved_name == "sceKernelStat" || meta.resolved_name == "FileSystem::KernelStat" || meta.resolved_name == "stat") {
+        if (guest_rdi < 0x1000 || guest_rsi < 0x1000) return static_cast<uint64_t>(-14);
         return static_cast<uint64_t>(vfs.Stat(
             reinterpret_cast<const char*>(guest_rdi),
             reinterpret_cast<kernel::SceKernelStat*>(guest_rsi)));
     }
-    if (meta.resolved_name == "FileSystem::KernelFstat") {
+    if (meta.nid == "kBwCPsYX-m4" || meta.resolved_name == "sceKernelFstat" || meta.resolved_name == "FileSystem::KernelFstat" || meta.resolved_name == "fstat") {
+        if (guest_rsi < 0x1000) return static_cast<uint64_t>(-14);
         return static_cast<uint64_t>(vfs.Fstat(
             static_cast<int32_t>(guest_rdi),
             reinterpret_cast<kernel::SceKernelStat*>(guest_rsi)));
@@ -226,14 +257,14 @@ extern "C" uint64_t __fastcall HleDispatchTrampoline(
     }
     if (meta.nid == "j4ViWNHEgww") {
         // strlen(const char* s)
-        if (guest_rdi != 0) {
+        if (guest_rdi > 0x1000) {
             return std::strlen(reinterpret_cast<const char*>(guest_rdi));
         }
         return 0;
     }
     if (meta.nid == "6sJWiWSRuqk") {
         // strncpy(char* dst, const char* src, size_t n)
-        if (guest_rdi != 0 && guest_rsi != 0 && guest_rdx > 0 && guest_rdx < 65536) {
+        if (guest_rdi > 0x1000 && guest_rsi > 0x1000 && guest_rdx > 0 && guest_rdx < 65536) {
             std::strncpy(
                 reinterpret_cast<char*>(guest_rdi),
                 reinterpret_cast<const char*>(guest_rsi),
@@ -243,7 +274,7 @@ extern "C" uint64_t __fastcall HleDispatchTrampoline(
     }
     if (meta.nid == "Q3VBxCXhUHs") {
         // memcpy(void* dst, const void* src, size_t n)
-        if (guest_rdi != 0 && guest_rsi != 0 && guest_rdx > 0 && guest_rdx < (1ULL << 28)) {
+        if (guest_rdi > 0x1000 && guest_rsi > 0x1000 && guest_rdx > 0 && guest_rdx < (1ULL << 28)) {
             std::memcpy(
                 reinterpret_cast<void*>(guest_rdi),
                 reinterpret_cast<const void*>(guest_rsi),
@@ -253,7 +284,7 @@ extern "C" uint64_t __fastcall HleDispatchTrampoline(
     }
     if (meta.nid == "8zsu04XNsZ4" || meta.nid == "8zTFvBIAIN8" || meta.resolved_name == "memset" || meta.resolved_name == "LibcInternal::memset") {
         // memset(void* dst, int c, size_t n)
-        if (guest_rdi != 0 && guest_rdx > 0 && guest_rdx < (1ULL << 28)) {
+        if (guest_rdi > 0x1000 && guest_rdx > 0 && guest_rdx < (1ULL << 28)) {
             std::memset(
                 reinterpret_cast<void*>(guest_rdi),
                 static_cast<int>(guest_rsi),
@@ -308,12 +339,41 @@ extern "C" uint64_t __fastcall HleDispatchTrampoline(
 
     // libSceAudioOut2 (18 NIDs) - Audio output, called very early
     if (meta.library == "libSceAudioOut2") {
+        if (meta.resolved_name == "sceAudioOut2Initialize") return 0;
+        if (meta.resolved_name == "sceAudioOut2PortCreate") {
+            if (guest_rdx != 0) *reinterpret_cast<uint32_t*>(guest_rdx) = 1;
+            else if (guest_rsi != 0) *reinterpret_cast<uint32_t*>(guest_rsi) = 1;
+            return 0;
+        }
+        if (meta.resolved_name == "sceAudioOut2UserCreate") {
+            if (guest_rdx != 0) *reinterpret_cast<uint32_t*>(guest_rdx) = 1;
+            else if (guest_rsi != 0) *reinterpret_cast<uint32_t*>(guest_rsi) = 1;
+            return 0;
+        }
+        if (meta.resolved_name == "sceAudioOut2ContextCreate") {
+            if (guest_rcx != 0) *reinterpret_cast<uint32_t*>(guest_rcx) = 1;
+            else if (guest_rdx != 0) *reinterpret_cast<uint32_t*>(guest_rdx) = 1;
+            return 0;
+        }
+        if (meta.resolved_name == "sceAudioOut2ContextQueryMemory") {
+            if (guest_rsi != 0) *reinterpret_cast<uint64_t*>(guest_rsi) = 0x10000; // 64 KiB
+            return 0;
+        }
+        if (meta.resolved_name == "sceAudioOut2ContextGetQueueLevel") {
+            if (guest_rsi != 0) *reinterpret_cast<uint32_t*>(guest_rsi) = 0;
+            return 0;
+        }
+        if (meta.resolved_name == "sceAudioOut2PortGetState") {
+            if (guest_rsi != 0) std::memset(reinterpret_cast<void*>(guest_rsi), 0, 64);
+            return 0;
+        }
         if (meta.resolved_name == "sceAudioOut2Open") {
             if (guest_rdi != 0) *reinterpret_cast<int32_t*>(guest_rdi) = 1; // port_id
             return 0; // SCE_OK
         }
-        if (meta.resolved_name == "sceAudioOut2Close") return 0;
-        if (meta.resolved_name == "sceAudioOut2Output") return 0;
+        if (meta.resolved_name == "sceAudioOut2Close" || meta.resolved_name == "sceAudioOut2PortDestroy") return 0;
+        if (meta.resolved_name == "sceAudioOut2Output" || meta.resolved_name == "sceAudioOut2ContextPush") return 0;
+        if (meta.resolved_name == "sceAudioOut2ContextAdvance") return 0;
         if (meta.resolved_name == "sceAudioOut2GetConfig") {
             if (guest_rsi != 0) {
                 auto* cfg = reinterpret_cast<int32_t*>(guest_rsi);
@@ -428,57 +488,47 @@ extern "C" uint64_t __fastcall HleDispatchTrampoline(
     if (meta.library == "libSceUserService") {
         if (meta.resolved_name == "sceUserServiceInitialize") return 0;
         if (meta.resolved_name == "sceUserServiceGetLoginUserIdList") {
-            if (guest_rdi != 0) *reinterpret_cast<int32_t*>(guest_rdi) = 1; // one user
-            if (guest_rsi != 0) *reinterpret_cast<uint32_t*>(guest_rsi) = 0x100000001; // user_id
+            if (guest_rdi > 0x1000) {
+                auto* list = reinterpret_cast<int32_t*>(guest_rdi);
+                list[0] = 0x10000001; // Primary active user ID
+                for (int u = 1; u < 4; ++u) list[u] = -1; // SCE_USER_SERVICE_USER_ID_INVALID
+            }
+            return 0;
+        }
+        if (meta.resolved_name == "sceUserServiceGetInitialUser") {
+            if (guest_rdi > 0x1000) *reinterpret_cast<int32_t*>(guest_rdi) = 0x10000001;
             return 0;
         }
         if (meta.resolved_name == "sceUserServiceGetProfile") {
-            if (guest_rsi != 0) {
+            if (guest_rsi > 0x1000) {
                 std::strcpy(reinterpret_cast<char*>(guest_rsi), "YoteiPlayer");
             }
             return 0;
         }
         if (meta.resolved_name == "sceUserServiceGetAvatar") {
-            if (guest_rsi != 0) *reinterpret_cast<uint32_t*>(guest_rsi) = 0; // no avatar
+            if (guest_rsi > 0x1000) *reinterpret_cast<uint32_t*>(guest_rsi) = 0; // no avatar
             return 0;
         }
         if (meta.resolved_name == "sceUserServiceGetUserName") {
-            if (guest_rsi != 0) std::strcpy(reinterpret_cast<char*>(guest_rsi), "YoteiPlayer");
+            if (guest_rsi > 0x1000) {
+                size_t max_len = (guest_rdx > 0 && guest_rdx < 1024) ? static_cast<size_t>(guest_rdx) : 64;
+                strncpy_s(reinterpret_cast<char*>(guest_rsi), max_len, "YoteiPlayer", _TRUNCATE);
+            }
             return 0;
         }
         // Default for any other UserService: SCE_OK
         return 0;
     }
 
-    // libScePad (11 NIDs) - Complete the partial implementation
+    // libScePad (11 NIDs) - Interactive Host Gamepad & Input Subsystem
     if (meta.library == "libScePad") {
-        if (meta.resolved_name == "scePadOpen") {
-            if (guest_rdi != 0) *reinterpret_cast<int32_t*>(guest_rdi) = 0; // user_id
-            if (guest_rsi != 0) *reinterpret_cast<uint32_t*>(guest_rsi) = 0; // handle = 0 (default)
-            return 0;
+        uint64_t ret = 0;
+        if (yotei::input::PadHleManager::Instance().DispatchNid(
+                meta.nid, meta.resolved_name, guest_rdi, guest_rsi, guest_rdx, guest_rcx,
+                guest_r8, guest_r9, &ret)) {
+            return ret;
         }
-        if (meta.resolved_name == "scePadClose") return 0;
-        if (meta.resolved_name == "scePadReadState") {
-            if (guest_rsi != 0) {
-                // Zero out pad state (neutral)
-                std::memset(reinterpret_cast<void*>(guest_rsi), 0, 0x100);
-                // Set connected bit if needed
-                *reinterpret_cast<uint32_t*>(guest_rsi) |= 1; // connected
-            }
-            return 0;
-        }
-        if (meta.resolved_name == "scePadGetDataPortInfo") {
-            if (guest_rdi != 0) *reinterpret_cast<int32_t*>(guest_rdi) = 0; // USB
-            return 0;
-        }
-        if (meta.resolved_name == "scePadSetLightBar") return 0;
-        if (meta.resolved_name == "scePadSetTriggerEffect") return 0;
-        if (meta.resolved_name == "scePadGetSensorInfo") {
-            if (guest_rsi != 0) std::memset(reinterpret_cast<void*>(guest_rsi), 0, 64);
-            return 0;
-        }
-        // Default for any other Pad: SCE_OK
-        return 0;
+        return 0; // SCE_OK default
     }
 
     // libScePlayGo (9 NIDs) - PlayGo streaming/chunk management
