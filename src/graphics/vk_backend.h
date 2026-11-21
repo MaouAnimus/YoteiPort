@@ -91,6 +91,7 @@ public:
         uint64_t dst_buffer,
         uint32_t width,
         uint32_t height);
+    bool TransitionImageToPresentLayout(uint64_t image);
 
     void Shutdown();
 

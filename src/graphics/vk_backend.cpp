@@ -2336,6 +2336,84 @@ bool VulkanHostBackend::TransferImageToLinearBuffer(
 #endif
 }
 
+bool VulkanHostBackend::TransitionImageToPresentLayout(uint64_t image) {
+#ifdef _WIN32
+    if (!initialized_ || !vk_device_ || !vk_queue_ || !vulkan_dll_ || !image) return false;
+
+    auto get_proc = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
+        ::GetProcAddress(static_cast<HMODULE>(vulkan_dll_), "vkGetInstanceProcAddr"));
+    if (!get_proc) return false;
+
+    auto create_pool = reinterpret_cast<PFN_vkCreateCommandPool>(get_proc(vk_instance_, "vkCreateCommandPool"));
+    auto destroy_pool = reinterpret_cast<PFN_vkDestroyCommandPool>(get_proc(vk_instance_, "vkDestroyCommandPool"));
+    auto alloc_cb = reinterpret_cast<PFN_vkAllocateCommandBuffers>(get_proc(vk_instance_, "vkAllocateCommandBuffers"));
+    auto begin_cb = reinterpret_cast<PFN_vkBeginCommandBuffer>(get_proc(vk_instance_, "vkBeginCommandBuffer"));
+    auto end_cb = reinterpret_cast<PFN_vkEndCommandBuffer>(get_proc(vk_instance_, "vkEndCommandBuffer"));
+    auto cmd_barrier = reinterpret_cast<PFN_vkCmdPipelineBarrier>(get_proc(vk_instance_, "vkCmdPipelineBarrier"));
+    auto queue_submit = reinterpret_cast<PFN_vkQueueSubmit>(get_proc(vk_instance_, "vkQueueSubmit"));
+    auto queue_wait = reinterpret_cast<PFN_vkQueueWaitIdle>(get_proc(vk_instance_, "vkQueueWaitIdle"));
+
+    if (!create_pool || !destroy_pool || !alloc_cb || !begin_cb || !end_cb || !cmd_barrier || !queue_submit || !queue_wait) {
+        return false;
+    }
+
+    VkCommandPoolCreateInfo pool_ci{};
+    pool_ci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    pool_ci.flags = 0x00000002;
+    pool_ci.queueFamilyIndex = queue_family_index_;
+    VkCommandPool pool = 0;
+    if (create_pool(vk_device_, &pool_ci, nullptr, &pool) != VK_SUCCESS || !pool) return false;
+
+    VkCommandBufferAllocateInfo cb_ai{};
+    cb_ai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    cb_ai.commandPool = pool;
+    cb_ai.level = 0;
+    cb_ai.commandBufferCount = 1;
+    VkCommandBuffer cmd_buf = nullptr;
+    if (alloc_cb(vk_device_, &cb_ai, &cmd_buf) != VK_SUCCESS || !cmd_buf) {
+        destroy_pool(vk_device_, pool, nullptr);
+        return false;
+    }
+
+    VkCommandBufferBeginInfo begin_info{};
+    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    begin_info.flags = 0x00000001;
+    begin_cb(cmd_buf, &begin_info);
+
+    // Transition Image: UNDEFINED (0) -> VK_IMAGE_LAYOUT_PRESENT_SRC_KHR (1000001002)
+    VkImageMemoryBarrier barrier{};
+    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.srcAccessMask = 0;
+    barrier.dstAccessMask = 0;
+    barrier.oldLayout = 0;          // VK_IMAGE_LAYOUT_UNDEFINED
+    barrier.newLayout = 1000001002; // VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+    barrier.srcQueueFamilyIndex = ~0U;
+    barrier.dstQueueFamilyIndex = ~0U;
+    barrier.image = image;
+    barrier.subresourceRange.aspectMask = 1; // COLOR
+    barrier.subresourceRange.baseMipLevel = 0;
+    barrier.subresourceRange.levelCount = 1;
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount = 1;
+
+    cmd_barrier(cmd_buf, 0x00000001 /* TOP_OF_PIPE */, 0x00002000 /* BOTTOM_OF_PIPE */, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+
+    end_cb(cmd_buf);
+
+    VkSubmitInfo submit_info{};
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit_info.commandBufferCount = 1;
+    submit_info.pCommandBuffers = &cmd_buf;
+    queue_submit(vk_queue_, 1, &submit_info, 0);
+    queue_wait(vk_queue_);
+
+    destroy_pool(vk_device_, pool, nullptr);
+    return true;
+#else
+    return false;
+#endif
+}
+
 void VulkanHostBackend::Shutdown() {
 #ifdef _WIN32
     if (!initialized_ || !vulkan_dll_) return;

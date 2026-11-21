@@ -144,6 +144,17 @@ using PFN_vkDestroyImageView = void (VKAPI_PTR*)(VkDevice, VkImageView, const vo
 using PFN_vkAcquireNextImageKHR = VkResult (VKAPI_PTR*)(VkDevice, VkSwapchainKHR, uint64_t, VkSemaphore, uint64_t, uint32_t*);
 using PFN_vkQueuePresentKHR = VkResult (VKAPI_PTR*)(VkQueue, const VkPresentInfoKHR*);
 
+constexpr uint32_t VK_STRUCTURE_TYPE_FENCE_CREATE_INFO = 8;
+struct VkFenceCreateInfo {
+    uint32_t    sType;
+    const void* pNext;
+    VkFlags     flags;
+};
+using PFN_vkCreateFence = VkResult (VKAPI_PTR*)(VkDevice, const VkFenceCreateInfo*, const void*, uint64_t*);
+using PFN_vkDestroyFence = void (VKAPI_PTR*)(VkDevice, uint64_t, const void*);
+using PFN_vkWaitForFences = VkResult (VKAPI_PTR*)(VkDevice, uint32_t, const uint64_t*, uint32_t, uint64_t);
+using PFN_vkResetFences = VkResult (VKAPI_PTR*)(VkDevice, uint32_t, const uint64_t*);
+
 } // namespace
 
 VideoOutHleManager& VideoOutHleManager::Instance() {
@@ -312,6 +323,14 @@ bool VideoOutHleManager::CreateVulkanSwapchain(uint32_t width, uint32_t height) 
     vk_present_queue_ = vk.GetQueue();
     present_queue_family_ = vk.GetQueueFamily();
 
+    auto create_fence = reinterpret_cast<PFN_vkCreateFence>(vk.GetProcAddress("vkCreateFence"));
+    if (create_fence) {
+        VkFenceCreateInfo fci{};
+        fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        fci.flags = 0;
+        create_fence(dev, &fci, nullptr, &acquire_fence_);
+    }
+
     std::cout << "[+] Initialized Vulkan Swapchain: " << width << "x" << height
               << " | Triple-Buffered (" << swapchain_image_count_
               << " images) | Format=B8G8R8A8_UNORM | PresentMode=FIFO (V-Sync)\n";
@@ -328,6 +347,12 @@ void VideoOutHleManager::DestroyVulkanSwapchain() {
     VkDevice dev = vk.GetDevice();
 
     if (dev) {
+        if (acquire_fence_) {
+            auto destroy_fence = reinterpret_cast<PFN_vkDestroyFence>(
+                vk.GetProcAddress("vkDestroyFence"));
+            if (destroy_fence) destroy_fence(dev, acquire_fence_, nullptr);
+            acquire_fence_ = 0;
+        }
         auto destroy_img_view = reinterpret_cast<PFN_vkDestroyImageView>(
             vk.GetProcAddress("vkDestroyImageView"));
         if (destroy_img_view) {
@@ -385,11 +410,19 @@ bool VideoOutHleManager::SubmitFlip(int32_t handle, int32_t buffer_index, int32_
             vk.GetProcAddress("vkAcquireNextImageKHR"));
         auto queue_present = reinterpret_cast<PFN_vkQueuePresentKHR>(
             vk.GetProcAddress("vkQueuePresentKHR"));
+        auto wait_fences = reinterpret_cast<PFN_vkWaitForFences>(
+            vk.GetProcAddress("vkWaitForFences"));
+        auto reset_fences = reinterpret_cast<PFN_vkResetFences>(
+            vk.GetProcAddress("vkResetFences"));
 
-        if (acquire_img && queue_present) {
+        if (acquire_img && queue_present && acquire_fence_ && wait_fences && reset_fences) {
+            reset_fences(dev, 1, &acquire_fence_);
             uint32_t img_idx = 0;
-            // Acquire image with no wait semaphore for non-blocking presentation
-            if (acquire_img(dev, reinterpret_cast<VkSwapchainKHR>(vk_swapchain_), 1000000000ULL, 0, 0, &img_idx) == VK_SUCCESS) {
+            if (acquire_img(dev, reinterpret_cast<VkSwapchainKHR>(vk_swapchain_), 1000000000ULL, 0, acquire_fence_, &img_idx) == VK_SUCCESS) {
+                wait_fences(dev, 1, &acquire_fence_, 1, 1000000000ULL);
+                if (img_idx < swapchain_images_.size()) {
+                    vk.TransitionImageToPresentLayout(reinterpret_cast<uint64_t>(swapchain_images_[img_idx]));
+                }
                 VkSwapchainKHR sw = reinterpret_cast<VkSwapchainKHR>(vk_swapchain_);
                 VkPresentInfoKHR pi{};
                 pi.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;

@@ -92,6 +92,7 @@ private:
     std::vector<void*> swapchain_image_views_;
     void* vk_present_queue_ = nullptr;
     uint32_t present_queue_family_ = 0;
+    uint64_t acquire_fence_ = 0;
 };
 
 } // namespace yotei::graphics

@@ -5,6 +5,7 @@
 #include "graphics/xtbs_decoder.h"
 #include "graphics/smbs_decoder.h"
 #include "graphics/hiz_readback.h"
+#include "graphics/frame_loop.h"
 #include "audio/audio_out_hle.h"
 #include "audio/ajm_hle.h"
 #include "audio/wasapi_backend.h"
@@ -1001,7 +1002,33 @@ int main(int argc, char** argv) {
         }
     }
 
-    // 9. Test Calling Game main() @ 0x800f3d320
+    // 9. Test Integrated Frame Loop & Triple-Buffered Presentation Synchronization
+    std::cout << "\n--- Testing Integrated Frame Loop & Triple-Buffered Presentation Sync ---\n";
+    auto& frame_loop = yotei::graphics::FrameLoopEngine::Instance();
+    if (frame_loop.Initialize(test_ctx, 1)) {
+        std::vector<uint32_t> loop_cs_spirv;
+        if (!decoded_shaders.empty()) {
+            loop_cs_spirv = yotei::graphics::Rdna2ShaderAnalyzer::TranslateRdna2ToSpirv(decoded_shaders[0], 64, 1, 1);
+        } else {
+            loop_cs_spirv = yotei::graphics::Rdna2ShaderAnalyzer::EmitMinimalSpirvCompute(64, 1, 1);
+        }
+
+        // Execute 6 full triple-buffered frame ticks (2 full swapchain cycles: Buffers 0 -> 1 -> 2 -> 0 -> 1 -> 2)
+        auto loop_summary = frame_loop.RunFrameLoop(6, 59 /* katana submeshes */, 384, loop_cs_spirv);
+        std::cout << "[+] Completed Integrated Multi-Subsystem Frame Loop:\n"
+                  << "    Frames Executed    : " << loop_summary.total_frames_executed
+                  << " | Flips Presented: " << loop_summary.total_flips_presented << "\n"
+                  << "    Avg Frame Time     : " << std::fixed << std::setprecision(2)
+                  << loop_summary.avg_frame_time_ms << " ms (" << loop_summary.effective_fps << " FPS)\n"
+                  << "    Hi-Z Submesh Pass  : Drawn=" << loop_summary.total_submeshes_drawn
+                  << " | Culled=" << loop_summary.total_submeshes_culled << "\n"
+                  << "    GPU Compute & Draw : Dispatches=" << vk_backend.GetGpuInfo().compute_dispatches_executed
+                  << " | Total Draws=" << vk_backend.GetGpuInfo().draw_calls_executed << "\n"
+                  << "    WASAPI Audio Feed  : Pushed=" << loop_summary.total_audio_frames << " stereo frames\n";
+        frame_loop.Shutdown();
+    }
+
+    // 10. Test Calling Game main() @ 0x800f3d320
     if (!skip_game_main) {
         uint64_t game_main = mapper.GetMainAddress();
         std::cout << "\n--- Testing Game main() Entry Point (Native x86-64) ---\n";

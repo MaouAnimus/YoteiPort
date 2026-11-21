@@ -24,6 +24,7 @@ add_executable(yotei_runtime
     src/graphics/xtbs_decoder.cpp
     src/graphics/smbs_decoder.cpp
     src/graphics/hiz_readback.cpp
+    src/graphics/frame_loop.cpp
     src/input/pad_hle.cpp
     src/audio/wasapi_backend.cpp
     src/audio/audio_out_hle.cpp
