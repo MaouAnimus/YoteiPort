@@ -93,17 +93,14 @@ FrameTelemetry FrameLoopEngine::ExecuteFrameTick(
         }
     }
 
-    // 4. PM4 Compute Simulation Pass (e.g., CS Cloth / Wind Physics) + Multi-Stage Hardware Draw Pass
+    // 4. PM4 Compute Simulation Pass (e.g., CS Cloth / Wind Physics)
+    // Note: Multi-Stage 3D Hardware Draw is executed directly into the Swapchain Framebuffer inside SubmitFlip()
     if (!compute_spirv.empty() && vk.IsInitialized()) {
         if (vk.ExecuteCompute(compute_spirv, 16, 1, 1)) {
             ++telemetry.compute_dispatches;
         }
     }
-
-    if (telemetry.submeshes_drawn > 0 && vk.IsInitialized()) {
-        // Execute batched multi-stage indexed draw with Bindless Descriptor Set 1 bound
-        vk.ExecuteMultiStageDrawIndexed(indices_per_draw, 1, 0, 0, 0);
-    }
+    (void)indices_per_draw;
 
     // 5. Triple-Buffered Swapchain Flip (0, 1, 2 ring) with Vulkan Present Transition
     int32_t triple_buf_idx = static_cast<int32_t>(telemetry.frame_index % 3);

@@ -41,6 +41,8 @@ public:
     void Shutdown();
 
     bool IsWindowActive() const { return window_created_; }
+    bool ShouldClose() const { return close_requested_; }
+    void RequestClose() { close_requested_ = true; }
     uint64_t GetFlipCount() const { return state_.flip_count; }
     void SetActiveSceneGeometry(uint64_t index_buffer_handle, uint32_t index_count);
     void UpdateWindowTelemetryTitle(const std::string& telemetry_hud);
@@ -80,6 +82,7 @@ private:
     VideoOutState state_{};
     bool window_created_ = false;
     bool swapchain_created_ = false;
+    bool close_requested_ = false;
 
 #ifdef _WIN32
     HWND hwnd_ = nullptr;

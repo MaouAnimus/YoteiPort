@@ -1,4 +1,5 @@
 #pragma once
+#include <atomic>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -144,8 +145,10 @@ private:
     mutable std::mutex thread_lock_;
     std::unordered_map<uint64_t, std::shared_ptr<GuestThread>> threads_;
     uint64_t next_thread_id_ = 1;
+    std::atomic<size_t> active_thread_count_{1};
 
     mutable std::mutex sync_lock_;
+    mutable std::mutex equeue_lock_;
     std::unordered_map<uint64_t, std::unique_ptr<std::recursive_mutex>> mutexes_;
     std::unordered_map<uint64_t, std::unique_ptr<std::shared_mutex>> rwlocks_;
     std::unordered_map<uint64_t, std::unique_ptr<std::condition_variable_any>> conds_;

@@ -11,6 +11,7 @@
 #include "kernel/memory.h"
 #include "kernel/threads.h"
 #include <atomic>
+#include <chrono>
 #include <cstring>
 #include <fstream>
 #include <iomanip>
@@ -336,6 +337,93 @@ extern "C" uint64_t __fastcall HleDispatchTrampoline(
     if (meta.nid == "1j3S3n-tTW4" || meta.resolved_name == "sceKernelGetTscFrequency") {
         // PS5 Zen 2 CPU TSC frequency: 3.300 GHz (3,300,000,000 Hz)
         return 3300000000ULL;
+    }
+    if (meta.nid == "-2IRUCO--PM" || meta.resolved_name == "sceKernelReadTsc") {
+        // Monotonic 64-bit Zen 2 TSC counter scaled to 3.300 GHz (3300 ticks per microsecond)
+        static const auto s_boot_tp = std::chrono::steady_clock::now();
+        auto elapsed_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::steady_clock::now() - s_boot_tp).count();
+        return static_cast<uint64_t>((elapsed_ns * 33ULL) / 10ULL) + 0x100000000ULL;
+    }
+    if (meta.nid == "4J2sUJmuHZQ" || meta.resolved_name == "sceKernelGetProcessTime") {
+        // Elapsed process time in microseconds
+        static const auto s_boot_tp = std::chrono::steady_clock::now();
+        auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now() - s_boot_tp).count();
+        return static_cast<uint64_t>(elapsed_us) + 1000ULL;
+    }
+    if (meta.nid == "ejekcaNQNq0" || meta.resolved_name == "sceKernelGettimeofday") {
+        // sceKernelGettimeofday(SceKernelTimeval* tp)
+        if (guest_rdi >= 0x1000) {
+            auto now_us = std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::system_clock::now().time_since_epoch()).count();
+            auto* tv = reinterpret_cast<int64_t*>(guest_rdi);
+            tv[0] = now_us / 1000000LL;
+            tv[1] = now_us % 1000000LL;
+        }
+        return 0; // SCE_OK
+    }
+    if (meta.library == "libSceRtc" ||
+        meta.nid == "18B2NS1y9UU" || meta.nid == "zO9UL3qIINQ" || meta.nid == "M1TvFst-jrM") {
+        // sceRtcGetCurrentTick / sceRtcGetCurrentNetworkTick / sceRtcConvertUtcToLocalTime
+        auto now_us = std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count();
+        uint64_t ps5_rtc_tick = 62135596800000000ULL + static_cast<uint64_t>(now_us);
+        if (guest_rdi >= 0x1000) {
+            *reinterpret_cast<uint64_t*>(guest_rdi) = ps5_rtc_tick;
+        }
+        if (meta.nid == "M1TvFst-jrM" && guest_rdx >= 0x1000) {
+            *reinterpret_cast<uint64_t*>(guest_rdx) = ps5_rtc_tick;
+        }
+        return 0; // SCE_OK
+    }
+    if (meta.nid == "rVjRvHJ0X6c" || meta.resolved_name == "sceKernelVirtualQuery") {
+        // sceKernelVirtualQuery(const void* addr, int flags, SceKernelVirtualQueryInfo* info, size_t infoSize)
+        if (guest_rdx >= 0x1000 && guest_rcx >= 32) {
+            std::memset(reinterpret_cast<void*>(guest_rdx), 0, static_cast<size_t>(guest_rcx));
+            uint64_t page_base = guest_rdi & ~0x3FFFULL;
+            auto* info_u64 = reinterpret_cast<uint64_t*>(guest_rdx);
+            info_u64[0] = page_base;                // start
+            info_u64[1] = page_base + 0x200000ULL;  // end
+            info_u64[2] = 0;                        // offset
+            auto* info_u32 = reinterpret_cast<uint32_t*>(guest_rdx + 24);
+            info_u32[0] = 0x33;                     // protection (CPU RW + GPU RW)
+        }
+        return 0; // SCE_OK
+    }
+    // Kernel Async Disk I/O (sceKernelAio*) - Milestone 20
+    if (meta.nid == "vYU8P9Td2Zo" || meta.nid == "nu4a0-arQis" ||
+        meta.resolved_name == "sceKernelAioInitializeImpl" ||
+        meta.resolved_name == "sceKernelAioInitializeParam") {
+        return 0; // SCE_OK
+    }
+    if (meta.nid == "HgX7+AORI58" || meta.nid == "XQ8C8y+de+E" ||
+        meta.resolved_name == "sceKernelAioSubmitReadCommands" ||
+        meta.resolved_name == "sceKernelAioSubmitWriteCommands") {
+        // sceKernelAioSubmitReadCommands(SceKernelAioRWRequest reqs[], uint32_t count, int32_t prio, int32_t ids[])
+        static std::atomic<int32_t> s_next_aio_id{1};
+        uint32_t count = (guest_rsi > 0 && guest_rsi <= 1024) ? static_cast<uint32_t>(guest_rsi) : 0;
+        if (guest_rcx >= 0x1000) {
+            auto* out_ids = reinterpret_cast<int32_t*>(guest_rcx);
+            for (uint32_t i = 0; i < count; ++i) {
+                out_ids[i] = s_next_aio_id.fetch_add(1, std::memory_order_relaxed);
+            }
+        }
+        return 0; // SCE_OK
+    }
+    if (meta.nid == "2pOuoWoCxdk" || meta.nid == "KOF-oJbQVvc" || meta.nid == "5TgME6AYty4" ||
+        meta.resolved_name == "sceKernelAioPollRequest" ||
+        meta.resolved_name == "sceKernelAioWaitRequest" ||
+        meta.resolved_name == "sceKernelAioDeleteRequest") {
+        // sceKernelAioWaitRequest / PollRequest(int32_t ids[], uint32_t count, int32_t states[], uint32_t* usec)
+        uint32_t count = (guest_rsi > 0 && guest_rsi <= 1024) ? static_cast<uint32_t>(guest_rsi) : 0;
+        if (guest_rdx >= 0x1000) {
+            auto* out_states = reinterpret_cast<int32_t*>(guest_rdx);
+            for (uint32_t i = 0; i < count; ++i) {
+                out_states[i] = 0; // SCE_OK / Completed
+            }
+        }
+        return 0; // SCE_OK
     }
     if (meta.nid == "vSMAm3cxYTY" || meta.resolved_name == "sceKernelMprotect") {
         return 0; // SCE_OK

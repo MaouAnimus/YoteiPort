@@ -491,7 +491,9 @@ int main(int argc, char** argv) {
     bool verbose_nids = false;
     bool continue_on_exception = false;
     bool skip_game_main = false;
+    bool interactive_mode = false;
     int max_probes = 1;
+    int interactive_frames = 7;
 
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
@@ -501,6 +503,11 @@ int main(int argc, char** argv) {
             continue_on_exception = true;
         } else if (arg == "--no-game-main" || arg == "--verify-only") {
             skip_game_main = true;
+        } else if (arg == "--interactive" || arg == "-i") {
+            interactive_mode = true;
+            interactive_frames = 36000; // Run until ESC / window closed (up to 10 minutes @ 60 FPS)
+        } else if (arg == "--frames" || arg == "-f") {
+            if (i + 1 < argc) interactive_frames = std::stoi(argv[++i]);
         } else if (arg == "--probes" || arg == "-p") {
             if (i + 1 < argc) max_probes = std::stoi(argv[++i]);
         } else if (arg[0] != '-') {
@@ -1177,11 +1184,15 @@ int main(int argc, char** argv) {
                 ? yotei::graphics::Rdna2ShaderAnalyzer::TranslateRdna2ToSpirv(decoded_shaders[0], 64, 1, 1)
                 : yotei::graphics::Rdna2ShaderAnalyzer::EmitMinimalSpirvCompute(64, 1, 1);
 
+            // Pump interactive frame loop & Win32 message queue (Milestone 21: --interactive / --frames <N>)
             frame_loop.Initialize(test_ctx, 1);
-            for (int tick = 0; tick < 7; ++tick) {
-                DWORD wait_rc = ::WaitForSingleObject(h_main_runner, 50);
+            int target_ticks = interactive_frames;
+            DWORD wait_per_tick_ms = interactive_mode ? 16 : 50;
+            for (int tick = 0; tick < target_ticks; ++tick) {
+                if (yotei::graphics::VideoOutHleManager::Instance().ShouldClose()) break;
+                DWORD wait_rc = ::WaitForSingleObject(h_main_runner, wait_per_tick_ms);
                 frame_loop.ExecuteFrameTick(59, 384, live_cs);
-                if (wait_rc == WAIT_OBJECT_0) break;
+                if (wait_rc == WAIT_OBJECT_0 && !interactive_mode) break;
             }
             frame_loop.Shutdown();
 
@@ -1196,9 +1207,10 @@ int main(int argc, char** argv) {
         std::cout << "\n[*] Skipping Game main() (--verify-only mode active).\n";
     }
 
-    // Report live HLE telemetry, AGC function breakdown & any unhandled stubs observed
+    // Report live HLE telemetry, AGC function breakdown, Shader Catalog & any unhandled stubs observed
     yotei::hle::NidRegistry::PrintLiveTelemetrySummary();
     yotei::graphics::AgcDriverHleManager::Instance().PrintLiveAgcBreakdown();
+    yotei::graphics::AgcDriverHleManager::Instance().PrintShaderAndResourceCatalog(6);
     yotei::hle::NidRegistry::PrintUnhandledStubSummary();
     std::cout << "\n[+] Guest native execution probe completed and memory cleanly unmapped.\n" << std::flush;
 

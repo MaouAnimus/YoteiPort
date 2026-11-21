@@ -19,13 +19,16 @@ namespace {
 LRESULT CALLBACK YoteiWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     switch (uMsg) {
         case WM_CLOSE:
+            VideoOutHleManager::Instance().RequestClose();
             ShowWindow(hwnd, SW_HIDE);
             return 0;
         case WM_DESTROY:
+            VideoOutHleManager::Instance().RequestClose();
             PostQuitMessage(0);
             return 0;
         case WM_KEYDOWN:
             if (wParam == VK_ESCAPE) {
+                VideoOutHleManager::Instance().RequestClose();
                 ShowWindow(hwnd, SW_MINIMIZE);
             }
             return 0;

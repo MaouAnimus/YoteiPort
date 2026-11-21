@@ -31,6 +31,9 @@ struct AgcRegisteredShader {
     uint64_t code_addr = 0;
     uint64_t isa_hash = 0;
     uint32_t instruction_count = 0;
+    uint32_t salu_count = 0;
+    uint32_t valu_count = 0;
+    uint32_t vmem_count = 0;
 };
 
 struct AgcDriverStats {
@@ -38,6 +41,7 @@ struct AgcDriverStats {
     uint64_t owners_registered = 0;
     uint64_t resources_registered = 0;
     uint64_t shaders_created = 0;
+    uint64_t total_shader_instructions = 0;
     uint64_t dcb_packets_emitted = 0;
     uint64_t dcb_submissions = 0;
     uint64_t acb_submissions = 0;
@@ -75,6 +79,7 @@ public:
     size_t GetRegisteredResourceCount() const { return resources_.size(); }
     size_t GetRegisteredShaderCount() const { return shaders_.size(); }
     void PrintLiveAgcBreakdown() const;
+    void PrintShaderAndResourceCatalog(size_t max_sample_shaders = 6) const;
 
 private:
     AgcDriverHleManager() = default;

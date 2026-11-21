@@ -224,13 +224,19 @@ bool AgcDriverHleManager::DispatchNid(
 
         if (IsValidGuestPointer(rdi) && IsValidGuestPointer(rsi)) {
             *reinterpret_cast<uint64_t*>(rdi) = rsi;
-            // Store code pointer at offset 0 of header if writable
             *reinterpret_cast<uint64_t*>(rsi) = rdx;
         }
-        if (IsValidGuestPointer(rdx)) {
-            auto analysis = Rdna2ShaderAnalyzer::AnalyzeIsa(reinterpret_cast<const uint32_t*>(rdx), 64, 4);
+        // Probe rdx (or rsi if rdx is not code) for RDNA2 ISA instruction stream
+        uint64_t candidate_code = IsValidGuestPointer(rdx) ? rdx : (IsValidGuestPointer(rsi) ? rsi : 0);
+        if (candidate_code != 0) {
+            sh.code_addr = candidate_code;
+            auto analysis = Rdna2ShaderAnalyzer::AnalyzeIsa(reinterpret_cast<const uint32_t*>(candidate_code), 64, 4);
             sh.isa_hash = analysis.code_hash;
             sh.instruction_count = analysis.total_instructions;
+            sh.salu_count = analysis.salu_count;
+            sh.valu_count = analysis.valu_count;
+            sh.vmem_count = analysis.vmem_mimg_count;
+            stats_.total_shader_instructions += analysis.total_instructions;
         }
         shaders_.push_back(sh);
         ++stats_.shaders_created;
@@ -461,6 +467,34 @@ void AgcDriverHleManager::PrintLiveAgcBreakdown() const {
         std::cout << "    " << std::setw(54) << std::left << key
                   << " : " << std::setw(5) << cnt << " calls | last_rdi=0x"
                   << std::hex << last_arg << std::dec << "\n";
+    }
+}
+
+void AgcDriverHleManager::PrintShaderAndResourceCatalog(size_t max_sample_shaders) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    uint64_t total_salu = 0, total_valu = 0, total_vmem = 0;
+    for (const auto& sh : shaders_) {
+        total_salu += sh.salu_count;
+        total_valu += sh.valu_count;
+        total_vmem += sh.vmem_count;
+    }
+
+    std::cout << "[+] Live Registered AGC Shader & Resource Catalog (Milestone 19):\n"
+              << "    Total Shaders Registered   : " << shaders_.size()
+              << " (" << stats_.total_shader_instructions << " RDNA2 instructions decoded | SALU="
+              << total_salu << " VALU=" << total_valu << " VMEM=" << total_vmem << ")\n"
+              << "    Total Resources Registered : " << resources_.size()
+              << " | Owners: " << stats_.owners_registered << "\n";
+
+    size_t shown = 0;
+    for (size_t i = 0; i < shaders_.size() && shown < max_sample_shaders; ++i) {
+        const auto& sh = shaders_[i];
+        if (sh.isa_hash == 0) continue;
+        std::cout << "      Shader[#" << std::setw(3) << i << "] CodeAddr=0x" << std::hex << sh.code_addr
+                  << " Hash=0x" << sh.isa_hash << std::dec
+                  << " | Insns=" << sh.instruction_count
+                  << " (SALU=" << sh.salu_count << " VALU=" << sh.valu_count << " VMEM=" << sh.vmem_count << ")\n";
+        ++shown;
     }
 }
 

@@ -277,6 +277,7 @@ uint64_t ThreadManager::CreateThread(uint64_t* out_thread_id, uint64_t attr_addr
 #endif
 
     threads_[tid] = th;
+    active_thread_count_.store(threads_.size(), std::memory_order_relaxed);
     if (out_thread_id && reinterpret_cast<uintptr_t>(out_thread_id) >= 0x1000) {
         *out_thread_id = tid;
     }
@@ -313,8 +314,7 @@ void ThreadManager::ExitThread(uint64_t retval) {
 }
 
 size_t ThreadManager::GetActiveThreadCount() {
-    std::lock_guard<std::mutex> lock(thread_lock_);
-    return threads_.size();
+    return active_thread_count_.load(std::memory_order_relaxed);
 }
 
 void ThreadManager::Shutdown() {
@@ -639,7 +639,7 @@ uint32_t ThreadManager::RwlockDestroy(uint64_t rwlock_addr) {
 
 // Event Queue (SceKernelEqueue) API (Milestone 18)
 int32_t ThreadManager::EqueueCreate(uint64_t out_eq_addr, const char* name) {
-    std::lock_guard<std::mutex> lock(sync_lock_);
+    std::lock_guard<std::mutex> lock(equeue_lock_);
     uint64_t eq_id = next_equeue_id_++;
     GuestEqueue eq{};
     eq.handle = eq_id;
@@ -652,7 +652,7 @@ int32_t ThreadManager::EqueueCreate(uint64_t out_eq_addr, const char* name) {
 }
 
 int32_t ThreadManager::EqueueAddEvent(uint64_t eq_handle, uint64_t ident, int16_t filter, uint64_t udata) {
-    std::lock_guard<std::mutex> lock(sync_lock_);
+    std::lock_guard<std::mutex> lock(equeue_lock_);
     auto& eq = equeues_[eq_handle];
     eq.handle = eq_handle;
     SceKernelEvent ev{};
@@ -665,7 +665,7 @@ int32_t ThreadManager::EqueueAddEvent(uint64_t eq_handle, uint64_t ident, int16_
 }
 
 int32_t ThreadManager::EqueueTriggerEvent(uint64_t eq_handle, uint64_t ident, uint64_t udata) {
-    std::lock_guard<std::mutex> lock(sync_lock_);
+    std::lock_guard<std::mutex> lock(equeue_lock_);
     auto& eq = equeues_[eq_handle];
     eq.handle = eq_handle;
     SceKernelEvent ev{};
@@ -685,7 +685,7 @@ int32_t ThreadManager::EqueueTriggerEvent(uint64_t eq_handle, uint64_t ident, ui
 }
 
 int32_t ThreadManager::EqueueBroadcastFlipAndEop(uint64_t flip_arg) {
-    std::lock_guard<std::mutex> lock(sync_lock_);
+    std::lock_guard<std::mutex> lock(equeue_lock_);
     for (auto& [id, eq] : equeues_) {
         for (const auto& reg : eq.registered_events) {
             if (reg.filter == -13 /* EVFILT_VIDEO_OUT */ || reg.filter == -14 /* EVFILT_GRAPHICS_CORE */) {
@@ -700,7 +700,7 @@ int32_t ThreadManager::EqueueBroadcastFlipAndEop(uint64_t flip_arg) {
 }
 
 int32_t ThreadManager::EqueueDeleteEvent(uint64_t eq_handle, uint64_t ident) {
-    std::lock_guard<std::mutex> lock(sync_lock_);
+    std::lock_guard<std::mutex> lock(equeue_lock_);
     auto it = equeues_.find(eq_handle);
     if (it != equeues_.end()) {
         auto& vec = it->second.registered_events;
@@ -712,7 +712,7 @@ int32_t ThreadManager::EqueueDeleteEvent(uint64_t eq_handle, uint64_t ident) {
 }
 
 int32_t ThreadManager::EqueueWait(uint64_t eq_handle, SceKernelEvent* ev_out, int32_t num_events, int32_t* out_count, uint32_t* /*timeout*/) {
-    std::lock_guard<std::mutex> lock(sync_lock_);
+    std::lock_guard<std::mutex> lock(equeue_lock_);
     auto& eq = equeues_[eq_handle];
     eq.handle = eq_handle;
     ++eq.total_waits;
@@ -751,7 +751,7 @@ int32_t ThreadManager::EqueueWait(uint64_t eq_handle, SceKernelEvent* ev_out, in
 }
 
 size_t ThreadManager::GetActiveEqueueCount() const {
-    std::lock_guard<std::mutex> lock(sync_lock_);
+    std::lock_guard<std::mutex> lock(equeue_lock_);
     return equeues_.size();
 }
 
