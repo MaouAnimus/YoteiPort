@@ -10,6 +10,21 @@
 
 namespace yotei::kernel {
 
+static DWORD TranslateProtToWin32(uint32_t prot) {
+    bool exec = (prot & SCE_KERNEL_PROT_CPU_EXEC) != 0;
+    bool write = (prot & SCE_KERNEL_PROT_CPU_WRITE) != 0;
+    bool read = (prot & (SCE_KERNEL_PROT_CPU_READ | SCE_KERNEL_PROT_GPU_READ)) != 0;
+
+    if (exec) {
+        if (write) return PAGE_EXECUTE_READWRITE;
+        if (read)  return PAGE_EXECUTE_READ;
+        return PAGE_EXECUTE;
+    }
+    if (write) return PAGE_READWRITE;
+    if (read)  return PAGE_READONLY;
+    return PAGE_NOACCESS;
+}
+
 GuestMemoryManager& GuestMemoryManager::Instance() {
     static GuestMemoryManager instance;
     return instance;
@@ -34,6 +49,25 @@ int32_t GuestMemoryManager::AllocateDirectMemory(
     return 0; // SCE_OK
 }
 
+int32_t GuestMemoryManager::AllocateMainDirectMemory(
+    uint64_t len,
+    uint64_t alignment,
+    uint32_t memory_type,
+    uint64_t* phys_addr_out) {
+    return AllocateDirectMemory(0, -1, len, alignment, memory_type, phys_addr_out);
+}
+
+int32_t GuestMemoryManager::ReleaseDirectMemory(uint64_t phys_addr, uint64_t len) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    for (auto it = direct_blocks_.begin(); it != direct_blocks_.end(); ++it) {
+        if (it->phys_offset == phys_addr && it->size == len) {
+            direct_blocks_.erase(it);
+            return 0; // SCE_OK
+        }
+    }
+    return 0; // Graceful ignore
+}
+
 int32_t GuestMemoryManager::MapMemory(
     uint64_t* inout_vaddr,
     uint64_t len,
@@ -52,13 +86,15 @@ int32_t GuestMemoryManager::MapMemory(
     }
 
     uint64_t aligned_len = (len + 0xFFFFULL) & ~0xFFFFULL;
+    DWORD win_prot = TranslateProtToWin32(prot);
+    if (win_prot == PAGE_NOACCESS) win_prot = PAGE_READWRITE;
 
 #ifdef _WIN32
     void* mem = VirtualAlloc(
         reinterpret_cast<void*>(req_vaddr),
         static_cast<SIZE_T>(aligned_len),
         MEM_RESERVE | MEM_COMMIT,
-        PAGE_EXECUTE_READWRITE);
+        win_prot);
     if (!mem) {
         // Fallback: let Windows choose or advance next_auto_vaddr_
         while (!mem && next_auto_vaddr_ < 0x0000007000000000ULL) {
@@ -67,14 +103,14 @@ int32_t GuestMemoryManager::MapMemory(
                 reinterpret_cast<void*>(next_auto_vaddr_),
                 static_cast<SIZE_T>(aligned_len),
                 MEM_RESERVE | MEM_COMMIT,
-                PAGE_EXECUTE_READWRITE);
+                win_prot);
         }
         if (!mem) {
             mem = VirtualAlloc(
                 nullptr,
                 static_cast<SIZE_T>(aligned_len),
                 MEM_RESERVE | MEM_COMMIT,
-                PAGE_EXECUTE_READWRITE);
+                win_prot);
         }
     }
     if (!mem) return -12; // SCE_KERNEL_ERROR_ENOMEM
@@ -120,6 +156,34 @@ int32_t GuestMemoryManager::BatchMap(
     }
     if (num_handled_out) {
         *num_handled_out = handled;
+    }
+    return 0;
+}
+
+int32_t GuestMemoryManager::BatchMap2(
+    const SceKernelBatchMapEntry* entries,
+    int32_t num_entries,
+    int32_t* num_handled_out,
+    uint32_t flags) {
+    return BatchMap(entries, num_entries, num_handled_out, flags);
+}
+
+uint64_t GuestMemoryManager::PhysToVirt(uint64_t phys_addr) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    for (const auto& reg : mapped_regions_) {
+        if (phys_addr >= reg.phys_offset && phys_addr < reg.phys_offset + reg.size) {
+            return reg.guest_vaddr + (phys_addr - reg.phys_offset);
+        }
+    }
+    return 0;
+}
+
+uint64_t GuestMemoryManager::VirtToPhys(uint64_t virt_addr) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    for (const auto& reg : mapped_regions_) {
+        if (virt_addr >= reg.guest_vaddr && virt_addr < reg.guest_vaddr + reg.size) {
+            return reg.phys_offset + (virt_addr - reg.guest_vaddr);
+        }
     }
     return 0;
 }

@@ -217,3 +217,4 @@ size_t AudioOut2HleManager::GetActiveContextCount() const {
 }
 
 } // namespace yotei::audio
+

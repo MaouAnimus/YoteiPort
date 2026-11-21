@@ -21,6 +21,14 @@ struct MappedRegion {
     std::string name;
 };
 
+constexpr uint32_t SCE_KERNEL_PROT_NONE      = 0x00;
+constexpr uint32_t SCE_KERNEL_PROT_CPU_READ  = 0x01;
+constexpr uint32_t SCE_KERNEL_PROT_CPU_WRITE = 0x02;
+constexpr uint32_t SCE_KERNEL_PROT_CPU_EXEC  = 0x04;
+constexpr uint32_t SCE_KERNEL_PROT_GPU_READ  = 0x10;
+constexpr uint32_t SCE_KERNEL_PROT_GPU_WRITE = 0x20;
+constexpr uint32_t SCE_KERNEL_PROT_GPU_ALL   = 0x30;
+
 // PS5 Prospero sceKernelBatchMap entry structure (40 bytes)
 #pragma pack(push, 1)
 struct SceKernelBatchMapEntry {
@@ -52,6 +60,16 @@ public:
         uint32_t memory_type,
         uint64_t* phys_addr_out);
 
+    // sceKernelAllocateMainDirectMemory
+    int32_t AllocateMainDirectMemory(
+        uint64_t len,
+        uint64_t alignment,
+        uint32_t memory_type,
+        uint64_t* phys_addr_out);
+
+    // sceKernelReleaseDirectMemory & sceKernelCheckedReleaseDirectMemory
+    int32_t ReleaseDirectMemory(uint64_t phys_addr, uint64_t len);
+
     // sceKernelMapDirectMemory / sceKernelMapNamedFlexibleMemory
     int32_t MapMemory(
         uint64_t* inout_vaddr,
@@ -62,8 +80,14 @@ public:
         uint64_t alignment,
         const char* name = nullptr);
 
-    // sceKernelBatchMap(entries, numEntries, numHandledOut)
+    // sceKernelBatchMap / sceKernelBatchMap2
     int32_t BatchMap(
+        const SceKernelBatchMapEntry* entries,
+        int32_t num_entries,
+        int32_t* num_handled_out,
+        uint32_t flags = 0);
+
+    int32_t BatchMap2(
         const SceKernelBatchMapEntry* entries,
         int32_t num_entries,
         int32_t* num_handled_out,
@@ -71,6 +95,19 @@ public:
 
     // Annotate a mapped region (sceKernelSetVirtualRangeName)
     int32_t SetVirtualRangeName(uint64_t vaddr, uint64_t len, const char* name);
+
+    // Physical <-> Virtual address translation
+    uint64_t PhysToVirt(uint64_t phys_addr) const;
+    uint64_t VirtToPhys(uint64_t virt_addr) const;
+
+    [[nodiscard]] size_t GetTotalDirectBlocksCount() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return direct_blocks_.size();
+    }
+    [[nodiscard]] size_t GetTotalMappedRegionsCount() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return mapped_regions_.size();
+    }
 
     void ReleaseAll();
     std::vector<MappedRegion> GetMappedRegions() const {

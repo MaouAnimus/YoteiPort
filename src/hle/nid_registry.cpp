@@ -129,12 +129,32 @@ extern "C" uint64_t __fastcall HleDispatchTrampoline(
             static_cast<uint32_t>(guest_r8),
             reinterpret_cast<uint64_t*>(guest_r9)));
     }
+    if (meta.nid == "B+vc2AO2Zrc") {
+        // sceKernelAllocateMainDirectMemory(len, alignment, memoryType, physAddrOut)
+        return static_cast<uint64_t>(mem_mgr.AllocateMainDirectMemory(
+            guest_rdi,
+            guest_rsi,
+            static_cast<uint32_t>(guest_rdx),
+            reinterpret_cast<uint64_t*>(guest_rcx)));
+    }
+    if (meta.nid == "MBuItvba6z8" || meta.nid == "hwVSPCmp5tM") {
+        // sceKernelReleaseDirectMemory(physAddr, len) / sceKernelCheckedReleaseDirectMemory
+        return static_cast<uint64_t>(mem_mgr.ReleaseDirectMemory(guest_rdi, guest_rsi));
+    }
     if (meta.nid == "2SKEx6bSq-4") {
-        // sceKernelBatchMap(entries, numEntries, numHandledOut) / sceKernelBatchMap2
+        // sceKernelBatchMap(entries, numEntries, numHandledOut)
         return static_cast<uint64_t>(mem_mgr.BatchMap(
             reinterpret_cast<const kernel::SceKernelBatchMapEntry*>(guest_rdi),
             static_cast<int32_t>(guest_rsi),
             reinterpret_cast<int32_t*>(guest_rdx)));
+    }
+    if (meta.nid == "kBJzF8x4SyE") {
+        // sceKernelBatchMap2(entries, numEntries, numHandledOut, flags)
+        return static_cast<uint64_t>(mem_mgr.BatchMap2(
+            reinterpret_cast<const kernel::SceKernelBatchMapEntry*>(guest_rdi),
+            static_cast<int32_t>(guest_rsi),
+            reinterpret_cast<int32_t*>(guest_rdx),
+            static_cast<uint32_t>(guest_rcx)));
     }
     if (meta.nid == "L-Q3LEjIbgA" || meta.nid == "NcaWUxfMNIQ") {
         // sceKernelMapDirectMemory / sceKernelMapNamedFlexibleMemory

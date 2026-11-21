@@ -356,3 +356,4 @@ void WasapiHostBackend::Shutdown() {
 }
 
 } // namespace yotei::audio
+

@@ -25,6 +25,7 @@ add_executable(yotei_runtime
     src/audio/wasapi_backend.cpp
     src/audio/audio_out_hle.cpp
     src/audio/ajm_hle.cpp
+    src/vfs/oodle_decompressor.cpp
 )
 
 target_include_directories(yotei_runtime PRIVATE src)

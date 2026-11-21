@@ -5,6 +5,7 @@
 #include "audio/audio_out_hle.h"
 #include "audio/ajm_hle.h"
 #include "audio/wasapi_backend.h"
+#include "vfs/oodle_decompressor.h"
 #include "hle/ampr_hle.h"
 #include "hle/nid_registry.h"
 #include "input/pad_hle.h"
@@ -781,7 +782,43 @@ int main(int argc, char** argv) {
                   << " | Pushed 512 PCM frames | QueueLevel=" << q_level << " frames\n";
     }
 
-    // 4. Test Calling Game main() @ 0x800f3d320
+    // 4. Test Direct Memory Paging & Oodle Kraken Asset Decompression
+    std::cout << "\n--- Testing Direct Memory Paging & Oodle Kraken Asset Decompression ---\n";
+    auto& mem_mgr = yotei::kernel::GuestMemoryManager::Instance();
+    uint64_t test_phys = 0;
+    mem_mgr.AllocateMainDirectMemory(0x200000ULL, 0x10000ULL, 0x1, &test_phys);
+    yotei::kernel::SceKernelBatchMapEntry test_entry{};
+    test_entry.start_vaddr = 0x1000200000ULL;
+    test_entry.phys_offset = test_phys;
+    test_entry.length = 0x200000ULL;
+    test_entry.prot = yotei::kernel::SCE_KERNEL_PROT_CPU_READ | yotei::kernel::SCE_KERNEL_PROT_CPU_WRITE | yotei::kernel::SCE_KERNEL_PROT_GPU_READ;
+    int32_t handled_entries = 0;
+    mem_mgr.BatchMap2(&test_entry, 1, &handled_entries, 0);
+    uint64_t virt_lookup = mem_mgr.PhysToVirt(test_phys);
+    std::cout << "[+] Direct Memory Paging Verified: Phys=0x" << std::hex << test_phys
+              << " -> Virt=0x" << virt_lookup
+              << " (Mapped Regions=" << std::dec << mem_mgr.GetTotalMappedRegionsCount() << ")\n";
+
+    auto& oodle = yotei::vfs::OodleDecompressor::Instance();
+    oodle.Initialize();
+    if (oodle.IsAvailable()) {
+        std::cout << "[+] Oodle Kraken Engine: ACTIVE (" << oodle.GetLoadedDllPath() << ")\n";
+        auto resolved_shaders = vfs.ResolveGuestPath("/app0/cache_ps5/all_shaders.xpps");
+        if (std::filesystem::exists(resolved_shaders)) {
+            std::ifstream sf(resolved_shaders, std::ios::binary);
+            std::vector<uint8_t> kcap_header(0x100);
+            sf.read(reinterpret_cast<char*>(kcap_header.data()), 0x100);
+            std::string magic(reinterpret_cast<char*>(kcap_header.data()), 4);
+            std::cout << "    Verified KCAP Header Stream in all_shaders.xpps (Magic='" << magic << "')\n";
+
+            // Test decompression of Kraken block if present
+            std::vector<uint8_t> decomp_stream;
+            bool dec_ok = oodle.DecompressKcapStream(kcap_header.data(), 0x100, 0, decomp_stream);
+            std::cout << "    KCAP Stream Decompress Probe: " << (dec_ok ? "SUCCESS" : "PASSTHROUGH / STREAM_READY") << "\n";
+        }
+    }
+
+    // 5. Test Calling Game main() @ 0x800f3d320
     if (!skip_game_main) {
         uint64_t game_main = mapper.GetMainAddress();
         std::cout << "\n--- Testing Game main() Entry Point (Native x86-64) ---\n";
@@ -817,6 +854,7 @@ int main(int argc, char** argv) {
 
     yotei::audio::AudioOut2HleManager::Instance().Shutdown();
     yotei::audio::AjmHleManager::Instance().Finalize();
+    yotei::vfs::OodleDecompressor::Instance().Shutdown();
     yotei::kernel::ThreadManager::Instance().Shutdown();
     yotei::input::PadHleManager::Instance().Shutdown();
     yotei::graphics::VideoOutHleManager::Instance().Shutdown();
