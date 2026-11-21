@@ -18,9 +18,19 @@
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <dbghelp.h>
 #endif
 
 namespace {
+
+// Guest executable address range for strict VEH isolation
+static uint64_t g_guest_code_start = 0x800000000ULL;
+static uint64_t g_guest_code_end   = 0x850000000ULL;
+
+static void SetGuestCodeRange(uint64_t start, uint64_t end) {
+    g_guest_code_start = start;
+    g_guest_code_end = end;
+}
 
 // Simple instruction disassembly for logging (no C++ objects for VEH compatibility)
 static void DisassembleInstruction(const uint8_t* p, size_t max_len, char* out_buf, size_t buf_size) {
@@ -46,14 +56,83 @@ static uint64_t SafeReadPtr(uint64_t ptr) {
     __try { return *reinterpret_cast<uint64_t*>(ptr); } __except(1) { return 0; }
 }
 
+typedef BOOL (WINAPI *PFN_MiniDumpWriteDump)(
+    HANDLE hProcess,
+    DWORD ProcessId,
+    HANDLE hFile,
+    MINIDUMP_TYPE DumpType,
+    PMINIDUMP_EXCEPTION_INFORMATION ExceptionParam,
+    PMINIDUMP_USER_STREAM_INFORMATION UserStreamParam,
+    PMINIDUMP_CALLBACK_INFORMATION CallbackParam);
+
+static LONG WINAPI YoteiUnhandledCrashFilter(EXCEPTION_POINTERS* ep) {
+    static bool s_handling = false;
+    if (s_handling) return EXCEPTION_EXECUTE_HANDLER;
+    s_handling = true;
+
+    DWORD code = ep->ExceptionRecord->ExceptionCode;
+    uint64_t rip = ep->ContextRecord->Rip;
+    uint64_t exe_base = reinterpret_cast<uint64_t>(GetModuleHandleW(nullptr));
+    int64_t rva = static_cast<int64_t>(rip - exe_base);
+    std::cerr << "\n=======================================================\n";
+    std::cerr << " [!] FATAL UNHANDLED EXCEPTION 0x" << std::hex << code
+              << " at RIP=0x" << rip << " (ExeBase=0x" << exe_base << " RVA=0x" << rva << ")" << std::dec << "\n";
+    std::cerr << "=======================================================\n";
+
+    HMODULE dbghelp = LoadLibraryA("dbghelp.dll");
+    if (dbghelp) {
+        auto pMiniDumpWriteDump = reinterpret_cast<PFN_MiniDumpWriteDump>(
+            GetProcAddress(dbghelp, "MiniDumpWriteDump"));
+        if (pMiniDumpWriteDump) {
+            HANDLE hFile = CreateFileA(
+                "yotei_crash.dmp",
+                GENERIC_WRITE,
+                0,
+                nullptr,
+                CREATE_ALWAYS,
+                FILE_ATTRIBUTE_NORMAL,
+                nullptr);
+            if (hFile != INVALID_HANDLE_VALUE) {
+                MINIDUMP_EXCEPTION_INFORMATION mei{};
+                mei.ThreadId = GetCurrentThreadId();
+                mei.ExceptionPointers = ep;
+                mei.ClientPointers = FALSE;
+                BOOL ok = pMiniDumpWriteDump(
+                    GetCurrentProcess(),
+                    GetCurrentProcessId(),
+                    hFile,
+                    MiniDumpNormal,
+                    &mei,
+                    nullptr,
+                    nullptr);
+                CloseHandle(hFile);
+                if (ok) {
+                    std::cerr << "[+] Crash minidump written successfully to 'yotei_crash.dmp'\n";
+                }
+            }
+        }
+        FreeLibrary(dbghelp);
+    }
+    std::cerr << std::flush;
+    return EXCEPTION_EXECUTE_HANDLER;
+}
+
 LONG WINAPI GuestVehHandler(EXCEPTION_POINTERS* ep) {
     DWORD code = ep->ExceptionRecord->ExceptionCode;
     if (code == 0x406D1388) {
         // MS_VC_EXCEPTION: debugger thread naming exception
         return EXCEPTION_CONTINUE_EXECUTION;
     }
-    std::lock_guard<std::mutex> lock(g_veh_mutex);
     uint64_t rip = ep->ContextRecord->Rip;
+
+    // CRITICAL ISOLATION: Only handle exceptions originating within the mapped Guest address space.
+    // Exceptions in Windows system DLLs (CoreMessaging.dll, ntdll, user32, drivers, UCRT) MUST
+    // pass through untouched via EXCEPTION_CONTINUE_SEARCH to avoid corrupting OS state.
+    if (rip < g_guest_code_start || rip >= g_guest_code_end) {
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
+
+    std::lock_guard<std::mutex> lock(g_veh_mutex);
     DWORD win_tid = GetCurrentThreadId();
     uint64_t current_fs = SafeReadFsBase();
     uint64_t ret_addr = SafeReadPtr(ep->ContextRecord->Rsp);
@@ -392,6 +471,10 @@ static std::filesystem::path FindProjectRoot() {
 }
 
 int main(int argc, char** argv) {
+#ifdef _WIN32
+    SetUnhandledExceptionFilter(YoteiUnhandledCrashFilter);
+    SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
+#endif
     std::filesystem::path root = FindProjectRoot();
     std::filesystem::path elf_path = root / "extracted_elf" / "eboot.elf";
     std::filesystem::path nid_json = root / "docs" / "nid_resolution_table.json";
@@ -439,10 +522,12 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+    SetGuestCodeRange(mapper.GetBaseAddress(), mapper.GetImageEndAddress());
     std::cout << "[+] Mapped into Guest Virtual Address Space:\n";
     std::cout << "    Base Address      : 0x" << std::hex << mapper.GetBaseAddress() << "\n";
-    std::cout << "    Entry Point (crt1): 0x" << std::hex << mapper.GetEntryPoint() << "\n";
-    std::cout << "    Game main()       : 0x" << std::hex << mapper.GetMainAddress() << std::dec << "\n";
+    std::cout << "    Image End Address : 0x" << mapper.GetImageEndAddress() << "\n";
+    std::cout << "    Entry Point (crt1): 0x" << mapper.GetEntryPoint() << "\n";
+    std::cout << "    Game main()       : 0x" << mapper.GetMainAddress() << std::dec << "\n";
 
     size_t relocs = mapper.ApplyInternalRelocations();
     std::cout << "[+] Applied Internal Relocations (R_X86_64_RELATIVE / 64): " << relocs << "\n";
@@ -513,7 +598,7 @@ int main(int argc, char** argv) {
               << std::hex << sub_mutex_init << std::dec << "...\n" << std::flush;
     yotei::kernel::InvokeGuestSysV(sub_mutex_init, reinterpret_cast<uint64_t>(dummy_mutex_obj), 0);
     std::cout << "[+] sub_cd85f0 returned cleanly!\n";
-    const auto& regions = yotei::kernel::GuestMemoryManager::Instance().GetMappedRegions();
+    auto regions = yotei::kernel::GuestMemoryManager::Instance().GetMappedRegions();
     std::cout << "[+] Active Guest Direct/Flexible Memory Regions (" << regions.size() << "):\n";
     for (const auto& reg : regions) {
         std::cout << "    [" << std::setw(12) << std::left << reg.name << "] vaddr=0x"
@@ -539,6 +624,9 @@ int main(int argc, char** argv) {
     } else {
         std::cout << "  [!] Global init exception: 0x" << std::hex << init_exc << std::dec << "\n";
     }
+
+    // Refresh mapped regions after constructors run
+    regions = yotei::kernel::GuestMemoryManager::Instance().GetMappedRegions();
 
     // 4. Verify AMPR Asynchronous Streaming Command Buffer Execution into Guest Direct Memory
     if (!regions.empty() && vfs.GetAmprEntryCount() > 0) {
@@ -603,18 +691,24 @@ int main(int argc, char** argv) {
                           << "    Host GPU Compute Exec   : " << (exec_ok ? "SUCCESS (vkCmdDispatch executed on GPU)" : "FAILED") << "\n";
             }
 
-            // Verify AGC PM4 Command Stream Decoder on a synthetic Ghost of Yotei pass packet stream
+            // Verify AGC PM4 Command Stream Decoder on a synthetic Ghost of Yotei pass packet stream (Compute + Draw)
             uint32_t sample_pm4[] = {
                 (3U << 30) | (3U << 16) | (0x10U << 8), 0x68757350U, 0x43205343U, 0x68746F6CU, 0x00000000U, // IT_NOP ("CS Cloth")
                 (3U << 30) | (2U << 16) | (0x76U << 8), 0x00000004U, 0x801A0000U, 0x00000008U,              // IT_SET_SH_REG
                 (3U << 30) | (2U << 16) | (0x15U << 8), 64U, 1U, 1U,                                        // IT_DISPATCH_DIRECT (64,1,1)
+                (3U << 30) | (0U << 16) | (0x2AU << 8), 0x00000000U,                                        // IT_INDEX_TYPE (UINT16)
+                (3U << 30) | (1U << 16) | (0x26U << 8), 0x00001000U, 0x00000010U,                          // IT_INDEX_BASE (0x1000001000)
+                (3U << 30) | (4U << 16) | (0x27U << 8), 0x0000FFFFU, 0x00001000U, 0x00000010U, 384U, 0x1U, // IT_DRAW_INDEX_2 (384 indices)
             };
-            auto pkts = yotei::graphics::AgcPm4Backend::Instance().DecodeCommandStream(sample_pm4, 13);
-            std::cout << "[+] AGC PM4 Decoder & Vulkan Dispatch Execution (" << pkts.size() << " RDNA2 packets):\n";
+            auto pkts = yotei::graphics::AgcPm4Backend::Instance().DecodeCommandStream(sample_pm4, 21);
+            std::cout << "[+] AGC PM4 Decoder & Vulkan Hardware Execution (" << pkts.size() << " RDNA2 packets):\n";
             for (const auto& p : pkts) {
                 std::cout << "    [" << std::setw(18) << std::left << p.name << "] ("
                           << p.dword_count << " dwords) " << p.details << "\n";
             }
+            std::cout << "    [Vulkan Execution Stats] Compute Dispatches: "
+                      << vk.GetGpuInfo().compute_dispatches_executed
+                      << " | Hardware Draw Calls: " << vk.GetGpuInfo().draw_calls_executed << "\n";
 
             // Initialize Host Win32 Window and Vulkan Swapchain
             std::cout << "\n--- Testing Host Presentation Pipeline (Win32 & Vulkan Swapchain) ---\n";
@@ -659,16 +753,18 @@ int main(int argc, char** argv) {
     // Report any unhandled stubs observed
     yotei::hle::NidRegistry::PrintUnhandledStubSummary();
 
-    RemoveVectoredExceptionHandler(veh);
-#endif
-
+    yotei::kernel::ThreadManager::Instance().Shutdown();
     yotei::input::PadHleManager::Instance().Shutdown();
     yotei::graphics::VideoOutHleManager::Instance().Shutdown();
     yotei::graphics::VulkanHostBackend::Instance().Shutdown();
-    yotei::kernel::ThreadManager::Instance().Shutdown();
+
+    RemoveVectoredExceptionHandler(veh);
+#endif
+
     yotei::kernel::GuestMemoryManager::Instance().ReleaseAll();
     registry.FreeTrampolines();
     mapper.Unmap();
+    SetGuestCodeRange(0, 0);
     std::cout << "\n[+] Guest native execution probe completed and memory cleanly unmapped.\n";
     return 0;
 }

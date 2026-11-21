@@ -15,6 +15,8 @@ struct VulkanGpuInfo {
     uint64_t vram_bytes = 0;
     bool     device_created = false;
     bool     spirv_module_verified = false;
+    uint64_t compute_dispatches_executed = 0;
+    uint64_t draw_calls_executed = 0;
 };
 
 class VulkanHostBackend {
@@ -28,6 +30,17 @@ public:
         uint32_t groups_x = 1,
         uint32_t groups_y = 1,
         uint32_t groups_z = 1);
+    bool ExecuteDraw(
+        uint32_t vertex_count,
+        uint32_t instance_count = 1,
+        uint32_t first_vertex = 0,
+        uint32_t first_instance = 0);
+    bool ExecuteDrawIndexed(
+        uint32_t index_count,
+        uint32_t instance_count = 1,
+        uint32_t first_index = 0,
+        int32_t vertex_offset = 0,
+        uint32_t first_instance = 0);
     void Shutdown();
 
     bool IsInitialized() const { return initialized_; }

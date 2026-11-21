@@ -277,7 +277,7 @@ uint64_t ThreadManager::CreateThread(uint64_t* out_thread_id, uint64_t attr_addr
 #endif
 
     threads_[tid] = th;
-    if (out_thread_id) {
+    if (out_thread_id && reinterpret_cast<uintptr_t>(out_thread_id) >= 0x1000) {
         *out_thread_id = tid;
     }
     return 0;
@@ -300,7 +300,7 @@ uint64_t ThreadManager::JoinThread(uint64_t thread_id, uint64_t* out_retval) {
     }
 #endif
 
-    if (out_retval) {
+    if (out_retval && reinterpret_cast<uintptr_t>(out_retval) >= 0x1000) {
         *out_retval = target->return_value;
     }
     return 0;
@@ -322,7 +322,10 @@ void ThreadManager::Shutdown() {
 #ifdef _WIN32
     for (auto& [tid, th] : threads_) {
         if (th->win_handle) {
-            ::WaitForSingleObject(th->win_handle, 100);
+            DWORD wait_res = ::WaitForSingleObject(th->win_handle, 100);
+            if (wait_res == WAIT_TIMEOUT) {
+                ::TerminateThread(th->win_handle, 0);
+            }
             ::CloseHandle(th->win_handle);
             th->win_handle = nullptr;
         }
@@ -432,7 +435,10 @@ uint32_t ThreadManager::CondWait(uint64_t cond_addr, uint64_t mutex_addr) {
             cv = it_c->second.get();
         }
         auto it_m = mutexes_.find(mutex_addr);
-        if (it_m != mutexes_.end()) {
+        if (it_m == mutexes_.end()) {
+            mutexes_[mutex_addr] = std::make_unique<std::recursive_mutex>();
+            m = mutexes_[mutex_addr].get();
+        } else {
             m = it_m->second.get();
         }
     }
@@ -456,12 +462,16 @@ uint32_t ThreadManager::CondTimedwait(uint64_t cond_addr, uint64_t mutex_addr, u
             cv = it_c->second.get();
         }
         auto it_m = mutexes_.find(mutex_addr);
-        if (it_m != mutexes_.end()) {
+        if (it_m == mutexes_.end()) {
+            mutexes_[mutex_addr] = std::make_unique<std::recursive_mutex>();
+            m = mutexes_[mutex_addr].get();
+        } else {
             m = it_m->second.get();
         }
     }
     if (cv && m) {
-        auto res = cv->wait_for(*m, std::chrono::microseconds(usec));
+        uint64_t wait_usec = (std::min)(usec, 5000000ULL);
+        auto res = cv->wait_for(*m, std::chrono::microseconds(wait_usec));
         return (res == std::cv_status::timeout) ? 0x8002003C : 0; // ETIMEDOUT
     }
     return 0;
@@ -514,7 +524,10 @@ int32_t ThreadManager::SemaWait(int32_t sem_id, int32_t count, uint32_t* timeout
     }
     if (!h) return -1;
 #ifdef _WIN32
-    DWORD wait_ms = timeout ? (*timeout / 1000) : INFINITE;
+    DWORD wait_ms = INFINITE;
+    if (timeout && reinterpret_cast<uintptr_t>(timeout) >= 0x1000) {
+        wait_ms = *timeout / 1000;
+    }
     for (int32_t i = 0; i < count; ++i) {
         DWORD res = ::WaitForSingleObject(h, wait_ms);
         if (res != WAIT_OBJECT_0) return -1;
@@ -677,7 +690,7 @@ bool ThreadManager::DispatchNid(const std::string& nid, const std::string& name,
 
     // Priority & Affinity
     if (nid == "1tKyG7RlMJo" || name == "scePthreadGetprio") {
-        if (rsi) *reinterpret_cast<uint32_t*>(rsi) = 256;
+        if (rsi && rsi >= 0x1000) *reinterpret_cast<uint32_t*>(rsi) = 256;
         *ret = 0;
         return true;
     }

@@ -73,7 +73,10 @@ public:
     int32_t SetVirtualRangeName(uint64_t vaddr, uint64_t len, const char* name);
 
     void ReleaseAll();
-    const std::vector<MappedRegion>& GetMappedRegions() const { return mapped_regions_; }
+    std::vector<MappedRegion> GetMappedRegions() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return mapped_regions_;
+    }
 
 private:
     GuestMemoryManager() = default;
@@ -81,7 +84,7 @@ private:
     static constexpr uint64_t kTotalDirectMemorySize = 12ULL * 1024ULL * 1024ULL * 1024ULL; // 12 GiB
     static constexpr uint64_t kConfiguredFlexibleMemorySize = 165675008ULL;                 // 158 MiB (param.json)
 
-    std::mutex mutex_;
+    mutable std::mutex mutex_;
     uint64_t next_phys_offset_ = 0x10000000ULL;
     uint64_t next_auto_vaddr_  = 0x0000001000000000ULL;
     std::vector<DirectMemoryBlock> direct_blocks_;

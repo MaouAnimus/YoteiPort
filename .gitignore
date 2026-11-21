@@ -54,6 +54,9 @@ compile_commands.json
 *.pdb
 *.ilk
 *.exe
+*.dmp
+*.map
+disasm.txt
 
 # Python / IDE caches
 __pycache__/

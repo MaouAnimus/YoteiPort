@@ -38,6 +38,9 @@ public:
     uint64_t GetBaseAddress() const { return base_address_; }
     uint64_t GetEntryPoint() const { return base_address_ + entry_offset_; }
     uint64_t GetMainAddress() const { return base_address_ + 0xf3d320ULL; }
+    uint64_t GetImageEndAddress() const {
+        return base_address_ + total_mapped_span_;
+    }
     const std::vector<ProgramSegment>& GetSegments() const { return segments_; }
     const std::vector<ImportedSymbol>& GetImports() const { return imports_; }
 

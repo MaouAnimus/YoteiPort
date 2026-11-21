@@ -66,7 +66,15 @@ struct AgcFrameStats {
     uint64_t dispatches      = 0;
     uint64_t flips           = 0;
     std::vector<std::string> active_markers;
-    std::vector<std::string>marker_history;
+    std::vector<std::string> marker_history;
+};
+
+struct AgcDrawState {
+    uint32_t index_type = 0;        // 0 = 16-bit, 1 = 32-bit
+    uint64_t index_base = 0;        // GPU VAddr
+    uint32_t index_buffer_size = 0; // element count
+    uint32_t num_instances = 1;     // active instances
+    uint32_t primitive_type = 4;    // 4 = TRIANGLE_LIST
 };
 
 class AgcPm4Backend {
@@ -98,6 +106,7 @@ private:
 
     std::mutex mutex_;
     AgcFrameStats stats_;
+    AgcDrawState draw_state_{};
     std::unordered_map<uint32_t, uint32_t> context_regs_;
     std::unordered_map<uint32_t, uint32_t> sh_regs_;
     std::unordered_map<uint32_t, uint32_t> uconfig_regs_;

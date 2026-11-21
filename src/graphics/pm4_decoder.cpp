@@ -135,14 +135,79 @@ std::vector<DecodedPm4Packet> AgcPm4Backend::DecodeCommandStream(
                 }
                 break;
             }
-            case Pm4Opcode::IT_DRAW_INDEX_2:
-            case Pm4Opcode::IT_DRAW_INDEX_AUTO:
-            case Pm4Opcode::IT_DRAW_INDEX_INDIRECT:
-            case Pm4Opcode::IT_DRAW_INDIRECT_MULTI:
+            case Pm4Opcode::IT_INDEX_TYPE: {
+                if (body_dwords >= 1) {
+                    draw_state_.index_type = body[0];
+                    detail << "type=" << (body[0] ? "UINT32" : "UINT16");
+                }
+                break;
+            }
+            case Pm4Opcode::IT_INDEX_BASE: {
+                if (body_dwords >= 2) {
+                    draw_state_.index_base = (static_cast<uint64_t>(body[1]) << 32) | body[0];
+                    detail << "base=0x" << std::hex << draw_state_.index_base << std::dec;
+                }
+                break;
+            }
+            case Pm4Opcode::IT_INDEX_BUFFER_SIZE: {
+                if (body_dwords >= 1) {
+                    draw_state_.index_buffer_size = body[0];
+                    detail << "size=" << body[0];
+                }
+                break;
+            }
+            case Pm4Opcode::IT_NUM_INSTANCES: {
+                if (body_dwords >= 1) {
+                    draw_state_.num_instances = (body[0] > 0) ? body[0] : 1;
+                    detail << "instances=" << draw_state_.num_instances;
+                }
+                break;
+            }
+            case Pm4Opcode::IT_DRAW_INDEX_2: {
+                if (body_dwords >= 4) {
+                    uint64_t ib_base = (static_cast<uint64_t>(body[2]) << 32) | body[1];
+                    uint32_t count = body[3];
+                    ++stats_.draw_calls;
+                    detail << "indices=" << count << " ib=0x" << std::hex << ib_base << std::dec
+                           << " instances=" << draw_state_.num_instances;
+                    auto& vk = VulkanHostBackend::Instance();
+                    if (vk.IsInitialized()) {
+                        vk.ExecuteDrawIndexed(count, draw_state_.num_instances, 0, 0, 0);
+                    }
+                }
+                break;
+            }
+            case Pm4Opcode::IT_DRAW_INDEX_AUTO: {
+                if (body_dwords >= 1) {
+                    uint32_t count = body[0];
+                    ++stats_.draw_calls;
+                    detail << "count=" << count << " instances=" << draw_state_.num_instances;
+                    auto& vk = VulkanHostBackend::Instance();
+                    if (vk.IsInitialized()) {
+                        vk.ExecuteDraw(count, draw_state_.num_instances, 0, 0);
+                    }
+                }
+                break;
+            }
             case Pm4Opcode::IT_DRAW_INDEX_OFFSET_2: {
+                if (body_dwords >= 3) {
+                    uint32_t offset = body[1];
+                    uint32_t count = body[2];
+                    ++stats_.draw_calls;
+                    detail << "offset=" << offset << " count=" << count
+                           << " instances=" << draw_state_.num_instances;
+                    auto& vk = VulkanHostBackend::Instance();
+                    if (vk.IsInitialized()) {
+                        vk.ExecuteDrawIndexed(count, draw_state_.num_instances, offset, 0, 0);
+                    }
+                }
+                break;
+            }
+            case Pm4Opcode::IT_DRAW_INDEX_INDIRECT:
+            case Pm4Opcode::IT_DRAW_INDIRECT_MULTI: {
                 ++stats_.draw_calls;
                 if (body_dwords >= 1) {
-                    detail << "arg0=0x" << std::hex << body[0] << std::dec;
+                    detail << "data_offset=0x" << std::hex << body[0] << std::dec;
                 }
                 break;
             }
