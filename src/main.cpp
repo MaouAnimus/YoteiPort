@@ -480,6 +480,7 @@ int main(int argc, char** argv) {
     std::filesystem::path nid_json = root / "docs" / "nid_resolution_table.json";
     bool verbose_nids = false;
     bool continue_on_exception = false;
+    bool skip_game_main = false;
     int max_probes = 1;
 
     for (int i = 1; i < argc; ++i) {
@@ -488,6 +489,8 @@ int main(int argc, char** argv) {
             verbose_nids = true;
         } else if (arg == "--continue" || arg == "-c") {
             continue_on_exception = true;
+        } else if (arg == "--no-game-main" || arg == "--verify-only") {
+            skip_game_main = true;
         } else if (arg == "--probes" || arg == "-p") {
             if (i + 1 < argc) max_probes = std::stoi(argv[++i]);
         } else if (arg[0] != '-') {
@@ -680,6 +683,24 @@ int main(int argc, char** argv) {
                       << "    SPIR-V Module : " << (sm_ok ? "VkShaderModule compiled & verified on GPU!" : "failed")
                       << " (" << spirv.size() * 4 << " bytes)\n";
 
+            std::cout << "    BDA 64-bit GPU Addr: " << (gpu.bda_supported ? "SUPPORTED (VK_KHR_buffer_device_address)" : "Not Available") << "\n";
+
+            // Test 64-bit Buffer Device Address (BDA) allocation
+            if (gpu.bda_supported) {
+                auto bda_buf = vk.AllocateBufferWithDeviceAddress(65536, 0x00000020 /* STORAGE_BUFFER */, true);
+                if (bda_buf.device_address != 0) {
+                    std::cout << "[+] Allocated 64-bit BDA GPU Buffer: Handle=0x" << std::hex
+                              << bda_buf.buffer_handle << " DevAddr=0x" << bda_buf.device_address
+                              << " Size=0x" << bda_buf.size << std::dec << " bytes\n";
+                }
+                vk.FreeBufferWithDeviceAddress(bda_buf);
+            }
+
+            // Test Host Vulkan Graphics Pipeline (Vertex + Fragment SPIR-V)
+            bool gp_ok = vk.CreateDefaultGraphicsPipeline();
+            std::cout << "[+] Host Vulkan 1.3 Graphics Pipeline: "
+                      << (gp_ok ? "CREATED & COMPILED (Vertex + Fragment)" : "FAILED") << "\n";
+
             if (!shaders.empty()) {
                 auto translated_spirv = yotei::graphics::Rdna2ShaderAnalyzer::TranslateRdna2ToSpirv(shaders[0]);
                 bool trans_ok = vk.VerifySpirvShaderModule(translated_spirv);
@@ -699,8 +720,9 @@ int main(int argc, char** argv) {
                 (3U << 30) | (0U << 16) | (0x2AU << 8), 0x00000000U,                                        // IT_INDEX_TYPE (UINT16)
                 (3U << 30) | (1U << 16) | (0x26U << 8), 0x00001000U, 0x00000010U,                          // IT_INDEX_BASE (0x1000001000)
                 (3U << 30) | (4U << 16) | (0x27U << 8), 0x0000FFFFU, 0x00001000U, 0x00000010U, 384U, 0x1U, // IT_DRAW_INDEX_2 (384 indices)
+                (3U << 30) | (1U << 16) | (0x2DU << 8), 128U, 0x1U,                                         // IT_DRAW_INDEX_AUTO (128 vertices)
             };
-            auto pkts = yotei::graphics::AgcPm4Backend::Instance().DecodeCommandStream(sample_pm4, 21);
+            auto pkts = yotei::graphics::AgcPm4Backend::Instance().DecodeCommandStream(sample_pm4, sizeof(sample_pm4) / sizeof(uint32_t));
             std::cout << "[+] AGC PM4 Decoder & Vulkan Hardware Execution (" << pkts.size() << " RDNA2 packets):\n";
             for (const auto& p : pkts) {
                 std::cout << "    [" << std::setw(18) << std::left << p.name << "] ("
@@ -724,30 +746,34 @@ int main(int argc, char** argv) {
     yotei::input::PadHleManager::Instance().Initialize();
 
     // 4. Test Calling Game main() @ 0x800f3d320
-    uint64_t game_main = mapper.GetMainAddress();
-    std::cout << "\n--- Testing Game main() Entry Point (Native x86-64) ---\n";
-    std::cout << "[*] Calling Game main() @ 0x" << std::hex << game_main << std::dec << "...\n" << std::flush;
-    static const char* dummy_argv[] = { "/app0/eboot.bin", nullptr };
-    uint64_t main_ret = 0;
-    DWORD exc_code = 0;
-    bool success = false;
+    if (!skip_game_main) {
+        uint64_t game_main = mapper.GetMainAddress();
+        std::cout << "\n--- Testing Game main() Entry Point (Native x86-64) ---\n";
+        std::cout << "[*] Calling Game main() @ 0x" << std::hex << game_main << std::dec << "...\n" << std::flush;
+        static const char* dummy_argv[] = { "/app0/eboot.bin", nullptr };
+        uint64_t main_ret = 0;
+        DWORD exc_code = 0;
+        bool success = false;
 
-    for (int probe = 0; probe < max_probes && !success; ++probe) {
-        if (probe > 0) {
-            std::cout << "\n[*] Retrying game_main() (probe " << probe + 1 << "/" << max_probes << ")...\n" << std::flush;
-        }
-        if (ProbeGuestFunctionSeh(game_main, 1, reinterpret_cast<uint64_t>(&dummy_argv[0]), &main_ret, &exc_code)) {
-            success = true;
-            std::cout << "[+] Game main() returned: " << main_ret << "\n";
-        } else {
-            std::cout << "  [!] Game main() probe reached exception: 0x"
-                      << std::hex << exc_code << std::dec;
-            if (continue_on_exception) {
-                std::cout << " - continuing...";
+        for (int probe = 0; probe < max_probes && !success; ++probe) {
+            if (probe > 0) {
+                std::cout << "\n[*] Retrying game_main() (probe " << probe + 1 << "/" << max_probes << ")...\n" << std::flush;
             }
-            std::cout << "\n";
-            if (!continue_on_exception) break;
+            if (ProbeGuestFunctionSeh(game_main, 1, reinterpret_cast<uint64_t>(&dummy_argv[0]), &main_ret, &exc_code)) {
+                success = true;
+                std::cout << "[+] Game main() returned: " << main_ret << "\n";
+            } else {
+                std::cout << "  [!] Game main() probe reached exception: 0x"
+                          << std::hex << exc_code << std::dec;
+                if (continue_on_exception) {
+                    std::cout << " - continuing...";
+                }
+                std::cout << "\n";
+                if (!continue_on_exception) break;
+            }
         }
+    } else {
+        std::cout << "\n[*] Skipping Game main() (--verify-only mode active).\n";
     }
 
     // Report any unhandled stubs observed

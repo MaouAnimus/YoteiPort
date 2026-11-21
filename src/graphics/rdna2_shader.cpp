@@ -449,4 +449,37 @@ std::vector<uint32_t> Rdna2ShaderAnalyzer::TranslateRdna2ToSpirv(
     return spirv;
 }
 
+std::vector<uint32_t> Rdna2ShaderAnalyzer::EmitMinimalSpirvVertex() {
+    // Minimal valid SPIR-V 1.6 Vertex Shader conforming to Vulkan spec
+    return {
+        0x07230203U, 0x00010600U, 0x00000000U, 5U, 0x00000000U,
+        (2U << 16) | 17U, 1U,                                // OpCapability Shader
+        (3U << 16) | 14U, 0U, 1U,                            // OpMemoryModel Logical GLSL450
+        (5U << 16) | 15U, 0U, 1U, 0x6E69616DU, 0x00000000U,  // OpEntryPoint Vertex %main "main\0"
+        (2U << 16) | 19U, 2U,                                // %void = OpTypeVoid
+        (3U << 16) | 33U, 3U, 2U,                            // %fn_void = OpTypeFunction %void
+        (5U << 16) | 54U, 2U, 1U, 0U, 3U,                    // %main = OpFunction %void None %fn_void
+        (2U << 16) | 248U, 4U,                               // %label = OpLabel
+        (1U << 16) | 253U,                                   // OpReturn
+        (1U << 16) | 56U,                                    // OpFunctionEnd
+    };
+}
+
+std::vector<uint32_t> Rdna2ShaderAnalyzer::EmitMinimalSpirvFragment() {
+    // Minimal valid SPIR-V 1.6 Fragment Shader conforming to Vulkan spec
+    return {
+        0x07230203U, 0x00010600U, 0x00000000U, 5U, 0x00000000U,
+        (2U << 16) | 17U, 1U,                                // OpCapability Shader
+        (3U << 16) | 14U, 0U, 1U,                            // OpMemoryModel Logical GLSL450
+        (5U << 16) | 15U, 4U, 1U, 0x6E69616DU, 0x00000000U,  // OpEntryPoint Fragment(4) %main "main\0"
+        (3U << 16) | 16U, 1U, 7U,                            // OpExecutionMode %main OriginUpperLeft(7)
+        (2U << 16) | 19U, 2U,                                // %void = OpTypeVoid
+        (3U << 16) | 33U, 3U, 2U,                            // %fn_void = OpTypeFunction %void
+        (5U << 16) | 54U, 2U, 1U, 0U, 3U,                    // %main = OpFunction %void None %fn_void
+        (2U << 16) | 248U, 4U,                               // %label = OpLabel
+        (1U << 16) | 253U,                                   // OpReturn
+        (1U << 16) | 56U,                                    // OpFunctionEnd
+    };
+}
+
 } // namespace yotei::graphics

@@ -1,4 +1,5 @@
 #include "graphics/vk_backend.h"
+#include "graphics/rdna2_shader.h"
 #include <cstring>
 #include <iostream>
 
@@ -233,6 +234,247 @@ using PFN_vkCmdDrawIndexed = void (VKAPI_PTR*)(VkCommandBuffer, uint32_t, uint32
 using PFN_vkQueueSubmit = VkResult (VKAPI_PTR*)(VkQueue, uint32_t, const VkSubmitInfo*, VkFence);
 using PFN_vkQueueWaitIdle = VkResult (VKAPI_PTR*)(VkQueue);
 
+// BDA & Buffer/Memory constants and structures
+constexpr uint32_t VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO = 5;
+constexpr uint32_t VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO = 12;
+constexpr uint32_t VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO = 1000060000;
+constexpr uint32_t VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO = 1000244001;
+constexpr uint32_t VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES = 1000257000;
+
+constexpr uint32_t VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO = 19;
+constexpr uint32_t VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO = 20;
+constexpr uint32_t VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO = 22;
+constexpr uint32_t VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO = 23;
+constexpr uint32_t VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO = 24;
+constexpr uint32_t VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO = 26;
+constexpr uint32_t VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO = 27;
+constexpr uint32_t VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO = 28;
+constexpr uint32_t VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO = 38;
+
+struct VkPhysicalDeviceBufferDeviceAddressFeatures {
+    uint32_t sType;
+    void*    pNext;
+    uint32_t bufferDeviceAddress;
+    uint32_t bufferDeviceAddressCaptureReplay;
+    uint32_t bufferDeviceAddressMultiDevice;
+};
+
+struct VkBufferCreateInfo {
+    uint32_t    sType;
+    const void* pNext;
+    VkFlags     flags;
+    VkDeviceSize size;
+    VkFlags     usage;
+    uint32_t    sharingMode;
+    uint32_t    queueFamilyIndexCount;
+    const uint32_t* pQueueFamilyIndices;
+};
+
+struct VkMemoryRequirements {
+    VkDeviceSize size;
+    VkDeviceSize alignment;
+    uint32_t     memoryTypeBits;
+};
+
+struct VkMemoryAllocateFlagsInfo {
+    uint32_t    sType;
+    const void* pNext;
+    VkFlags     flags;
+    uint32_t    deviceMask;
+};
+
+struct VkMemoryAllocateInfo {
+    uint32_t    sType;
+    const void* pNext;
+    VkDeviceSize allocationSize;
+    uint32_t    memoryTypeIndex;
+};
+
+struct VkBufferDeviceAddressInfo {
+    uint32_t    sType;
+    const void* pNext;
+    uint64_t    buffer;
+};
+
+struct VkViewport {
+    float x;
+    float y;
+    float width;
+    float height;
+    float minDepth;
+    float maxDepth;
+};
+
+struct VkRect2D {
+    struct { int32_t x; int32_t y; } offset;
+    struct { uint32_t width; uint32_t height; } extent;
+};
+
+struct VkPipelineVertexInputStateCreateInfo {
+    uint32_t    sType;
+    const void* pNext;
+    VkFlags     flags;
+    uint32_t    vertexBindingDescriptionCount;
+    const void* pVertexBindingDescriptions;
+    uint32_t    vertexAttributeDescriptionCount;
+    const void* pVertexAttributeDescriptions;
+};
+
+struct VkPipelineInputAssemblyStateCreateInfo {
+    uint32_t    sType;
+    const void* pNext;
+    VkFlags     flags;
+    uint32_t    topology;
+    uint32_t    primitiveRestartEnable;
+};
+
+struct VkPipelineViewportStateCreateInfo {
+    uint32_t          sType;
+    const void*       pNext;
+    VkFlags           flags;
+    uint32_t          viewportCount;
+    const VkViewport* pViewports;
+    uint32_t          scissorCount;
+    const VkRect2D*   pScissors;
+};
+
+struct VkPipelineRasterizationStateCreateInfo {
+    uint32_t    sType;
+    const void* pNext;
+    VkFlags     flags;
+    uint32_t    depthClampEnable;
+    uint32_t    rasterizerDiscardEnable;
+    uint32_t    polygonMode;
+    VkFlags     cullMode;
+    uint32_t    frontFace;
+    uint32_t    depthBiasEnable;
+    float       depthBiasConstantFactor;
+    float       depthBiasClamp;
+    float       depthBiasSlopeFactor;
+    float       lineWidth;
+};
+
+struct VkPipelineMultisampleStateCreateInfo {
+    uint32_t    sType;
+    const void* pNext;
+    VkFlags     flags;
+    uint32_t    rasterizationSamples;
+    uint32_t    sampleShadingEnable;
+    float       minSampleShading;
+    const void* pSampleMask;
+    uint32_t    alphaToCoverageEnable;
+    uint32_t    alphaToOneEnable;
+};
+
+struct VkPipelineColorBlendAttachmentState {
+    uint32_t blendEnable;
+    uint32_t srcColorBlendFactor;
+    uint32_t dstColorBlendFactor;
+    uint32_t colorBlendOp;
+    uint32_t srcAlphaBlendFactor;
+    uint32_t dstAlphaBlendFactor;
+    uint32_t alphaBlendOp;
+    VkFlags  colorWriteMask;
+};
+
+struct VkPipelineColorBlendStateCreateInfo {
+    uint32_t                                   sType;
+    const void*                                pNext;
+    VkFlags                                    flags;
+    uint32_t                                   logicOpEnable;
+    uint32_t                                   logicOp;
+    uint32_t                                   attachmentCount;
+    const VkPipelineColorBlendAttachmentState* pAttachments;
+    float                                      blendConstants[4];
+};
+
+struct VkPipelineDynamicStateCreateInfo {
+    uint32_t        sType;
+    const void*     pNext;
+    VkFlags         flags;
+    uint32_t        dynamicStateCount;
+    const uint32_t* pDynamicStates;
+};
+
+struct VkGraphicsPipelineCreateInfo {
+    uint32_t                                      sType;
+    const void*                                   pNext;
+    VkFlags                                       flags;
+    uint32_t                                      stageCount;
+    const VkPipelineShaderStageCreateInfo*        pStages;
+    const VkPipelineVertexInputStateCreateInfo*   pVertexInputState;
+    const VkPipelineInputAssemblyStateCreateInfo* pInputAssemblyState;
+    const void*                                   pTessellationState;
+    const VkPipelineViewportStateCreateInfo*      pViewportState;
+    const VkPipelineRasterizationStateCreateInfo* pRasterizationState;
+    const VkPipelineMultisampleStateCreateInfo*   pMultisampleState;
+    const void*                                   pDepthStencilState;
+    const VkPipelineColorBlendStateCreateInfo*    pColorBlendState;
+    const VkPipelineDynamicStateCreateInfo*       pDynamicState;
+    VkPipelineLayout                              layout;
+    uint64_t                                      renderPass;
+    uint32_t                                      subpass;
+    VkPipeline                                    basePipelineHandle;
+    int32_t                                       basePipelineIndex;
+};
+
+struct VkAttachmentDescription {
+    VkFlags  flags;
+    uint32_t format;
+    uint32_t samples;
+    uint32_t loadOp;
+    uint32_t storeOp;
+    uint32_t stencilLoadOp;
+    uint32_t stencilStoreOp;
+    uint32_t initialLayout;
+    uint32_t finalLayout;
+};
+
+struct VkAttachmentReference {
+    uint32_t attachment;
+    uint32_t layout;
+};
+
+struct VkSubpassDescription {
+    VkFlags                       flags;
+    uint32_t                      pipelineBindPoint;
+    uint32_t                      inputAttachmentCount;
+    const void*                   pInputAttachments;
+    uint32_t                      colorAttachmentCount;
+    const VkAttachmentReference*  pColorAttachments;
+    const void*                   pResolveAttachments;
+    const void*                   pDepthStencilAttachment;
+    uint32_t                      preserveAttachmentCount;
+    const void*                   pPreserveAttachments;
+};
+
+struct VkRenderPassCreateInfo {
+    uint32_t                       sType;
+    const void*                    pNext;
+    VkFlags                        flags;
+    uint32_t                       attachmentCount;
+    const VkAttachmentDescription* pAttachments;
+    uint32_t                       subpassCount;
+    const VkSubpassDescription*    pSubpasses;
+    uint32_t                       dependencyCount;
+    const void*                    pDependencies;
+};
+
+using PFN_vkCreateBuffer = VkResult (VKAPI_PTR*)(VkDevice, const VkBufferCreateInfo*, const void*, uint64_t*);
+using PFN_vkDestroyBuffer = void (VKAPI_PTR*)(VkDevice, uint64_t, const void*);
+using PFN_vkGetBufferMemoryRequirements = void (VKAPI_PTR*)(VkDevice, uint64_t, VkMemoryRequirements*);
+using PFN_vkAllocateMemory = VkResult (VKAPI_PTR*)(VkDevice, const VkMemoryAllocateInfo*, const void*, uint64_t*);
+using PFN_vkFreeMemory = void (VKAPI_PTR*)(VkDevice, uint64_t, const void*);
+using PFN_vkBindBufferMemory = VkResult (VKAPI_PTR*)(VkDevice, uint64_t, uint64_t, VkDeviceSize);
+using PFN_vkMapMemory = VkResult (VKAPI_PTR*)(VkDevice, uint64_t, VkDeviceSize, VkDeviceSize, VkFlags, void**);
+using PFN_vkUnmapMemory = void (VKAPI_PTR*)(VkDevice, uint64_t);
+using PFN_vkGetBufferDeviceAddress = uint64_t (VKAPI_PTR*)(VkDevice, const VkBufferDeviceAddressInfo*);
+using PFN_vkCreateRenderPass = VkResult (VKAPI_PTR*)(VkDevice, const VkRenderPassCreateInfo*, const void*, uint64_t*);
+using PFN_vkDestroyRenderPass = void (VKAPI_PTR*)(VkDevice, uint64_t, const void*);
+using PFN_vkCreateGraphicsPipelines = VkResult (VKAPI_PTR*)(VkDevice, VkPipelineCache, uint32_t, const VkGraphicsPipelineCreateInfo*, const void*, VkPipeline*);
+using PFN_vkCmdSetViewport = void (VKAPI_PTR*)(VkCommandBuffer, uint32_t, uint32_t, const VkViewport*);
+using PFN_vkCmdSetScissor = void (VKAPI_PTR*)(VkCommandBuffer, uint32_t, uint32_t, const VkRect2D*);
+
 } // namespace
 
 VulkanHostBackend& VulkanHostBackend::Instance() {
@@ -343,23 +585,35 @@ bool VulkanHostBackend::Initialize() {
     qci.queueCount = 1;
     qci.pQueuePriorities = &queue_prio;
 
-    const char* const dev_extensions[] = {
+    const char* dev_extensions[] = {
         "VK_KHR_swapchain",
+        "VK_KHR_buffer_device_address",
     };
+
+    VkPhysicalDeviceBufferDeviceAddressFeatures bda_features{};
+    bda_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
+    bda_features.bufferDeviceAddress = 1;
 
     VkDeviceCreateInfo dci{};
     dci.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    dci.pNext = &bda_features;
     dci.queueCreateInfoCount = 1;
     dci.pQueueCreateInfos = &qci;
-    dci.enabledExtensionCount = 1;
+    dci.enabledExtensionCount = 2;
     dci.ppEnabledExtensionNames = dev_extensions;
 
     VkDevice dev = nullptr;
-    if (create_dev(chosen, &dci, nullptr, &dev) != VK_SUCCESS || !dev) {
-        // Fallback without extension
-        dci.enabledExtensionCount = 0;
-        dci.ppEnabledExtensionNames = nullptr;
-        create_dev(chosen, &dci, nullptr, &dev);
+    if (create_dev(chosen, &dci, nullptr, &dev) == VK_SUCCESS && dev) {
+        gpu_info_.bda_supported = true;
+    } else {
+        // Fallback with just swapchain
+        dci.pNext = nullptr;
+        dci.enabledExtensionCount = 1;
+        if (create_dev(chosen, &dci, nullptr, &dev) != VK_SUCCESS || !dev) {
+            dci.enabledExtensionCount = 0;
+            dci.ppEnabledExtensionNames = nullptr;
+            create_dev(chosen, &dci, nullptr, &dev);
+        }
     }
 
     if (dev) {
@@ -671,24 +925,500 @@ bool VulkanHostBackend::ExecuteDrawIndexed(
 #endif
 }
 
+GpuBufferAllocation VulkanHostBackend::AllocateBufferWithDeviceAddress(
+    uint64_t size,
+    uint32_t usage_flags,
+    bool host_visible) {
+    GpuBufferAllocation alloc{};
+#ifdef _WIN32
+    if (!initialized_ || !vk_device_ || !vulkan_dll_ || size == 0) return alloc;
+    auto get_proc = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
+        ::GetProcAddress(static_cast<HMODULE>(vulkan_dll_), "vkGetInstanceProcAddr"));
+    if (!get_proc) return alloc;
+
+    auto get_dev_proc = reinterpret_cast<void* (VKAPI_PTR*)(VkDevice, const char*)>(
+        get_proc(vk_instance_, "vkGetDeviceProcAddr"));
+
+    auto create_buf = reinterpret_cast<PFN_vkCreateBuffer>(get_proc(vk_instance_, "vkCreateBuffer"));
+    auto destroy_buf = reinterpret_cast<PFN_vkDestroyBuffer>(get_proc(vk_instance_, "vkDestroyBuffer"));
+    auto get_reqs = reinterpret_cast<PFN_vkGetBufferMemoryRequirements>(get_proc(vk_instance_, "vkGetBufferMemoryRequirements"));
+    auto alloc_mem = reinterpret_cast<PFN_vkAllocateMemory>(get_proc(vk_instance_, "vkAllocateMemory"));
+    auto free_mem = reinterpret_cast<PFN_vkFreeMemory>(get_proc(vk_instance_, "vkFreeMemory"));
+    auto bind_buf = reinterpret_cast<PFN_vkBindBufferMemory>(get_proc(vk_instance_, "vkBindBufferMemory"));
+    auto map_mem = reinterpret_cast<PFN_vkMapMemory>(get_proc(vk_instance_, "vkMapMemory"));
+    
+    PFN_vkGetBufferDeviceAddress get_bda = nullptr;
+    if (get_dev_proc) {
+        get_bda = reinterpret_cast<PFN_vkGetBufferDeviceAddress>(get_dev_proc(vk_device_, "vkGetBufferDeviceAddress"));
+        if (!get_bda) {
+            get_bda = reinterpret_cast<PFN_vkGetBufferDeviceAddress>(get_dev_proc(vk_device_, "vkGetBufferDeviceAddressKHR"));
+        }
+    }
+    if (!get_bda) {
+        get_bda = reinterpret_cast<PFN_vkGetBufferDeviceAddress>(get_proc(vk_instance_, "vkGetBufferDeviceAddress"));
+    }
+    if (!get_bda) {
+        get_bda = reinterpret_cast<PFN_vkGetBufferDeviceAddress>(get_proc(vk_instance_, "vkGetBufferDeviceAddressKHR"));
+    }
+    auto get_mem_props = reinterpret_cast<PFN_vkGetPhysicalDeviceMemoryProperties>(
+        get_proc(vk_instance_, "vkGetPhysicalDeviceMemoryProperties"));
+
+    if (!create_buf || !destroy_buf || !get_reqs || !alloc_mem || !free_mem || !bind_buf || !get_mem_props) {
+        std::cerr << "  [BDA ERROR] Missing required buffer/memory proc addresses\n";
+        return alloc;
+    }
+
+    VkBufferCreateInfo bci{};
+    bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bci.size = (size + 255ULL) & ~255ULL;
+    // VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT = 0x00020000
+    bci.usage = usage_flags | 0x00020000U;
+
+    uint64_t buffer = 0;
+    VkResult rc_buf = create_buf(vk_device_, &bci, nullptr, &buffer);
+    if (rc_buf != VK_SUCCESS || !buffer) {
+        std::cerr << "  [BDA ERROR] vkCreateBuffer failed rc=" << rc_buf << "\n";
+        return alloc;
+    }
+
+    VkMemoryRequirements reqs{};
+    get_reqs(vk_device_, buffer, &reqs);
+
+    VkPhysicalDeviceMemoryProperties mem_props{};
+    get_mem_props(vk_phys_device_, &mem_props);
+    uint32_t desired_flags = host_visible ? (0x00000002U /* HOST_VISIBLE */ | 0x00000004U /* HOST_COHERENT */)
+                                          : 0x00000001U /* DEVICE_LOCAL */;
+
+    VkMemoryAllocateFlagsInfo flags_info{};
+    flags_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO;
+    flags_info.flags = 0x00000002U; // VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT
+
+    VkMemoryAllocateInfo mai{};
+    mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    mai.pNext = &flags_info;
+    mai.allocationSize = reqs.size;
+
+    uint64_t memory = 0;
+    VkResult rc_mem = static_cast<VkResult>(-1);
+
+    // 1. First attempt: match requested properties (e.g. host-visible + coherent)
+    for (uint32_t i = 0; i < mem_props.memoryTypeCount; ++i) {
+        if ((reqs.memoryTypeBits & (1U << i)) && (mem_props.memoryTypes[i].propertyFlags & desired_flags) == desired_flags) {
+            mai.memoryTypeIndex = i;
+            rc_mem = alloc_mem(vk_device_, &mai, nullptr, &memory);
+            if (rc_mem == VK_SUCCESS && memory) break;
+        }
+    }
+
+    // 2. Fallback: on NVIDIA hardware, BDA allocations often require DEVICE_LOCAL memory
+    if (rc_mem != VK_SUCCESS || !memory) {
+        for (uint32_t i = 0; i < mem_props.memoryTypeCount; ++i) {
+            if ((reqs.memoryTypeBits & (1U << i)) && (mem_props.memoryTypes[i].propertyFlags & 0x00000001U /* DEVICE_LOCAL */)) {
+                mai.memoryTypeIndex = i;
+                rc_mem = alloc_mem(vk_device_, &mai, nullptr, &memory);
+                if (rc_mem == VK_SUCCESS && memory) {
+                    host_visible = false;
+                    break;
+                }
+            }
+        }
+    }
+
+    // 3. Last resort: try any type allowed by memoryTypeBits
+    if (rc_mem != VK_SUCCESS || !memory) {
+        for (uint32_t i = 0; i < mem_props.memoryTypeCount; ++i) {
+            if (reqs.memoryTypeBits & (1U << i)) {
+                mai.memoryTypeIndex = i;
+                rc_mem = alloc_mem(vk_device_, &mai, nullptr, &memory);
+                if (rc_mem == VK_SUCCESS && memory) {
+                    if (!(mem_props.memoryTypes[i].propertyFlags & 0x00000002U /* HOST_VISIBLE */)) {
+                        host_visible = false;
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    if (rc_mem != VK_SUCCESS || !memory) {
+        std::cerr << "  [BDA ERROR] vkAllocateMemory failed rc=" << rc_mem << "\n";
+        destroy_buf(vk_device_, buffer, nullptr);
+        return alloc;
+    }
+
+    VkResult rc_bind = bind_buf(vk_device_, buffer, memory, 0);
+    if (rc_bind != VK_SUCCESS) {
+        std::cerr << "  [BDA ERROR] vkBindBufferMemory failed rc=" << rc_bind << "\n";
+        free_mem(vk_device_, memory, nullptr);
+        destroy_buf(vk_device_, buffer, nullptr);
+        return alloc;
+    }
+
+    uint64_t dev_addr = 0;
+    if (get_bda) {
+        VkBufferDeviceAddressInfo bdai{};
+        bdai.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+        bdai.buffer = buffer;
+        dev_addr = get_bda(vk_device_, &bdai);
+    } else {
+        std::cerr << "  [BDA ERROR] vkGetBufferDeviceAddress pointer null\n";
+    }
+
+    void* mapped = nullptr;
+    if (host_visible && map_mem) {
+        map_mem(vk_device_, memory, 0, reqs.size, 0, &mapped);
+    }
+
+    alloc.buffer_handle = buffer;
+    alloc.memory_handle = memory;
+    alloc.device_address = dev_addr;
+    alloc.size = reqs.size;
+    alloc.host_mapped_ptr = mapped;
+    ++gpu_info_.bda_buffers_allocated;
+#endif
+    return alloc;
+}
+
+void VulkanHostBackend::FreeBufferWithDeviceAddress(const GpuBufferAllocation& alloc) {
+#ifdef _WIN32
+    if (!initialized_ || !vk_device_ || !vulkan_dll_) return;
+    auto get_proc = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
+        ::GetProcAddress(static_cast<HMODULE>(vulkan_dll_), "vkGetInstanceProcAddr"));
+    if (!get_proc) return;
+
+    if (alloc.host_mapped_ptr) {
+        auto unmap_mem = reinterpret_cast<PFN_vkUnmapMemory>(get_proc(vk_instance_, "vkUnmapMemory"));
+        if (unmap_mem) unmap_mem(vk_device_, alloc.memory_handle);
+    }
+    if (alloc.buffer_handle) {
+        auto destroy_buf = reinterpret_cast<PFN_vkDestroyBuffer>(get_proc(vk_instance_, "vkDestroyBuffer"));
+        if (destroy_buf) destroy_buf(vk_device_, alloc.buffer_handle, nullptr);
+    }
+    if (alloc.memory_handle) {
+        auto free_mem = reinterpret_cast<PFN_vkFreeMemory>(get_proc(vk_instance_, "vkFreeMemory"));
+        if (free_mem) free_mem(vk_device_, alloc.memory_handle, nullptr);
+    }
+    if (gpu_info_.bda_buffers_allocated > 0) {
+        --gpu_info_.bda_buffers_allocated;
+    }
+#endif
+}
+
+uint64_t VulkanHostBackend::GetBufferDeviceAddress(uint64_t buffer_handle) const {
+#ifdef _WIN32
+    if (!initialized_ || !vk_device_ || !vulkan_dll_ || !buffer_handle) return 0;
+    auto get_proc = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
+        ::GetProcAddress(static_cast<HMODULE>(vulkan_dll_), "vkGetInstanceProcAddr"));
+    if (!get_proc) return 0;
+    auto get_bda = reinterpret_cast<PFN_vkGetBufferDeviceAddress>(get_proc(vk_instance_, "vkGetBufferDeviceAddress"));
+    if (!get_bda) {
+        get_bda = reinterpret_cast<PFN_vkGetBufferDeviceAddress>(get_proc(vk_instance_, "vkGetBufferDeviceAddressKHR"));
+    }
+    if (!get_bda) return 0;
+    VkBufferDeviceAddressInfo bdai{};
+    bdai.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+    bdai.buffer = buffer_handle;
+    return get_bda(vk_device_, &bdai);
+#else
+    return 0;
+#endif
+}
+
+bool VulkanHostBackend::CreateDefaultGraphicsPipeline() {
+#ifdef _WIN32
+    if (!initialized_ || !vk_device_ || !vulkan_dll_) return false;
+    if (default_graphics_pipeline_) return true;
+
+    auto get_proc = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
+        ::GetProcAddress(static_cast<HMODULE>(vulkan_dll_), "vkGetInstanceProcAddr"));
+    if (!get_proc) return false;
+
+    auto create_sm = reinterpret_cast<PFN_vkCreateShaderModule>(get_proc(vk_instance_, "vkCreateShaderModule"));
+    auto destroy_sm = reinterpret_cast<PFN_vkDestroyShaderModule>(get_proc(vk_instance_, "vkDestroyShaderModule"));
+    auto create_pl = reinterpret_cast<PFN_vkCreatePipelineLayout>(get_proc(vk_instance_, "vkCreatePipelineLayout"));
+    auto create_rp = reinterpret_cast<PFN_vkCreateRenderPass>(get_proc(vk_instance_, "vkCreateRenderPass"));
+    auto create_gp = reinterpret_cast<PFN_vkCreateGraphicsPipelines>(get_proc(vk_instance_, "vkCreateGraphicsPipelines"));
+
+    if (!create_sm || !destroy_sm || !create_pl || !create_rp || !create_gp) return false;
+
+    // 1. Compile minimal Vertex and Fragment modules
+    auto vs_words = Rdna2ShaderAnalyzer::EmitMinimalSpirvVertex();
+    auto fs_words = Rdna2ShaderAnalyzer::EmitMinimalSpirvFragment();
+
+    VkShaderModuleCreateInfo vs_ci{};
+    vs_ci.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    vs_ci.codeSize = vs_words.size() * sizeof(uint32_t);
+    vs_ci.pCode = vs_words.data();
+    VkShaderModule vs_mod = 0;
+    VkResult rc_vs = create_sm(vk_device_, &vs_ci, nullptr, &vs_mod);
+    if (rc_vs != VK_SUCCESS || !vs_mod) {
+        std::cerr << "  [VK GP ERROR] vs create_sm failed rc=" << rc_vs << "\n";
+        return false;
+    }
+
+    VkShaderModuleCreateInfo fs_ci{};
+    fs_ci.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    fs_ci.codeSize = fs_words.size() * sizeof(uint32_t);
+    fs_ci.pCode = fs_words.data();
+    VkShaderModule fs_mod = 0;
+    VkResult rc_fs = create_sm(vk_device_, &fs_ci, nullptr, &fs_mod);
+    if (rc_fs != VK_SUCCESS || !fs_mod) {
+        std::cerr << "  [VK GP ERROR] fs create_sm failed rc=" << rc_fs << "\n";
+        destroy_sm(vk_device_, vs_mod, nullptr);
+        return false;
+    }
+
+    // 2. Create Pipeline Layout
+    VkPipelineLayoutCreateInfo pl_ci{};
+    pl_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    VkPipelineLayout layout = 0;
+    VkResult rc_pl = create_pl(vk_device_, &pl_ci, nullptr, &layout);
+    if (rc_pl != VK_SUCCESS || !layout) {
+        std::cerr << "  [VK GP ERROR] create_pl failed rc=" << rc_pl << "\n";
+        destroy_sm(vk_device_, vs_mod, nullptr);
+        destroy_sm(vk_device_, fs_mod, nullptr);
+        return false;
+    }
+    default_pipeline_layout_ = layout;
+
+    // 3. Create minimal RenderPass (1 color attachment matching fragment shader location 0)
+    VkAttachmentDescription color_att{};
+    color_att.flags = 0;
+    color_att.format = 44; // VK_FORMAT_B8G8R8A8_UNORM
+    color_att.samples = 1; // VK_SAMPLE_COUNT_1_BIT
+    color_att.loadOp = 2;  // VK_ATTACHMENT_LOAD_OP_DONT_CARE
+    color_att.storeOp = 1; // VK_ATTACHMENT_STORE_OP_DONT_CARE
+    color_att.stencilLoadOp = 2;  // DONT_CARE
+    color_att.stencilStoreOp = 1; // DONT_CARE
+    color_att.initialLayout = 0; // VK_IMAGE_LAYOUT_UNDEFINED
+    color_att.finalLayout = 2;   // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+
+    VkAttachmentReference color_ref{};
+    color_ref.attachment = 0;
+    color_ref.layout = 2; // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+
+    VkSubpassDescription subpass{};
+    subpass.pipelineBindPoint = 0; // VK_PIPELINE_BIND_POINT_GRAPHICS
+    subpass.colorAttachmentCount = 1;
+    subpass.pColorAttachments = &color_ref;
+
+    VkRenderPassCreateInfo rp_ci{};
+    rp_ci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    rp_ci.attachmentCount = 1;
+    rp_ci.pAttachments = &color_att;
+    rp_ci.subpassCount = 1;
+    rp_ci.pSubpasses = &subpass;
+
+    uint64_t rp = 0;
+    VkResult rc_rp = create_rp(vk_device_, &rp_ci, nullptr, &rp);
+    if (rc_rp != VK_SUCCESS || !rp) {
+        std::cerr << "  [VK GP ERROR] create_rp failed rc=" << rc_rp << "\n";
+        destroy_sm(vk_device_, vs_mod, nullptr);
+        destroy_sm(vk_device_, fs_mod, nullptr);
+        return false;
+    }
+    default_render_pass_ = rp;
+
+    // 4. Create Graphics Pipeline
+    VkPipelineShaderStageCreateInfo stages[2]{};
+    stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    stages[0].stage = 0x00000001; // VK_SHADER_STAGE_VERTEX_BIT
+    stages[0].module = vs_mod;
+    stages[0].pName = "main";
+
+    stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    stages[1].stage = 0x00000010; // VK_SHADER_STAGE_FRAGMENT_BIT
+    stages[1].module = fs_mod;
+    stages[1].pName = "main";
+
+    VkPipelineVertexInputStateCreateInfo vi_ci{};
+    vi_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+
+    VkPipelineInputAssemblyStateCreateInfo ia_ci{};
+    ia_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    ia_ci.topology = 3; // VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
+
+    VkViewport viewport{0.0f, 0.0f, 1920.0f, 1080.0f, 0.0f, 1.0f};
+    VkRect2D scissor{{0, 0}, {1920, 1080}};
+    VkPipelineViewportStateCreateInfo vp_ci{};
+    vp_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    vp_ci.viewportCount = 1;
+    vp_ci.pViewports = &viewport;
+    vp_ci.scissorCount = 1;
+    vp_ci.pScissors = &scissor;
+
+    VkPipelineRasterizationStateCreateInfo rast_ci{};
+    rast_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rast_ci.polygonMode = 0; // VK_POLYGON_MODE_FILL
+    rast_ci.cullMode = 0;    // VK_CULL_MODE_NONE
+    rast_ci.frontFace = 0;   // VK_FRONT_FACE_COUNTER_CLOCKWISE
+    rast_ci.lineWidth = 1.0f;
+
+    VkPipelineMultisampleStateCreateInfo ms_ci{};
+    ms_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    ms_ci.rasterizationSamples = 1; // VK_SAMPLE_COUNT_1_BIT
+
+    VkPipelineColorBlendAttachmentState cb_att{};
+    cb_att.blendEnable = 0;
+    cb_att.colorWriteMask = 0x0000000FU; // VK_COLOR_COMPONENT_R_BIT | G | B | A (1|2|4|8)
+
+    VkPipelineColorBlendStateCreateInfo cb_ci{};
+    cb_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    cb_ci.attachmentCount = 1;
+    cb_ci.pAttachments = &cb_att;
+
+    uint32_t dyn_states[] = { 0 /* VK_DYNAMIC_STATE_VIEWPORT */, 1 /* VK_DYNAMIC_STATE_SCISSOR */ };
+    VkPipelineDynamicStateCreateInfo dyn_ci{};
+    dyn_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dyn_ci.dynamicStateCount = 2;
+    dyn_ci.pDynamicStates = dyn_states;
+
+    VkGraphicsPipelineCreateInfo gp_ci{};
+    gp_ci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    gp_ci.stageCount = 2;
+    gp_ci.pStages = stages;
+    gp_ci.pVertexInputState = &vi_ci;
+    gp_ci.pInputAssemblyState = &ia_ci;
+    gp_ci.pViewportState = &vp_ci;
+    gp_ci.pRasterizationState = &rast_ci;
+    gp_ci.pMultisampleState = &ms_ci;
+    gp_ci.pColorBlendState = &cb_ci;
+    gp_ci.pDynamicState = &dyn_ci;
+    gp_ci.layout = layout;
+    gp_ci.renderPass = rp;
+    gp_ci.subpass = 0;
+    gp_ci.basePipelineIndex = -1;
+
+    VkPipeline pipeline = 0;
+    VkResult rc = create_gp(vk_device_, 0, 1, &gp_ci, nullptr, &pipeline);
+    destroy_sm(vk_device_, vs_mod, nullptr);
+    destroy_sm(vk_device_, fs_mod, nullptr);
+
+    if (rc != VK_SUCCESS || !pipeline) {
+        std::cerr << "  [VK GP ERROR] create_gp failed rc=" << rc << "\n";
+        return false;
+    }
+    default_graphics_pipeline_ = pipeline;
+    return true;
+#else
+    return false;
+#endif
+}
+
+bool VulkanHostBackend::ExecuteGraphicsDraw(
+    uint32_t vertex_count,
+    uint32_t instance_count,
+    uint32_t first_vertex,
+    uint32_t first_instance) {
+#ifdef _WIN32
+    if (!initialized_ || !vk_device_ || !vk_queue_ || !vulkan_dll_ || vertex_count == 0) return false;
+    if (!default_graphics_pipeline_) {
+        if (!CreateDefaultGraphicsPipeline()) return false;
+    }
+
+    auto get_proc = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
+        ::GetProcAddress(static_cast<HMODULE>(vulkan_dll_), "vkGetInstanceProcAddr"));
+    if (!get_proc) return false;
+
+    auto create_pool = reinterpret_cast<PFN_vkCreateCommandPool>(get_proc(vk_instance_, "vkCreateCommandPool"));
+    auto destroy_pool = reinterpret_cast<PFN_vkDestroyCommandPool>(get_proc(vk_instance_, "vkDestroyCommandPool"));
+    auto alloc_cb = reinterpret_cast<PFN_vkAllocateCommandBuffers>(get_proc(vk_instance_, "vkAllocateCommandBuffers"));
+    auto begin_cb = reinterpret_cast<PFN_vkBeginCommandBuffer>(get_proc(vk_instance_, "vkBeginCommandBuffer"));
+    auto end_cb = reinterpret_cast<PFN_vkEndCommandBuffer>(get_proc(vk_instance_, "vkEndCommandBuffer"));
+    auto bind_pip = reinterpret_cast<PFN_vkCmdBindPipeline>(get_proc(vk_instance_, "vkCmdBindPipeline"));
+    auto cmd_set_vp = reinterpret_cast<PFN_vkCmdSetViewport>(get_proc(vk_instance_, "vkCmdSetViewport"));
+    auto cmd_set_sc = reinterpret_cast<PFN_vkCmdSetScissor>(get_proc(vk_instance_, "vkCmdSetScissor"));
+    auto cmd_draw = reinterpret_cast<PFN_vkCmdDraw>(get_proc(vk_instance_, "vkCmdDraw"));
+    auto queue_submit = reinterpret_cast<PFN_vkQueueSubmit>(get_proc(vk_instance_, "vkQueueSubmit"));
+    auto queue_wait = reinterpret_cast<PFN_vkQueueWaitIdle>(get_proc(vk_instance_, "vkQueueWaitIdle"));
+
+    if (!create_pool || !destroy_pool || !alloc_cb || !begin_cb || !end_cb || !bind_pip || !cmd_draw || !queue_submit || !queue_wait) {
+        return false;
+    }
+
+    VkCommandPoolCreateInfo pool_ci{};
+    pool_ci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    pool_ci.flags = 0x00000002;
+    pool_ci.queueFamilyIndex = queue_family_index_;
+    VkCommandPool pool = 0;
+    if (create_pool(vk_device_, &pool_ci, nullptr, &pool) != VK_SUCCESS || !pool) return false;
+
+    VkCommandBufferAllocateInfo cb_ai{};
+    cb_ai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    cb_ai.commandPool = pool;
+    cb_ai.level = 0;
+    cb_ai.commandBufferCount = 1;
+    VkCommandBuffer cmd_buf = nullptr;
+    if (alloc_cb(vk_device_, &cb_ai, &cmd_buf) != VK_SUCCESS || !cmd_buf) {
+        destroy_pool(vk_device_, pool, nullptr);
+        return false;
+    }
+
+    VkCommandBufferBeginInfo begin_info{};
+    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    begin_info.flags = 0x00000001;
+    begin_cb(cmd_buf, &begin_info);
+
+    bind_pip(cmd_buf, 0 /* VK_PIPELINE_BIND_POINT_GRAPHICS */, default_graphics_pipeline_);
+
+    if (cmd_set_vp) {
+        VkViewport vp{0.0f, 0.0f, 1920.0f, 1080.0f, 0.0f, 1.0f};
+        cmd_set_vp(cmd_buf, 0, 1, &vp);
+    }
+    if (cmd_set_sc) {
+        VkRect2D sc{{0, 0}, {1920, 1080}};
+        cmd_set_sc(cmd_buf, 0, 1, &sc);
+    }
+
+    cmd_draw(cmd_buf, vertex_count, instance_count, first_vertex, first_instance);
+    end_cb(cmd_buf);
+
+    VkSubmitInfo submit_info{};
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit_info.commandBufferCount = 1;
+    submit_info.pCommandBuffers = &cmd_buf;
+    queue_submit(vk_queue_, 1, &submit_info, 0);
+    queue_wait(vk_queue_);
+
+    destroy_pool(vk_device_, pool, nullptr);
+    ++gpu_info_.draw_calls_executed;
+    return true;
+#else
+    return false;
+#endif
+}
+
 void VulkanHostBackend::Shutdown() {
 #ifdef _WIN32
     if (!initialized_ || !vulkan_dll_) return;
     auto get_proc = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
         ::GetProcAddress(static_cast<HMODULE>(vulkan_dll_), "vkGetInstanceProcAddr"));
-    if (get_proc) {
-        if (vk_device_) {
-            auto destroy_dev = reinterpret_cast<PFN_vkDestroyDevice>(
-                get_proc(vk_instance_, "vkDestroyDevice"));
-            if (destroy_dev) destroy_dev(vk_device_, nullptr);
-            vk_device_ = nullptr;
+    if (get_proc && vk_device_) {
+        if (default_graphics_pipeline_) {
+            auto destroy_pip = reinterpret_cast<PFN_vkDestroyPipeline>(get_proc(vk_instance_, "vkDestroyPipeline"));
+            if (destroy_pip) destroy_pip(vk_device_, default_graphics_pipeline_, nullptr);
+            default_graphics_pipeline_ = 0;
         }
-        if (vk_instance_) {
-            auto destroy_inst = reinterpret_cast<PFN_vkDestroyInstance>(
-                get_proc(vk_instance_, "vkDestroyInstance"));
-            if (destroy_inst) destroy_inst(vk_instance_, nullptr);
-            vk_instance_ = nullptr;
+        if (default_pipeline_layout_) {
+            auto destroy_pl = reinterpret_cast<PFN_vkDestroyPipelineLayout>(get_proc(vk_instance_, "vkDestroyPipelineLayout"));
+            if (destroy_pl) destroy_pl(vk_device_, default_pipeline_layout_, nullptr);
+            default_pipeline_layout_ = 0;
         }
+        if (default_render_pass_) {
+            auto destroy_rp = reinterpret_cast<PFN_vkDestroyRenderPass>(get_proc(vk_instance_, "vkDestroyRenderPass"));
+            if (destroy_rp) destroy_rp(vk_device_, default_render_pass_, nullptr);
+            default_render_pass_ = 0;
+        }
+        auto destroy_dev = reinterpret_cast<PFN_vkDestroyDevice>(
+            get_proc(vk_instance_, "vkDestroyDevice"));
+        if (destroy_dev) destroy_dev(vk_device_, nullptr);
+        vk_device_ = nullptr;
+    }
+    if (get_proc && vk_instance_) {
+        auto destroy_inst = reinterpret_cast<PFN_vkDestroyInstance>(
+            get_proc(vk_instance_, "vkDestroyInstance"));
+        if (destroy_inst) destroy_inst(vk_instance_, nullptr);
+        vk_instance_ = nullptr;
     }
     FreeLibrary(static_cast<HMODULE>(vulkan_dll_));
     vulkan_dll_ = nullptr;

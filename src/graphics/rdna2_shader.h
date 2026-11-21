@@ -47,6 +47,12 @@ public:
         uint32_t local_size_y = 1,
         uint32_t local_size_z = 1);
 
+    // Emit a minimal valid SPIR-V v1.6 vertex shader binary
+    static std::vector<uint32_t> EmitMinimalSpirvVertex();
+
+    // Emit a minimal valid SPIR-V v1.6 fragment/pixel shader binary
+    static std::vector<uint32_t> EmitMinimalSpirvFragment();
+
     // Translate a decoded RDNA2 shader into an executable Vulkan SPIR-V compute module
     static std::vector<uint32_t> TranslateRdna2ToSpirv(
         const Rdna2ShaderAnalysis& analysis,

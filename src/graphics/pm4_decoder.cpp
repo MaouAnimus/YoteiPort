@@ -184,7 +184,7 @@ std::vector<DecodedPm4Packet> AgcPm4Backend::DecodeCommandStream(
                     detail << "count=" << count << " instances=" << draw_state_.num_instances;
                     auto& vk = VulkanHostBackend::Instance();
                     if (vk.IsInitialized()) {
-                        vk.ExecuteDraw(count, draw_state_.num_instances, 0, 0);
+                        vk.ExecuteGraphicsDraw(count, draw_state_.num_instances, 0, 0);
                     }
                 }
                 break;

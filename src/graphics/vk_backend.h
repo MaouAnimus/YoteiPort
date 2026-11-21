@@ -15,8 +15,18 @@ struct VulkanGpuInfo {
     uint64_t vram_bytes = 0;
     bool     device_created = false;
     bool     spirv_module_verified = false;
+    bool     bda_supported = false;
+    uint64_t bda_buffers_allocated = 0;
     uint64_t compute_dispatches_executed = 0;
     uint64_t draw_calls_executed = 0;
+};
+
+struct GpuBufferAllocation {
+    uint64_t buffer_handle = 0;   // VkBuffer
+    uint64_t memory_handle = 0;   // VkDeviceMemory
+    uint64_t device_address = 0;  // 64-bit GPU virtual address (BDA)
+    uint64_t size = 0;
+    void*    host_mapped_ptr = nullptr;
 };
 
 class VulkanHostBackend {
@@ -41,9 +51,27 @@ public:
         uint32_t first_index = 0,
         int32_t vertex_offset = 0,
         uint32_t first_instance = 0);
+
+    // Buffer Device Address (BDA) 64-bit Memory API
+    GpuBufferAllocation AllocateBufferWithDeviceAddress(
+        uint64_t size,
+        uint32_t usage_flags,
+        bool host_visible = true);
+    void FreeBufferWithDeviceAddress(const GpuBufferAllocation& alloc);
+    uint64_t GetBufferDeviceAddress(uint64_t buffer_handle) const;
+
+    // Graphics Pipeline API
+    bool CreateDefaultGraphicsPipeline();
+    bool ExecuteGraphicsDraw(
+        uint32_t vertex_count,
+        uint32_t instance_count = 1,
+        uint32_t first_vertex = 0,
+        uint32_t first_instance = 0);
+
     void Shutdown();
 
     bool IsInitialized() const { return initialized_; }
+    bool IsBdaSupported() const { return gpu_info_.bda_supported; }
     const VulkanGpuInfo& GetGpuInfo() const { return gpu_info_; }
 
     void* GetInstance() const { return vk_instance_; }
@@ -64,6 +92,15 @@ private:
     void* vk_queue_ = nullptr;
     uint32_t queue_family_index_ = 0;
     VulkanGpuInfo gpu_info_{};
+
+    // Graphics Pipeline handles
+    uint64_t default_render_pass_ = 0;
+    uint64_t default_pipeline_layout_ = 0;
+    uint64_t default_graphics_pipeline_ = 0;
+    uint64_t default_framebuffer_ = 0;
+    uint64_t default_color_image_ = 0;
+    uint64_t default_color_mem_ = 0;
+    uint64_t default_color_view_ = 0;
 };
 
 } // namespace yotei::graphics
