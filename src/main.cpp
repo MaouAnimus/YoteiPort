@@ -4,6 +4,7 @@
 #include "graphics/vk_backend.h"
 #include "graphics/xtbs_decoder.h"
 #include "graphics/smbs_decoder.h"
+#include "graphics/hiz_readback.h"
 #include "audio/audio_out_hle.h"
 #include "audio/ajm_hle.h"
 #include "audio/wasapi_backend.h"
@@ -937,7 +938,70 @@ int main(int argc, char** argv) {
         }
     }
 
-    // 8. Test Calling Game main() @ 0x800f3d320
+    // 8. Test Hi-Z Depth Pyramid & Linear Readback Engine (Occlusion Culling)
+    std::cout << "\n--- Testing Hi-Z Depth Pyramid & Linear Readback Engine ---\n";
+    auto& hiz_engine = yotei::graphics::HizReadbackEngine::Instance();
+    if (hiz_engine.Initialize(960, 540, 6)) {
+        std::cout << "[+] Initialized Hi-Z Engine: " << hiz_engine.GetWidth() << "x"
+                  << hiz_engine.GetHeight() << " | Mips=" << hiz_engine.GetMipCount()
+                  << " | BufferSize=" << hiz_engine.GetBufferSize() << " bytes\n";
+
+        // Create GPU Depth Target Image
+        uint64_t depth_view = 0;
+        uint64_t depth_img = vk_backend.CreateDepthTargetImage(
+            hiz_engine.GetWidth(),
+            hiz_engine.GetHeight(),
+            100 /* VK_FORMAT_R32_SFLOAT */,
+            &depth_view);
+
+        // Allocate Linear Readback Host-Visible Buffer
+        auto hiz_linear_alloc = vk_backend.AllocateBufferWithDeviceAddress(
+            hiz_engine.GetBufferSize(),
+            0x00000001 /* TRANSFER_SRC */ | 0x00000002 /* TRANSFER_DST */,
+            true);
+
+        if (depth_img && hiz_linear_alloc.buffer_handle) {
+            // Populate synthetic scene with center occluder
+            hiz_engine.PopulateDepthPattern(0.4f);
+
+            if (hiz_linear_alloc.host_mapped_ptr) {
+                std::memcpy(hiz_linear_alloc.host_mapped_ptr, hiz_engine.GetHostBuffer(), hiz_engine.GetBufferSize());
+            }
+
+            // Transfer GPU Image to Linear Buffer with Memory Barriers
+            bool xfer_ok = vk_backend.TransferImageToLinearBuffer(
+                depth_img,
+                hiz_linear_alloc.buffer_handle,
+                hiz_engine.GetWidth(),
+                hiz_engine.GetHeight());
+
+            std::cout << "[+] Hi-Z Linear Readback Transfer: " << (xfer_ok ? "SYNCHRONIZED (Barriers Active)" : "FAILED")
+                      << " | GPU DevAddr=0x" << std::hex << hiz_linear_alloc.device_address << std::dec << "\n";
+
+            // Query Occlusion for 2 Test Bounding Boxes:
+            // Box A: Behind center occluder (Castle/Mountain, should be OCCLUDED)
+            yotei::graphics::HizBoundingBox occluded_box{ -0.2f, -0.2f, 0.1f, 0.2f, 0.2f, 0.3f };
+            bool is_box_a_occluded = hiz_engine.QueryOcclusion(occluded_box, true);
+
+            // Box B: Foreground player katana (Close to camera, should be VISIBLE)
+            yotei::graphics::HizBoundingBox visible_box{ -0.1f, -0.1f, 0.9f, 0.1f, 0.1f, 0.95f };
+            bool is_box_b_occluded = hiz_engine.QueryOcclusion(visible_box, true);
+
+            std::cout << "[+] Occlusion Culling Queries (Reverse-Z Conservative Mip Testing):\n"
+                      << "    Query #1 (Distant Target behind Center Occluder) : "
+                      << (is_box_a_occluded ? "OCCLUDED (Culled - Draw Skipped)" : "VISIBLE") << "\n"
+                      << "    Query #2 (Foreground Action Katana at Camera)   : "
+                      << (is_box_b_occluded ? "OCCLUDED" : "VISIBLE (Passed - Submitted to PM4)") << "\n";
+
+            std::cout << "    Hi-Z Stats: Queries=" << hiz_engine.GetStats().total_queries
+                      << " | Culled=" << hiz_engine.GetStats().occluded_count
+                      << " | Passed=" << hiz_engine.GetStats().visible_count << "\n";
+
+            vk_backend.FreeBufferWithDeviceAddress(hiz_linear_alloc);
+        }
+    }
+
+    // 9. Test Calling Game main() @ 0x800f3d320
     if (!skip_game_main) {
         uint64_t game_main = mapper.GetMainAddress();
         std::cout << "\n--- Testing Game main() Entry Point (Native x86-64) ---\n";

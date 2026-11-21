@@ -245,6 +245,7 @@ constexpr uint32_t VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_
 constexpr uint32_t VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET = 35;
 constexpr uint32_t VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO = 14;
 constexpr uint32_t VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO = 15;
+constexpr uint32_t VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER = 45;
 
 constexpr uint32_t VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT = 0x00000001;
 constexpr uint32_t VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT = 0x00000004;
@@ -589,6 +590,49 @@ using PFN_vkCreateDescriptorPool = VkResult (VKAPI_PTR*)(VkDevice, const VkDescr
 using PFN_vkDestroyDescriptorPool = void (VKAPI_PTR*)(VkDevice, uint64_t, const void*);
 using PFN_vkAllocateDescriptorSets = VkResult (VKAPI_PTR*)(VkDevice, const VkDescriptorSetAllocateInfo*, uint64_t*);
 using PFN_vkCmdBindDescriptorSets = void (VKAPI_PTR*)(VkCommandBuffer, uint32_t, uint64_t, uint32_t, uint32_t, const uint64_t*, uint32_t, const uint32_t*);
+
+struct VkBufferImageCopy {
+    VkDeviceSize bufferOffset;
+    uint32_t     bufferRowLength;
+    uint32_t     bufferImageHeight;
+    struct {
+        uint32_t aspectMask;
+        uint32_t mipLevel;
+        uint32_t baseArrayLayer;
+        uint32_t layerCount;
+    } imageSubresource;
+    struct { int32_t x, y, z; } imageOffset;
+    struct { uint32_t width, height, depth; } imageExtent;
+};
+
+struct VkImageMemoryBarrier {
+    uint32_t    sType;
+    const void* pNext;
+    VkFlags     srcAccessMask;
+    VkFlags     dstAccessMask;
+    uint32_t    oldLayout;
+    uint32_t    newLayout;
+    uint32_t    srcQueueFamilyIndex;
+    uint32_t    dstQueueFamilyIndex;
+    uint64_t    image;
+    struct {
+        uint32_t aspectMask;
+        uint32_t baseMipLevel;
+        uint32_t levelCount;
+        uint32_t baseArrayLayer;
+        uint32_t layerCount;
+    } subresourceRange;
+};
+
+using PFN_vkCmdPipelineBarrier = void (VKAPI_PTR*)(
+    VkCommandBuffer, VkFlags, VkFlags, VkFlags,
+    uint32_t, const void*,
+    uint32_t, const void*,
+    uint32_t, const VkImageMemoryBarrier*);
+
+using PFN_vkCmdCopyImageToBuffer = void (VKAPI_PTR*)(
+    VkCommandBuffer, uint64_t, uint32_t, uint64_t,
+    uint32_t, const VkBufferImageCopy*);
 
 } // namespace
 
@@ -2054,6 +2098,241 @@ uint64_t VulkanHostBackend::CreateTexture2D(
     return image_handle;
 #else
     return 0;
+#endif
+}
+
+uint64_t VulkanHostBackend::CreateDepthTargetImage(
+    uint32_t width,
+    uint32_t height,
+    uint32_t vk_format,
+    uint64_t* out_view) {
+#ifdef _WIN32
+    if (!vk_device_ || !vulkan_dll_) return 0;
+    auto get_proc = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
+        ::GetProcAddress(static_cast<HMODULE>(vulkan_dll_), "vkGetInstanceProcAddr"));
+    if (!get_proc) return 0;
+
+    auto create_img = reinterpret_cast<PFN_vkCreateImage>(get_proc(vk_instance_, "vkCreateImage"));
+    auto get_reqs = reinterpret_cast<PFN_vkGetImageMemoryRequirements>(get_proc(vk_instance_, "vkGetImageMemoryRequirements"));
+    auto alloc_mem = reinterpret_cast<PFN_vkAllocateMemory>(get_proc(vk_instance_, "vkAllocateMemory"));
+    auto bind_mem = reinterpret_cast<PFN_vkBindImageMemory>(get_proc(vk_instance_, "vkBindImageMemory"));
+    auto create_iv = reinterpret_cast<PFN_vkCreateImageView>(get_proc(vk_instance_, "vkCreateImageView"));
+
+    if (!create_img || !get_reqs || !alloc_mem || !bind_mem || !create_iv) return 0;
+
+    struct {
+        uint32_t sType;
+        const void* pNext;
+        uint32_t flags;
+        uint32_t imageType;
+        uint32_t format;
+        struct { uint32_t w; uint32_t h; uint32_t d; } extent;
+        uint32_t mipLevels;
+        uint32_t arrayLayers;
+        uint32_t samples;
+        uint32_t tiling;
+        uint32_t usage;
+        uint32_t sharingMode;
+        uint32_t queueFamilyIndexCount;
+        const uint32_t* pQueueFamilyIndices;
+        uint32_t initialLayout;
+    } img_ci{};
+
+    img_ci.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    img_ci.imageType = 2; // 2D
+    img_ci.format = vk_format;
+    img_ci.extent = { width, height, 1 };
+    img_ci.mipLevels = 1;
+    img_ci.arrayLayers = 1;
+    img_ci.samples = 1;
+    img_ci.tiling = 0; // OPTIMAL
+    // VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT (0x20) | VK_IMAGE_USAGE_SAMPLED_BIT (0x4) | VK_IMAGE_USAGE_TRANSFER_SRC_BIT (0x1) | VK_IMAGE_USAGE_TRANSFER_DST_BIT (0x2)
+    img_ci.usage = 0x00000020 | 0x00000004 | 0x00000001 | 0x00000002;
+    img_ci.sharingMode = 0;
+
+    uint64_t image_handle = 0;
+    if (create_img(vk_device_, &img_ci, nullptr, &image_handle) != VK_SUCCESS || !image_handle) {
+        return 0;
+    }
+
+    VkMemoryRequirements reqs{};
+    get_reqs(vk_device_, image_handle, &reqs);
+
+    auto get_mem_props = reinterpret_cast<PFN_vkGetPhysicalDeviceMemoryProperties>(
+        get_proc(vk_instance_, "vkGetPhysicalDeviceMemoryProperties"));
+    VkPhysicalDeviceMemoryProperties mem_props{};
+    get_mem_props(vk_phys_device_, &mem_props);
+
+    uint32_t mem_type_idx = 0;
+    for (uint32_t i = 0; i < mem_props.memoryTypeCount; ++i) {
+        if ((reqs.memoryTypeBits & (1 << i)) &&
+            (mem_props.memoryTypes[i].propertyFlags & 0x1U)) { // DEVICE_LOCAL
+            mem_type_idx = i;
+            break;
+        }
+    }
+
+    VkMemoryAllocateInfo alloc_info{};
+    alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    alloc_info.allocationSize = reqs.size;
+    alloc_info.memoryTypeIndex = mem_type_idx;
+
+    uint64_t image_mem = 0;
+    if (alloc_mem(vk_device_, &alloc_info, nullptr, &image_mem) != VK_SUCCESS || !image_mem) {
+        return 0;
+    }
+
+    bind_mem(vk_device_, image_handle, image_mem, 0);
+
+    // Create View
+    struct {
+        uint32_t sType;
+        const void* pNext;
+        uint32_t flags;
+        uint64_t image;
+        uint32_t viewType;
+        uint32_t format;
+        struct { uint32_t r, g, b, a; } components;
+        struct {
+            uint32_t aspectMask;
+            uint32_t baseMipLevel;
+            uint32_t levelCount;
+            uint32_t baseArrayLayer;
+            uint32_t layerCount;
+        } subresourceRange;
+    } iv_ci{};
+
+    iv_ci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    iv_ci.image = image_handle;
+    iv_ci.viewType = 1; // 2D
+    iv_ci.format = vk_format;
+    iv_ci.subresourceRange.aspectMask = (vk_format >= 124 && vk_format <= 130) ? 2 /* DEPTH */ : 1 /* COLOR */;
+    iv_ci.subresourceRange.baseMipLevel = 0;
+    iv_ci.subresourceRange.levelCount = 1;
+    iv_ci.subresourceRange.baseArrayLayer = 0;
+    iv_ci.subresourceRange.layerCount = 1;
+
+    uint64_t view_handle = 0;
+    if (create_iv(vk_device_, &iv_ci, nullptr, &view_handle) != VK_SUCCESS || !view_handle) {
+        return 0;
+    }
+
+    if (out_view) *out_view = view_handle;
+    return image_handle;
+#else
+    return 0;
+#endif
+}
+
+bool VulkanHostBackend::TransferImageToLinearBuffer(
+    uint64_t src_image,
+    uint64_t dst_buffer,
+    uint32_t width,
+    uint32_t height) {
+#ifdef _WIN32
+    if (!initialized_ || !vk_device_ || !vk_queue_ || !vulkan_dll_) return false;
+    if (!src_image || !dst_buffer || width == 0 || height == 0) return false;
+
+    auto get_proc = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
+        ::GetProcAddress(static_cast<HMODULE>(vulkan_dll_), "vkGetInstanceProcAddr"));
+    if (!get_proc) return false;
+
+    auto create_pool = reinterpret_cast<PFN_vkCreateCommandPool>(get_proc(vk_instance_, "vkCreateCommandPool"));
+    auto destroy_pool = reinterpret_cast<PFN_vkDestroyCommandPool>(get_proc(vk_instance_, "vkDestroyCommandPool"));
+    auto alloc_cb = reinterpret_cast<PFN_vkAllocateCommandBuffers>(get_proc(vk_instance_, "vkAllocateCommandBuffers"));
+    auto begin_cb = reinterpret_cast<PFN_vkBeginCommandBuffer>(get_proc(vk_instance_, "vkBeginCommandBuffer"));
+    auto end_cb = reinterpret_cast<PFN_vkEndCommandBuffer>(get_proc(vk_instance_, "vkEndCommandBuffer"));
+    auto cmd_barrier = reinterpret_cast<PFN_vkCmdPipelineBarrier>(get_proc(vk_instance_, "vkCmdPipelineBarrier"));
+    auto cmd_copy = reinterpret_cast<PFN_vkCmdCopyImageToBuffer>(get_proc(vk_instance_, "vkCmdCopyImageToBuffer"));
+    auto queue_submit = reinterpret_cast<PFN_vkQueueSubmit>(get_proc(vk_instance_, "vkQueueSubmit"));
+    auto queue_wait = reinterpret_cast<PFN_vkQueueWaitIdle>(get_proc(vk_instance_, "vkQueueWaitIdle"));
+
+    if (!create_pool || !destroy_pool || !alloc_cb || !begin_cb || !end_cb || !cmd_barrier || !cmd_copy || !queue_submit || !queue_wait) {
+        return false;
+    }
+
+    VkCommandPoolCreateInfo pool_ci{};
+    pool_ci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    pool_ci.flags = 0x00000002;
+    pool_ci.queueFamilyIndex = queue_family_index_;
+    VkCommandPool pool = 0;
+    if (create_pool(vk_device_, &pool_ci, nullptr, &pool) != VK_SUCCESS || !pool) return false;
+
+    VkCommandBufferAllocateInfo cb_ai{};
+    cb_ai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    cb_ai.commandPool = pool;
+    cb_ai.level = 0;
+    cb_ai.commandBufferCount = 1;
+    VkCommandBuffer cmd_buf = nullptr;
+    if (alloc_cb(vk_device_, &cb_ai, &cmd_buf) != VK_SUCCESS || !cmd_buf) {
+        destroy_pool(vk_device_, pool, nullptr);
+        return false;
+    }
+
+    VkCommandBufferBeginInfo begin_info{};
+    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    begin_info.flags = 0x00000001;
+    begin_cb(cmd_buf, &begin_info);
+
+    // 1. Transition Image: UNDEFINED -> TRANSFER_SRC_OPTIMAL
+    VkImageMemoryBarrier barrier_pre{};
+    barrier_pre.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier_pre.srcAccessMask = 0;
+    barrier_pre.dstAccessMask = 0x00000800; // VK_ACCESS_TRANSFER_READ_BIT
+    barrier_pre.oldLayout = 0;             // VK_IMAGE_LAYOUT_UNDEFINED
+    barrier_pre.newLayout = 6;             // VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
+    barrier_pre.srcQueueFamilyIndex = ~0U;
+    barrier_pre.dstQueueFamilyIndex = ~0U;
+    barrier_pre.image = src_image;
+    barrier_pre.subresourceRange.aspectMask = 1; // COLOR
+    barrier_pre.subresourceRange.baseMipLevel = 0;
+    barrier_pre.subresourceRange.levelCount = 1;
+    barrier_pre.subresourceRange.baseArrayLayer = 0;
+    barrier_pre.subresourceRange.layerCount = 1;
+
+    cmd_barrier(cmd_buf, 0x00000001 /* TOP_OF_PIPE */, 0x00001000 /* TRANSFER */, 0, 0, nullptr, 0, nullptr, 1, &barrier_pre);
+
+    // 2. Copy Image to Buffer
+    VkBufferImageCopy region{};
+    region.bufferOffset = 0;
+    region.bufferRowLength = 0;
+    region.bufferImageHeight = 0;
+    region.imageSubresource.aspectMask = 1;
+    region.imageSubresource.mipLevel = 0;
+    region.imageSubresource.baseArrayLayer = 0;
+    region.imageSubresource.layerCount = 1;
+    region.imageOffset = { 0, 0, 0 };
+    region.imageExtent = { width, height, 1 };
+
+    cmd_copy(cmd_buf, src_image, 6 /* TRANSFER_SRC_OPTIMAL */, dst_buffer, 1, &region);
+
+    // 3. Post Barrier: Ensure TRANSFER_WRITE finishes before HOST_READ
+    VkImageMemoryBarrier barrier_post{};
+    barrier_post.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier_post.srcAccessMask = 0x00000800; // TRANSFER_READ
+    barrier_post.dstAccessMask = 0x00004000; // HOST_READ_BIT
+    barrier_post.oldLayout = 6;              // TRANSFER_SRC_OPTIMAL
+    barrier_post.newLayout = 5;              // SHADER_READ_ONLY_OPTIMAL
+    barrier_post.srcQueueFamilyIndex = ~0U;
+    barrier_post.dstQueueFamilyIndex = ~0U;
+    barrier_post.image = src_image;
+    barrier_post.subresourceRange = barrier_pre.subresourceRange;
+
+    cmd_barrier(cmd_buf, 0x00001000 /* TRANSFER */, 0x00004000 /* HOST */, 0, 0, nullptr, 0, nullptr, 1, &barrier_post);
+
+    end_cb(cmd_buf);
+
+    VkSubmitInfo submit_info{};
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit_info.commandBufferCount = 1;
+    submit_info.pCommandBuffers = &cmd_buf;
+    queue_submit(vk_queue_, 1, &submit_info, 0);
+    queue_wait(vk_queue_);
+
+    destroy_pool(vk_device_, pool, nullptr);
+    return true;
+#else
+    return false;
 #endif
 }
 

@@ -80,6 +80,18 @@ public:
         int32_t vertex_offset = 0,
         uint32_t first_instance = 0);
 
+    // Hi-Z Occlusion Culling & Depth Readback API
+    uint64_t CreateDepthTargetImage(
+        uint32_t width,
+        uint32_t height,
+        uint32_t vk_format,
+        uint64_t* out_view);
+    bool TransferImageToLinearBuffer(
+        uint64_t src_image,
+        uint64_t dst_buffer,
+        uint32_t width,
+        uint32_t height);
+
     void Shutdown();
 
     // Bindless Descriptor Heap API (Descriptor Set 1)
