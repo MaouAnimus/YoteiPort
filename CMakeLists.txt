@@ -21,6 +21,7 @@ add_executable(yotei_runtime
     src/graphics/rdna2_shader.cpp
     src/graphics/vk_backend.cpp
     src/graphics/video_out_hle.cpp
+    src/graphics/xtbs_decoder.cpp
     src/input/pad_hle.cpp
     src/audio/wasapi_backend.cpp
     src/audio/audio_out_hle.cpp

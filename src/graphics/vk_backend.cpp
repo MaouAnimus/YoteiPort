@@ -240,6 +240,108 @@ constexpr uint32_t VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO = 12;
 constexpr uint32_t VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO = 1000060000;
 constexpr uint32_t VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO = 1000244001;
 constexpr uint32_t VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES = 1000257000;
+constexpr uint32_t VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES = 1000161000;
+constexpr uint32_t VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO = 1000161002;
+constexpr uint32_t VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET = 35;
+constexpr uint32_t VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO = 14;
+constexpr uint32_t VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO = 15;
+
+constexpr uint32_t VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT = 0x00000001;
+constexpr uint32_t VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT = 0x00000004;
+constexpr uint32_t VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT = 0x00000002;
+
+struct VkPhysicalDeviceDescriptorIndexingFeatures {
+    uint32_t sType;
+    void*    pNext;
+    uint32_t shaderInputAttachmentArrayDynamicIndexing;
+    uint32_t shaderUniformTexelBufferArrayDynamicIndexing;
+    uint32_t shaderStorageTexelBufferArrayDynamicIndexing;
+    uint32_t shaderUniformBufferArrayNonUniformIndexing;
+    uint32_t shaderSampledImageArrayNonUniformIndexing;
+    uint32_t shaderStorageBufferArrayNonUniformIndexing;
+    uint32_t shaderStorageImageArrayNonUniformIndexing;
+    uint32_t shaderInputAttachmentArrayNonUniformIndexing;
+    uint32_t shaderUniformTexelBufferArrayNonUniformIndexing;
+    uint32_t shaderStorageTexelBufferArrayNonUniformIndexing;
+    uint32_t descriptorBindingUniformBufferUpdateAfterBind;
+    uint32_t descriptorBindingSampledImageUpdateAfterBind;
+    uint32_t descriptorBindingStorageImageUpdateAfterBind;
+    uint32_t descriptorBindingStorageBufferUpdateAfterBind;
+    uint32_t descriptorBindingUniformTexelBufferUpdateAfterBind;
+    uint32_t descriptorBindingStorageTexelBufferUpdateAfterBind;
+    uint32_t descriptorBindingUpdateUnusedWhilePending;
+    uint32_t descriptorBindingPartiallyBound;
+    uint32_t descriptorBindingVariableDescriptorCount;
+    uint32_t runtimeDescriptorArray;
+};
+
+struct VkDescriptorSetLayoutBindingFlagsCreateInfo {
+    uint32_t        sType;
+    const void*     pNext;
+    uint32_t        bindingCount;
+    const uint32_t* pBindingFlags;
+};
+
+struct VkDescriptorImageInfo {
+    uint64_t sampler;
+    uint64_t imageView;
+    uint32_t imageLayout;
+};
+
+struct VkWriteDescriptorSet {
+    uint32_t       sType;
+    const void*    pNext;
+    uint64_t       dstSet;
+    uint32_t       dstBinding;
+    uint32_t       dstArrayElement;
+    uint32_t       descriptorCount;
+    uint32_t       descriptorType;
+    const VkDescriptorImageInfo* pImageInfo;
+    const void*    pBufferInfo;
+    const void*    pTexelBufferView;
+};
+
+constexpr uint32_t VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO = 32;
+constexpr uint32_t VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO = 33;
+constexpr uint32_t VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO = 34;
+
+struct VkDescriptorSetLayoutBinding {
+    uint32_t binding;
+    uint32_t descriptorType;
+    uint32_t descriptorCount;
+    VkFlags  stageFlags;
+    const void* pImmutableSamplers;
+};
+
+struct VkDescriptorSetLayoutCreateInfo {
+    uint32_t sType;
+    const void* pNext;
+    VkFlags  flags;
+    uint32_t bindingCount;
+    const VkDescriptorSetLayoutBinding* pBindings;
+};
+
+struct VkDescriptorPoolSize {
+    uint32_t type;
+    uint32_t descriptorCount;
+};
+
+struct VkDescriptorPoolCreateInfo {
+    uint32_t sType;
+    const void* pNext;
+    VkFlags  flags;
+    uint32_t maxSets;
+    uint32_t poolSizeCount;
+    const VkDescriptorPoolSize* pPoolSizes;
+};
+
+struct VkDescriptorSetAllocateInfo {
+    uint32_t sType;
+    const void* pNext;
+    uint64_t descriptorPool;
+    uint32_t descriptorSetCount;
+    const uint64_t* pSetLayouts;
+};
 
 constexpr uint32_t VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO = 19;
 constexpr uint32_t VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO = 20;
@@ -474,6 +576,18 @@ using PFN_vkDestroyRenderPass = void (VKAPI_PTR*)(VkDevice, uint64_t, const void
 using PFN_vkCreateGraphicsPipelines = VkResult (VKAPI_PTR*)(VkDevice, VkPipelineCache, uint32_t, const VkGraphicsPipelineCreateInfo*, const void*, VkPipeline*);
 using PFN_vkCmdSetViewport = void (VKAPI_PTR*)(VkCommandBuffer, uint32_t, uint32_t, const VkViewport*);
 using PFN_vkCmdSetScissor = void (VKAPI_PTR*)(VkCommandBuffer, uint32_t, uint32_t, const VkRect2D*);
+using PFN_vkUpdateDescriptorSets = void (VKAPI_PTR*)(VkDevice, uint32_t, const VkWriteDescriptorSet*, uint32_t, const void*);
+using PFN_vkCreateImage = VkResult (VKAPI_PTR*)(VkDevice, const void*, const void*, uint64_t*);
+using PFN_vkDestroyImage = void (VKAPI_PTR*)(VkDevice, uint64_t, const void*);
+using PFN_vkGetImageMemoryRequirements = void (VKAPI_PTR*)(VkDevice, uint64_t, VkMemoryRequirements*);
+using PFN_vkBindImageMemory = VkResult (VKAPI_PTR*)(VkDevice, uint64_t, uint64_t, VkDeviceSize);
+using PFN_vkCreateImageView = VkResult (VKAPI_PTR*)(VkDevice, const void*, const void*, uint64_t*);
+using PFN_vkDestroyImageView = void (VKAPI_PTR*)(VkDevice, uint64_t, const void*);
+using PFN_vkCreateDescriptorSetLayout = VkResult (VKAPI_PTR*)(VkDevice, const VkDescriptorSetLayoutCreateInfo*, const void*, uint64_t*);
+using PFN_vkDestroyDescriptorSetLayout = void (VKAPI_PTR*)(VkDevice, uint64_t, const void*);
+using PFN_vkCreateDescriptorPool = VkResult (VKAPI_PTR*)(VkDevice, const VkDescriptorPoolCreateInfo*, const void*, uint64_t*);
+using PFN_vkDestroyDescriptorPool = void (VKAPI_PTR*)(VkDevice, uint64_t, const void*);
+using PFN_vkAllocateDescriptorSets = VkResult (VKAPI_PTR*)(VkDevice, const VkDescriptorSetAllocateInfo*, uint64_t*);
 
 } // namespace
 
@@ -590,8 +704,17 @@ bool VulkanHostBackend::Initialize() {
         "VK_KHR_buffer_device_address",
     };
 
+    VkPhysicalDeviceDescriptorIndexingFeatures di_features{};
+    di_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+    di_features.shaderSampledImageArrayNonUniformIndexing = 1;
+    di_features.descriptorBindingSampledImageUpdateAfterBind = 1;
+    di_features.descriptorBindingPartiallyBound = 1;
+    di_features.descriptorBindingVariableDescriptorCount = 1;
+    di_features.runtimeDescriptorArray = 1;
+
     VkPhysicalDeviceBufferDeviceAddressFeatures bda_features{};
     bda_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
+    bda_features.pNext = &di_features;
     bda_features.bufferDeviceAddress = 1;
 
     VkDeviceCreateInfo dci{};
@@ -605,14 +728,21 @@ bool VulkanHostBackend::Initialize() {
     VkDevice dev = nullptr;
     if (create_dev(chosen, &dci, nullptr, &dev) == VK_SUCCESS && dev) {
         gpu_info_.bda_supported = true;
+        gpu_info_.bindless_supported = true;
     } else {
-        // Fallback with just swapchain
-        dci.pNext = nullptr;
-        dci.enabledExtensionCount = 1;
-        if (create_dev(chosen, &dci, nullptr, &dev) != VK_SUCCESS || !dev) {
-            dci.enabledExtensionCount = 0;
-            dci.ppEnabledExtensionNames = nullptr;
-            create_dev(chosen, &dci, nullptr, &dev);
+        // Fallback with just BDA
+        bda_features.pNext = nullptr;
+        if (create_dev(chosen, &dci, nullptr, &dev) == VK_SUCCESS && dev) {
+            gpu_info_.bda_supported = true;
+        } else {
+            // Fallback with just swapchain
+            dci.pNext = nullptr;
+            dci.enabledExtensionCount = 1;
+            if (create_dev(chosen, &dci, nullptr, &dev) != VK_SUCCESS || !dev) {
+                dci.enabledExtensionCount = 0;
+                dci.ppEnabledExtensionNames = nullptr;
+                create_dev(chosen, &dci, nullptr, &dev);
+            }
         }
     }
 
@@ -624,6 +754,9 @@ bool VulkanHostBackend::Initialize() {
         auto get_queue = reinterpret_cast<PFN_vkGetDeviceQueue>(get_proc(inst, "vkGetDeviceQueue"));
         if (get_queue) {
             get_queue(dev, 0, 0, &vk_queue_);
+        }
+        if (gpu_info_.bindless_supported) {
+            InitializeBindlessHeap();
         }
     }
 
@@ -1388,12 +1521,304 @@ bool VulkanHostBackend::ExecuteGraphicsDraw(
 #endif
 }
 
+bool VulkanHostBackend::InitializeBindlessHeap() {
+#ifdef _WIN32
+    if (!vk_device_ || !vulkan_dll_) return false;
+    auto get_proc = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
+        ::GetProcAddress(static_cast<HMODULE>(vulkan_dll_), "vkGetInstanceProcAddr"));
+    if (!get_proc) return false;
+
+    auto create_dsl = reinterpret_cast<PFN_vkCreateDescriptorSetLayout>(get_proc(vk_instance_, "vkCreateDescriptorSetLayout"));
+    auto create_dp = reinterpret_cast<PFN_vkCreateDescriptorPool>(get_proc(vk_instance_, "vkCreateDescriptorPool"));
+    auto alloc_ds = reinterpret_cast<PFN_vkAllocateDescriptorSets>(get_proc(vk_instance_, "vkAllocateDescriptorSets"));
+    auto create_pl = reinterpret_cast<PFN_vkCreatePipelineLayout>(get_proc(vk_instance_, "vkCreatePipelineLayout"));
+
+    if (!create_dsl || !create_dp || !alloc_ds || !create_pl) return false;
+
+    // Binding 0: 1024 Sampled Images (Textures)
+    // Binding 1: 64 Samplers
+    VkDescriptorSetLayoutBinding bindings[2]{};
+    bindings[0].binding = 0;
+    bindings[0].descriptorType = 2; // VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE
+    bindings[0].descriptorCount = 1024;
+    bindings[0].stageFlags = 0x7FFFFFFF; // ALL stages
+
+    bindings[1].binding = 1;
+    bindings[1].descriptorType = 0; // VK_DESCRIPTOR_TYPE_SAMPLER
+    bindings[1].descriptorCount = 64;
+    bindings[1].stageFlags = 0x7FFFFFFF;
+
+    uint32_t binding_flags[2] = {
+        VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
+        VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT
+    };
+
+    VkDescriptorSetLayoutBindingFlagsCreateInfo flags_info{};
+    flags_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+    flags_info.bindingCount = 2;
+    flags_info.pBindingFlags = binding_flags;
+
+    VkDescriptorSetLayoutCreateInfo layout_ci{};
+    layout_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layout_ci.pNext = &flags_info;
+    layout_ci.flags = 0x00000002; // VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT
+    layout_ci.bindingCount = 2;
+    layout_ci.pBindings = bindings;
+
+    if (create_dsl(vk_device_, &layout_ci, nullptr, &bindless_desc_layout_) != VK_SUCCESS || !bindless_desc_layout_) {
+        return false;
+    }
+
+    // Create Descriptor Pool with UpdateAfterBind
+    VkDescriptorPoolSize pool_sizes[2]{};
+    pool_sizes[0].type = 2; // SAMPLED_IMAGE
+    pool_sizes[0].descriptorCount = 1024;
+    pool_sizes[1].type = 0; // SAMPLER
+    pool_sizes[1].descriptorCount = 64;
+
+    VkDescriptorPoolCreateInfo pool_ci{};
+    pool_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    pool_ci.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
+    pool_ci.maxSets = 4;
+    pool_ci.poolSizeCount = 2;
+    pool_ci.pPoolSizes = pool_sizes;
+
+    if (create_dp(vk_device_, &pool_ci, nullptr, &bindless_desc_pool_) != VK_SUCCESS || !bindless_desc_pool_) {
+        return false;
+    }
+
+    // Allocate Set 1
+    VkDescriptorSetAllocateInfo ds_ai{};
+    ds_ai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    ds_ai.descriptorPool = bindless_desc_pool_;
+    ds_ai.descriptorSetCount = 1;
+    ds_ai.pSetLayouts = &bindless_desc_layout_;
+
+    if (alloc_ds(vk_device_, &ds_ai, &bindless_descriptor_set_) != VK_SUCCESS || !bindless_descriptor_set_) {
+        return false;
+    }
+
+    // Create Bindless Pipeline Layout
+    VkPipelineLayoutCreateInfo pl_ci{};
+    pl_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pl_ci.setLayoutCount = 1;
+    pl_ci.pSetLayouts = &bindless_desc_layout_;
+
+    create_pl(vk_device_, &pl_ci, nullptr, &bindless_pipeline_layout_);
+    return true;
+#else
+    return false;
+#endif
+}
+
+bool VulkanHostBackend::RegisterBindlessTexture(uint32_t slot, uint64_t image_view, uint32_t image_layout) {
+#ifdef _WIN32
+    if (!vk_device_ || !bindless_descriptor_set_) return false;
+    auto get_proc = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
+        ::GetProcAddress(static_cast<HMODULE>(vulkan_dll_), "vkGetInstanceProcAddr"));
+    if (!get_proc) return false;
+    auto update_desc = reinterpret_cast<PFN_vkUpdateDescriptorSets>(get_proc(vk_instance_, "vkUpdateDescriptorSets"));
+    if (!update_desc) return false;
+
+    VkDescriptorImageInfo img_info{};
+    img_info.sampler = 0;
+    img_info.imageView = image_view;
+    img_info.imageLayout = image_layout;
+
+    VkWriteDescriptorSet write{};
+    write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    write.dstSet = bindless_descriptor_set_;
+    write.dstBinding = 0;
+    write.dstArrayElement = slot;
+    write.descriptorCount = 1;
+    write.descriptorType = 2; // VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE
+    write.pImageInfo = &img_info;
+
+    update_desc(vk_device_, 1, &write, 0, nullptr);
+    ++gpu_info_.bindless_textures_registered;
+    return true;
+#else
+    return false;
+#endif
+}
+
+bool VulkanHostBackend::RegisterBindlessSampler(uint32_t slot, uint64_t sampler) {
+#ifdef _WIN32
+    if (!vk_device_ || !bindless_descriptor_set_) return false;
+    auto get_proc = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
+        ::GetProcAddress(static_cast<HMODULE>(vulkan_dll_), "vkGetInstanceProcAddr"));
+    if (!get_proc) return false;
+    auto update_desc = reinterpret_cast<PFN_vkUpdateDescriptorSets>(get_proc(vk_instance_, "vkUpdateDescriptorSets"));
+    if (!update_desc) return false;
+
+    VkDescriptorImageInfo samp_info{};
+    samp_info.sampler = sampler;
+    samp_info.imageView = 0;
+    samp_info.imageLayout = 0;
+
+    VkWriteDescriptorSet write{};
+    write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    write.dstSet = bindless_descriptor_set_;
+    write.dstBinding = 1;
+    write.dstArrayElement = slot;
+    write.descriptorCount = 1;
+    write.descriptorType = 0; // VK_DESCRIPTOR_TYPE_SAMPLER
+    write.pImageInfo = &samp_info;
+
+    update_desc(vk_device_, 1, &write, 0, nullptr);
+    ++gpu_info_.bindless_samplers_registered;
+    return true;
+#else
+    return false;
+#endif
+}
+
+uint64_t VulkanHostBackend::CreateTexture2D(
+    uint32_t width,
+    uint32_t height,
+    uint32_t vk_format,
+    const void* initial_data,
+    size_t data_size,
+    uint64_t* out_view) {
+#ifdef _WIN32
+    if (!vk_device_ || !vulkan_dll_) return 0;
+    auto get_proc = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
+        ::GetProcAddress(static_cast<HMODULE>(vulkan_dll_), "vkGetInstanceProcAddr"));
+    if (!get_proc) return 0;
+
+    auto create_img = reinterpret_cast<PFN_vkCreateImage>(get_proc(vk_instance_, "vkCreateImage"));
+    auto get_reqs = reinterpret_cast<PFN_vkGetImageMemoryRequirements>(get_proc(vk_instance_, "vkGetImageMemoryRequirements"));
+    auto alloc_mem = reinterpret_cast<PFN_vkAllocateMemory>(get_proc(vk_instance_, "vkAllocateMemory"));
+    auto bind_mem = reinterpret_cast<PFN_vkBindImageMemory>(get_proc(vk_instance_, "vkBindImageMemory"));
+    auto create_iv = reinterpret_cast<PFN_vkCreateImageView>(get_proc(vk_instance_, "vkCreateImageView"));
+
+    if (!create_img || !get_reqs || !alloc_mem || !bind_mem || !create_iv) return 0;
+
+    struct {
+        uint32_t sType;
+        const void* pNext;
+        uint32_t flags;
+        uint32_t imageType;
+        uint32_t format;
+        struct { uint32_t w; uint32_t h; uint32_t d; } extent;
+        uint32_t mipLevels;
+        uint32_t arrayLayers;
+        uint32_t samples;
+        uint32_t tiling;
+        uint32_t usage;
+        uint32_t sharingMode;
+        uint32_t queueFamilyIndexCount;
+        const uint32_t* pQueueFamilyIndices;
+        uint32_t initialLayout;
+    } img_ci{};
+
+    img_ci.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    img_ci.imageType = 2; // 2D
+    img_ci.format = vk_format;
+    img_ci.extent = { width, height, 1 };
+    img_ci.mipLevels = 1;
+    img_ci.arrayLayers = 1;
+    img_ci.samples = 1;
+    img_ci.tiling = 0; // OPTIMAL
+    img_ci.usage = 0x00000004 | 0x00000002; // VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT
+    img_ci.sharingMode = 0;
+
+    uint64_t image_handle = 0;
+    if (create_img(vk_device_, &img_ci, nullptr, &image_handle) != VK_SUCCESS || !image_handle) {
+        return 0;
+    }
+
+    VkMemoryRequirements reqs{};
+    get_reqs(vk_device_, image_handle, &reqs);
+
+    // Find memory type with DEVICE_LOCAL or HOST_VISIBLE
+    auto get_mem_props = reinterpret_cast<PFN_vkGetPhysicalDeviceMemoryProperties>(
+        get_proc(vk_instance_, "vkGetPhysicalDeviceMemoryProperties"));
+    VkPhysicalDeviceMemoryProperties mem_props{};
+    get_mem_props(vk_phys_device_, &mem_props);
+
+    uint32_t mem_type_idx = 0;
+    for (uint32_t i = 0; i < mem_props.memoryTypeCount; ++i) {
+        if ((reqs.memoryTypeBits & (1 << i)) &&
+            (mem_props.memoryTypes[i].propertyFlags & 0x1U)) { // DEVICE_LOCAL
+            mem_type_idx = i;
+            break;
+        }
+    }
+
+    VkMemoryAllocateInfo alloc_info{};
+    alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    alloc_info.allocationSize = reqs.size;
+    alloc_info.memoryTypeIndex = mem_type_idx;
+
+    uint64_t image_mem = 0;
+    if (alloc_mem(vk_device_, &alloc_info, nullptr, &image_mem) != VK_SUCCESS || !image_mem) {
+        return 0;
+    }
+
+    bind_mem(vk_device_, image_handle, image_mem, 0);
+
+    // Create View
+    struct {
+        uint32_t sType;
+        const void* pNext;
+        uint32_t flags;
+        uint64_t image;
+        uint32_t viewType;
+        uint32_t format;
+        struct { uint32_t r, g, b, a; } components;
+        struct {
+            uint32_t aspectMask;
+            uint32_t baseMipLevel;
+            uint32_t levelCount;
+            uint32_t baseArrayLayer;
+            uint32_t layerCount;
+        } subresourceRange;
+    } iv_ci{};
+
+    iv_ci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    iv_ci.image = image_handle;
+    iv_ci.viewType = 1; // 2D
+    iv_ci.format = vk_format;
+    iv_ci.subresourceRange.aspectMask = 1; // COLOR
+    iv_ci.subresourceRange.baseMipLevel = 0;
+    iv_ci.subresourceRange.levelCount = 1;
+    iv_ci.subresourceRange.baseArrayLayer = 0;
+    iv_ci.subresourceRange.layerCount = 1;
+
+    uint64_t view_handle = 0;
+    if (create_iv(vk_device_, &iv_ci, nullptr, &view_handle) != VK_SUCCESS || !view_handle) {
+        return 0;
+    }
+
+    if (out_view) *out_view = view_handle;
+    return image_handle;
+#else
+    return 0;
+#endif
+}
+
 void VulkanHostBackend::Shutdown() {
 #ifdef _WIN32
     if (!initialized_ || !vulkan_dll_) return;
     auto get_proc = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
         ::GetProcAddress(static_cast<HMODULE>(vulkan_dll_), "vkGetInstanceProcAddr"));
     if (get_proc && vk_device_) {
+        if (bindless_pipeline_layout_) {
+            auto destroy_pl = reinterpret_cast<PFN_vkDestroyPipelineLayout>(get_proc(vk_instance_, "vkDestroyPipelineLayout"));
+            if (destroy_pl) destroy_pl(vk_device_, bindless_pipeline_layout_, nullptr);
+            bindless_pipeline_layout_ = 0;
+        }
+        if (bindless_desc_pool_) {
+            auto destroy_dp = reinterpret_cast<PFN_vkDestroyDescriptorPool>(get_proc(vk_instance_, "vkDestroyDescriptorPool"));
+            if (destroy_dp) destroy_dp(vk_device_, bindless_desc_pool_, nullptr);
+            bindless_desc_pool_ = 0;
+        }
+        if (bindless_desc_layout_) {
+            auto destroy_dsl = reinterpret_cast<PFN_vkDestroyDescriptorSetLayout>(get_proc(vk_instance_, "vkDestroyDescriptorSetLayout"));
+            if (destroy_dsl) destroy_dsl(vk_device_, bindless_desc_layout_, nullptr);
+            bindless_desc_layout_ = 0;
+        }
         if (default_graphics_pipeline_) {
             auto destroy_pip = reinterpret_cast<PFN_vkDestroyPipeline>(get_proc(vk_instance_, "vkDestroyPipeline"));
             if (destroy_pip) destroy_pip(vk_device_, default_graphics_pipeline_, nullptr);

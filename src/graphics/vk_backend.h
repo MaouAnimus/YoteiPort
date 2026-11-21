@@ -16,6 +16,9 @@ struct VulkanGpuInfo {
     bool     device_created = false;
     bool     spirv_module_verified = false;
     bool     bda_supported = false;
+    bool     bindless_supported = false;
+    uint32_t bindless_textures_registered = 0;
+    uint32_t bindless_samplers_registered = 0;
     uint64_t bda_buffers_allocated = 0;
     uint64_t compute_dispatches_executed = 0;
     uint64_t draw_calls_executed = 0;
@@ -70,8 +73,23 @@ public:
 
     void Shutdown();
 
+    // Bindless Descriptor Heap API (Descriptor Set 1)
+    bool InitializeBindlessHeap();
+    bool RegisterBindlessTexture(uint32_t slot, uint64_t image_view, uint32_t image_layout);
+    bool RegisterBindlessSampler(uint32_t slot, uint64_t sampler);
+    uint64_t CreateTexture2D(
+        uint32_t width,
+        uint32_t height,
+        uint32_t vk_format,
+        const void* initial_data,
+        size_t data_size,
+        uint64_t* out_view);
+
     bool IsInitialized() const { return initialized_; }
     bool IsBdaSupported() const { return gpu_info_.bda_supported; }
+    bool IsBindlessSupported() const { return gpu_info_.bindless_supported; }
+    uint64_t GetBindlessDescriptorSet() const { return bindless_descriptor_set_; }
+    uint64_t GetBindlessPipelineLayout() const { return bindless_pipeline_layout_; }
     const VulkanGpuInfo& GetGpuInfo() const { return gpu_info_; }
 
     void* GetInstance() const { return vk_instance_; }
@@ -101,6 +119,12 @@ private:
     uint64_t default_color_image_ = 0;
     uint64_t default_color_mem_ = 0;
     uint64_t default_color_view_ = 0;
+
+    // Bindless Descriptor Set 1 handles
+    uint64_t bindless_desc_layout_ = 0;
+    uint64_t bindless_desc_pool_ = 0;
+    uint64_t bindless_descriptor_set_ = 0;
+    uint64_t bindless_pipeline_layout_ = 0;
 };
 
 } // namespace yotei::graphics

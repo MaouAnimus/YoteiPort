@@ -2,6 +2,7 @@
 #include "graphics/rdna2_shader.h"
 #include "graphics/video_out_hle.h"
 #include "graphics/vk_backend.h"
+#include "graphics/xtbs_decoder.h"
 #include "audio/audio_out_hle.h"
 #include "audio/ajm_hle.h"
 #include "audio/wasapi_backend.h"
@@ -818,7 +819,48 @@ int main(int argc, char** argv) {
         }
     }
 
-    // 5. Test Calling Game main() @ 0x800f3d320
+    // 5. Test Bindless Descriptor Indexing (Set 1) & XTBS Surface Decoder
+    std::cout << "\n--- Testing Bindless Descriptor Indexing (Set 1) & XTBS Surface Decoder ---\n";
+    auto& vk_backend = yotei::graphics::VulkanHostBackend::Instance();
+    std::cout << "[+] Vulkan Bindless Descriptor Indexing (Set 1): "
+              << (vk_backend.IsBindlessSupported() ? "SUPPORTED & ACTIVE" : "DISABLED") << "\n";
+
+    auto& xtbs_dec = yotei::graphics::XtbsDecoder::Instance();
+    auto test_sps_path = vfs.ResolveGuestPath("/app0/cache_ps5/bitmaps/yuna_weapons_mtl.msac.d.0.sps");
+    if (!std::filesystem::exists(test_sps_path)) {
+        test_sps_path = vfs.ResolveGuestPath("/app0/cache_ps5/bitmaps/#000000.0.sps");
+    }
+
+    if (std::filesystem::exists(test_sps_path)) {
+        yotei::graphics::XtbsSurface surf{};
+        if (xtbs_dec.DecodeFromFile(test_sps_path.string(), surf)) {
+            std::cout << "[+] Decoded XTBS Texture: '" << surf.asset_name << "'\n"
+                      << "    Dimensions : " << surf.width << "x" << surf.height << "x" << surf.depth
+                      << " | Mip Levels: " << surf.mip_levels << "\n"
+                      << "    AGC Format : 0x" << std::hex << surf.agc_format << std::dec
+                      << " -> Vulkan Format: " << yotei::graphics::XtbsDecoder::GetFormatName(surf.vk_format)
+                      << " (" << surf.vk_format << ")\n"
+                      << "    Payload    : " << surf.payload.size() << " bytes\n";
+
+            uint64_t tex_view = 0;
+            uint64_t tex_img = vk_backend.CreateTexture2D(
+                surf.width > 0 ? surf.width : 4,
+                surf.height > 0 ? surf.height : 4,
+                surf.vk_format,
+                surf.payload.data(),
+                surf.payload.size(),
+                &tex_view);
+
+            if (tex_img && tex_view) {
+                bool reg_ok = vk_backend.RegisterBindlessTexture(1, tex_view, 3 /* VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL */);
+                std::cout << "[+] Registered Texture into Bindless Heap: Slot=1 | Image=0x"
+                          << std::hex << tex_img << " View=0x" << tex_view << std::dec
+                          << " | UpdateAfterBind=" << (reg_ok ? "SUCCESS" : "FAILED") << "\n";
+            }
+        }
+    }
+
+    // 6. Test Calling Game main() @ 0x800f3d320
     if (!skip_game_main) {
         uint64_t game_main = mapper.GetMainAddress();
         std::cout << "\n--- Testing Game main() Entry Point (Native x86-64) ---\n";
