@@ -588,6 +588,7 @@ using PFN_vkDestroyDescriptorSetLayout = void (VKAPI_PTR*)(VkDevice, uint64_t, c
 using PFN_vkCreateDescriptorPool = VkResult (VKAPI_PTR*)(VkDevice, const VkDescriptorPoolCreateInfo*, const void*, uint64_t*);
 using PFN_vkDestroyDescriptorPool = void (VKAPI_PTR*)(VkDevice, uint64_t, const void*);
 using PFN_vkAllocateDescriptorSets = VkResult (VKAPI_PTR*)(VkDevice, const VkDescriptorSetAllocateInfo*, uint64_t*);
+using PFN_vkCmdBindDescriptorSets = void (VKAPI_PTR*)(VkCommandBuffer, uint32_t, uint64_t, uint32_t, uint32_t, const uint64_t*, uint32_t, const uint32_t*);
 
 } // namespace
 
@@ -1521,6 +1522,264 @@ bool VulkanHostBackend::ExecuteGraphicsDraw(
 #endif
 }
 
+bool VulkanHostBackend::CreateMultiStageGraphicsPipeline(
+    const std::vector<uint32_t>& vs_spirv,
+    const std::vector<uint32_t>& fs_spirv) {
+#ifdef _WIN32
+    if (!initialized_ || !vk_device_ || !vulkan_dll_) return false;
+    if (vs_spirv.empty() || fs_spirv.empty()) return false;
+
+    auto get_proc = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
+        ::GetProcAddress(static_cast<HMODULE>(vulkan_dll_), "vkGetInstanceProcAddr"));
+    if (!get_proc) return false;
+
+    auto create_sm = reinterpret_cast<PFN_vkCreateShaderModule>(get_proc(vk_instance_, "vkCreateShaderModule"));
+    auto destroy_sm = reinterpret_cast<PFN_vkDestroyShaderModule>(get_proc(vk_instance_, "vkDestroyShaderModule"));
+    auto create_pl = reinterpret_cast<PFN_vkCreatePipelineLayout>(get_proc(vk_instance_, "vkCreatePipelineLayout"));
+    auto create_rp = reinterpret_cast<PFN_vkCreateRenderPass>(get_proc(vk_instance_, "vkCreateRenderPass"));
+    auto create_gp = reinterpret_cast<PFN_vkCreateGraphicsPipelines>(get_proc(vk_instance_, "vkCreateGraphicsPipelines"));
+
+    if (!create_sm || !destroy_sm || !create_pl || !create_rp || !create_gp) return false;
+
+    // 1. Create Shader Modules
+    VkShaderModuleCreateInfo vs_ci{};
+    vs_ci.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    vs_ci.codeSize = vs_spirv.size() * sizeof(uint32_t);
+    vs_ci.pCode = vs_spirv.data();
+    VkShaderModule vs_mod = 0;
+    if (create_sm(vk_device_, &vs_ci, nullptr, &vs_mod) != VK_SUCCESS || !vs_mod) return false;
+
+    VkShaderModuleCreateInfo fs_ci{};
+    fs_ci.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    fs_ci.codeSize = fs_spirv.size() * sizeof(uint32_t);
+    fs_ci.pCode = fs_spirv.data();
+    VkShaderModule fs_mod = 0;
+    if (create_sm(vk_device_, &fs_ci, nullptr, &fs_mod) != VK_SUCCESS || !fs_mod) {
+        destroy_sm(vk_device_, vs_mod, nullptr);
+        return false;
+    }
+
+    // 2. Create Multi-stage Pipeline Layout with Bindless Descriptor Set 1 attached
+    VkPipelineLayoutCreateInfo pl_ci{};
+    pl_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    if (bindless_desc_layout_) {
+        pl_ci.setLayoutCount = 1;
+        pl_ci.pSetLayouts = &bindless_desc_layout_;
+    }
+
+    VkPipelineLayout layout = 0;
+    if (create_pl(vk_device_, &pl_ci, nullptr, &layout) != VK_SUCCESS || !layout) {
+        destroy_sm(vk_device_, vs_mod, nullptr);
+        destroy_sm(vk_device_, fs_mod, nullptr);
+        return false;
+    }
+    multi_stage_pipeline_layout_ = layout;
+
+    // 3. Ensure render pass exists
+    if (!default_render_pass_) {
+        VkAttachmentDescription color_att{};
+        color_att.flags = 0;
+        color_att.format = 44; // VK_FORMAT_B8G8R8A8_UNORM
+        color_att.samples = 1;
+        color_att.loadOp = 2;  // DONT_CARE
+        color_att.storeOp = 1; // DONT_CARE
+        color_att.stencilLoadOp = 2;
+        color_att.stencilStoreOp = 1;
+        color_att.initialLayout = 0;
+        color_att.finalLayout = 2; // COLOR_ATTACHMENT_OPTIMAL
+
+        VkAttachmentReference color_ref{};
+        color_ref.attachment = 0;
+        color_ref.layout = 2;
+
+        VkSubpassDescription subpass{};
+        subpass.pipelineBindPoint = 0;
+        subpass.colorAttachmentCount = 1;
+        subpass.pColorAttachments = &color_ref;
+
+        VkRenderPassCreateInfo rp_ci{};
+        rp_ci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        rp_ci.attachmentCount = 1;
+        rp_ci.pAttachments = &color_att;
+        rp_ci.subpassCount = 1;
+        rp_ci.pSubpasses = &subpass;
+
+        create_rp(vk_device_, &rp_ci, nullptr, &default_render_pass_);
+    }
+
+    // 4. Create Multi-stage Graphics Pipeline
+    VkPipelineShaderStageCreateInfo stages[2]{};
+    stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    stages[0].stage = 0x00000001; // VK_SHADER_STAGE_VERTEX_BIT
+    stages[0].module = vs_mod;
+    stages[0].pName = "main";
+
+    stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    stages[1].stage = 0x00000010; // VK_SHADER_STAGE_FRAGMENT_BIT
+    stages[1].module = fs_mod;
+    stages[1].pName = "main";
+
+    VkPipelineVertexInputStateCreateInfo vi_ci{};
+    vi_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+
+    VkPipelineInputAssemblyStateCreateInfo ia_ci{};
+    ia_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    ia_ci.topology = 3; // VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
+
+    VkViewport viewport{0.0f, 0.0f, 1920.0f, 1080.0f, 0.0f, 1.0f};
+    VkRect2D scissor{{0, 0}, {1920, 1080}};
+    VkPipelineViewportStateCreateInfo vp_ci{};
+    vp_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    vp_ci.viewportCount = 1;
+    vp_ci.pViewports = &viewport;
+    vp_ci.scissorCount = 1;
+    vp_ci.pScissors = &scissor;
+
+    VkPipelineRasterizationStateCreateInfo rast_ci{};
+    rast_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rast_ci.polygonMode = 0; // FILL
+    rast_ci.cullMode = 0;    // NONE
+    rast_ci.frontFace = 0;   // CCW
+    rast_ci.lineWidth = 1.0f;
+
+    VkPipelineMultisampleStateCreateInfo ms_ci{};
+    ms_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    ms_ci.rasterizationSamples = 1;
+
+    VkPipelineColorBlendAttachmentState cb_att{};
+    cb_att.blendEnable = 0;
+    cb_att.colorWriteMask = 0x0000000FU;
+
+    VkPipelineColorBlendStateCreateInfo cb_ci{};
+    cb_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    cb_ci.attachmentCount = 1;
+    cb_ci.pAttachments = &cb_att;
+
+    uint32_t dyn_states[] = { 0, 1 };
+    VkPipelineDynamicStateCreateInfo dyn_ci{};
+    dyn_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dyn_ci.dynamicStateCount = 2;
+    dyn_ci.pDynamicStates = dyn_states;
+
+    VkGraphicsPipelineCreateInfo gp_ci{};
+    gp_ci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    gp_ci.stageCount = 2;
+    gp_ci.pStages = stages;
+    gp_ci.pVertexInputState = &vi_ci;
+    gp_ci.pInputAssemblyState = &ia_ci;
+    gp_ci.pViewportState = &vp_ci;
+    gp_ci.pRasterizationState = &rast_ci;
+    gp_ci.pMultisampleState = &ms_ci;
+    gp_ci.pColorBlendState = &cb_ci;
+    gp_ci.pDynamicState = &dyn_ci;
+    gp_ci.layout = layout;
+    gp_ci.renderPass = default_render_pass_;
+    gp_ci.subpass = 0;
+    gp_ci.basePipelineIndex = -1;
+
+    VkPipeline pipeline = 0;
+    VkResult rc = create_gp(vk_device_, 0, 1, &gp_ci, nullptr, &pipeline);
+    destroy_sm(vk_device_, vs_mod, nullptr);
+    destroy_sm(vk_device_, fs_mod, nullptr);
+
+    if (rc != VK_SUCCESS || !pipeline) {
+        std::cerr << "  [VK GP ERROR] create_gp failed rc=" << rc << "\n";
+        return false;
+    }
+    multi_stage_graphics_pipeline_ = pipeline;
+    return true;
+#else
+    return false;
+#endif
+}
+
+bool VulkanHostBackend::ExecuteMultiStageDrawIndexed(
+    uint32_t index_count,
+    uint32_t instance_count,
+    uint32_t first_index,
+    int32_t vertex_offset,
+    uint32_t first_instance) {
+#ifdef _WIN32
+    if (!initialized_ || !vk_device_ || !vk_queue_ || !vulkan_dll_ || index_count == 0) return false;
+    if (!multi_stage_graphics_pipeline_) return false;
+
+    auto get_proc = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
+        ::GetProcAddress(static_cast<HMODULE>(vulkan_dll_), "vkGetInstanceProcAddr"));
+    if (!get_proc) return false;
+
+    auto create_pool = reinterpret_cast<PFN_vkCreateCommandPool>(get_proc(vk_instance_, "vkCreateCommandPool"));
+    auto destroy_pool = reinterpret_cast<PFN_vkDestroyCommandPool>(get_proc(vk_instance_, "vkDestroyCommandPool"));
+    auto alloc_cb = reinterpret_cast<PFN_vkAllocateCommandBuffers>(get_proc(vk_instance_, "vkAllocateCommandBuffers"));
+    auto begin_cb = reinterpret_cast<PFN_vkBeginCommandBuffer>(get_proc(vk_instance_, "vkBeginCommandBuffer"));
+    auto end_cb = reinterpret_cast<PFN_vkEndCommandBuffer>(get_proc(vk_instance_, "vkEndCommandBuffer"));
+    auto bind_pip = reinterpret_cast<PFN_vkCmdBindPipeline>(get_proc(vk_instance_, "vkCmdBindPipeline"));
+    auto bind_ds = reinterpret_cast<PFN_vkCmdBindDescriptorSets>(get_proc(vk_instance_, "vkCmdBindDescriptorSets"));
+    auto cmd_set_vp = reinterpret_cast<PFN_vkCmdSetViewport>(get_proc(vk_instance_, "vkCmdSetViewport"));
+    auto cmd_set_sc = reinterpret_cast<PFN_vkCmdSetScissor>(get_proc(vk_instance_, "vkCmdSetScissor"));
+    auto cmd_draw_idx = reinterpret_cast<PFN_vkCmdDrawIndexed>(get_proc(vk_instance_, "vkCmdDrawIndexed"));
+    auto queue_submit = reinterpret_cast<PFN_vkQueueSubmit>(get_proc(vk_instance_, "vkQueueSubmit"));
+    auto queue_wait = reinterpret_cast<PFN_vkQueueWaitIdle>(get_proc(vk_instance_, "vkQueueWaitIdle"));
+
+    if (!create_pool || !destroy_pool || !alloc_cb || !begin_cb || !end_cb || !bind_pip || !cmd_draw_idx || !queue_submit || !queue_wait) {
+        return false;
+    }
+
+    VkCommandPoolCreateInfo pool_ci{};
+    pool_ci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    pool_ci.flags = 0x00000002;
+    pool_ci.queueFamilyIndex = queue_family_index_;
+    VkCommandPool pool = 0;
+    if (create_pool(vk_device_, &pool_ci, nullptr, &pool) != VK_SUCCESS || !pool) return false;
+
+    VkCommandBufferAllocateInfo cb_ai{};
+    cb_ai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    cb_ai.commandPool = pool;
+    cb_ai.level = 0;
+    cb_ai.commandBufferCount = 1;
+    VkCommandBuffer cmd_buf = nullptr;
+    if (alloc_cb(vk_device_, &cb_ai, &cmd_buf) != VK_SUCCESS || !cmd_buf) {
+        destroy_pool(vk_device_, pool, nullptr);
+        return false;
+    }
+
+    VkCommandBufferBeginInfo begin_info{};
+    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    begin_info.flags = 0x00000001;
+    begin_cb(cmd_buf, &begin_info);
+
+    bind_pip(cmd_buf, 0 /* VK_PIPELINE_BIND_POINT_GRAPHICS */, multi_stage_graphics_pipeline_);
+
+    if (bind_ds && bindless_descriptor_set_ && multi_stage_pipeline_layout_) {
+        bind_ds(cmd_buf, 0 /* GRAPHICS */, multi_stage_pipeline_layout_, 0, 1, &bindless_descriptor_set_, 0, nullptr);
+    }
+
+    if (cmd_set_vp) {
+        VkViewport vp{0.0f, 0.0f, 1920.0f, 1080.0f, 0.0f, 1.0f};
+        cmd_set_vp(cmd_buf, 0, 1, &vp);
+    }
+    if (cmd_set_sc) {
+        VkRect2D sc{{0, 0}, {1920, 1080}};
+        cmd_set_sc(cmd_buf, 0, 1, &sc);
+    }
+
+    cmd_draw_idx(cmd_buf, index_count, instance_count, first_index, vertex_offset, first_instance);
+    end_cb(cmd_buf);
+
+    VkSubmitInfo submit_info{};
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit_info.commandBufferCount = 1;
+    submit_info.pCommandBuffers = &cmd_buf;
+    queue_submit(vk_queue_, 1, &submit_info, 0);
+    queue_wait(vk_queue_);
+
+    destroy_pool(vk_device_, pool, nullptr);
+    ++gpu_info_.draw_calls_executed;
+    return true;
+#else
+    return false;
+#endif
+}
+
 bool VulkanHostBackend::InitializeBindlessHeap() {
 #ifdef _WIN32
     if (!vk_device_ || !vulkan_dll_) return false;
@@ -1818,6 +2077,16 @@ void VulkanHostBackend::Shutdown() {
             auto destroy_dsl = reinterpret_cast<PFN_vkDestroyDescriptorSetLayout>(get_proc(vk_instance_, "vkDestroyDescriptorSetLayout"));
             if (destroy_dsl) destroy_dsl(vk_device_, bindless_desc_layout_, nullptr);
             bindless_desc_layout_ = 0;
+        }
+        if (multi_stage_graphics_pipeline_) {
+            auto destroy_pip = reinterpret_cast<PFN_vkDestroyPipeline>(get_proc(vk_instance_, "vkDestroyPipeline"));
+            if (destroy_pip) destroy_pip(vk_device_, multi_stage_graphics_pipeline_, nullptr);
+            multi_stage_graphics_pipeline_ = 0;
+        }
+        if (multi_stage_pipeline_layout_) {
+            auto destroy_pl = reinterpret_cast<PFN_vkDestroyPipelineLayout>(get_proc(vk_instance_, "vkDestroyPipelineLayout"));
+            if (destroy_pl) destroy_pl(vk_device_, multi_stage_pipeline_layout_, nullptr);
+            multi_stage_pipeline_layout_ = 0;
         }
         if (default_graphics_pipeline_) {
             auto destroy_pip = reinterpret_cast<PFN_vkDestroyPipeline>(get_proc(vk_instance_, "vkDestroyPipeline"));

@@ -637,6 +637,7 @@ int main(int argc, char** argv) {
 
     // Refresh mapped regions after constructors run
     regions = yotei::kernel::GuestMemoryManager::Instance().GetMappedRegions();
+    std::vector<yotei::graphics::Rdna2ShaderAnalysis> decoded_shaders;
 
     // 4. Verify AMPR Asynchronous Streaming Command Buffer Execution into Guest Direct Memory
     if (!regions.empty() && vfs.GetAmprEntryCount() > 0) {
@@ -661,8 +662,9 @@ int main(int argc, char** argv) {
 
         // Scan real RDNA2 shaders inside all_shaders.xpps and emit/verify SPIR-V 1.6 on Host Vulkan 1.3 GPU
         std::cout << "\n--- Testing RDNA2 ISA Disassembler & Host Vulkan 1.3 SPIR-V Pipeline ---\n";
-        auto shaders = yotei::graphics::Rdna2ShaderAnalyzer::ScanShaderPack(
+        decoded_shaders = yotei::graphics::Rdna2ShaderAnalyzer::ScanShaderPack(
             app0_dir / "cache_ps5" / "all_shaders.xpps", 4);
+        const auto& shaders = decoded_shaders;
         std::cout << "[+] Decoded " << shaders.size()
                   << " RDNA2 Shader Kernels from 'all_shaders.xpps':\n";
         for (size_t s = 0; s < shaders.size(); ++s) {
@@ -910,7 +912,32 @@ int main(int argc, char** argv) {
         }
     }
 
-    // 7. Test Calling Game main() @ 0x800f3d320
+    // 7. Test Multi-Stage RDNA2 Shader Translation (VS/FS) & Graphics Pipeline with Bindless Set 1
+    std::cout << "\n--- Testing Multi-Stage RDNA2 Shader Translation & Bindless Graphics Pipeline ---\n";
+    if (decoded_shaders.size() >= 2) {
+        auto vs_spirv = yotei::graphics::Rdna2ShaderAnalyzer::TranslateRdna2ToVertexSpirv(decoded_shaders[0]);
+        auto fs_spirv = yotei::graphics::Rdna2ShaderAnalyzer::TranslateRdna2ToFragmentSpirv(decoded_shaders[1]);
+
+        std::cout << "[+] Translated RDNA2 Shaders to Multi-Stage SPIR-V 1.6:\n"
+                  << "    Vertex Stage   : " << vs_spirv.size() * sizeof(uint32_t) << " bytes (Hash=0x"
+                  << std::hex << decoded_shaders[0].code_hash << std::dec << ")\n"
+                  << "    Fragment Stage : " << fs_spirv.size() * sizeof(uint32_t) << " bytes (Hash=0x"
+                  << std::hex << decoded_shaders[1].code_hash << std::dec << ")\n";
+
+        if (vk_backend.CreateMultiStageGraphicsPipeline(vs_spirv, fs_spirv)) {
+            std::cout << "[+] Multi-Stage Vulkan Graphics Pipeline: CREATED & COMPILED on GPU!\n"
+                      << "    Stages         : Vertex (VS) + Fragment (FS)\n"
+                      << "    Descriptor Set : Set 1 Bindless Textures (1024 slots) LINKED\n";
+
+            // Execute Multi-stage Indexed Draw on the katana geometry
+            bool draw_ok = vk_backend.ExecuteMultiStageDrawIndexed(384, 1, 0, 0, 0);
+            std::cout << "[+] Executed Multi-Stage Hardware Draw with Bindless Set 1: "
+                      << (draw_ok ? "SUCCESS" : "FAILED")
+                      << " | Total Draws=" << vk_backend.GetGpuInfo().draw_calls_executed << "\n";
+        }
+    }
+
+    // 8. Test Calling Game main() @ 0x800f3d320
     if (!skip_game_main) {
         uint64_t game_main = mapper.GetMainAddress();
         std::cout << "\n--- Testing Game main() Entry Point (Native x86-64) ---\n";

@@ -65,10 +65,19 @@ public:
 
     // Graphics Pipeline API
     bool CreateDefaultGraphicsPipeline();
+    bool CreateMultiStageGraphicsPipeline(
+        const std::vector<uint32_t>& vs_spirv,
+        const std::vector<uint32_t>& fs_spirv);
     bool ExecuteGraphicsDraw(
         uint32_t vertex_count,
         uint32_t instance_count = 1,
         uint32_t first_vertex = 0,
+        uint32_t first_instance = 0);
+    bool ExecuteMultiStageDrawIndexed(
+        uint32_t index_count,
+        uint32_t instance_count = 1,
+        uint32_t first_index = 0,
+        int32_t vertex_offset = 0,
         uint32_t first_instance = 0);
 
     void Shutdown();
@@ -115,6 +124,8 @@ private:
     uint64_t default_render_pass_ = 0;
     uint64_t default_pipeline_layout_ = 0;
     uint64_t default_graphics_pipeline_ = 0;
+    uint64_t multi_stage_pipeline_layout_ = 0;
+    uint64_t multi_stage_graphics_pipeline_ = 0;
     uint64_t default_framebuffer_ = 0;
     uint64_t default_color_image_ = 0;
     uint64_t default_color_mem_ = 0;

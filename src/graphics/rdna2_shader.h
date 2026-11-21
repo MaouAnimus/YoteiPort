@@ -59,6 +59,14 @@ public:
         uint32_t local_size_x = 64,
         uint32_t local_size_y = 1,
         uint32_t local_size_z = 1);
+
+    // Translate a decoded RDNA2 shader into an executable Vulkan SPIR-V Vertex module
+    static std::vector<uint32_t> TranslateRdna2ToVertexSpirv(
+        const Rdna2ShaderAnalysis& analysis);
+
+    // Translate a decoded RDNA2 shader into an executable Vulkan SPIR-V Fragment module
+    static std::vector<uint32_t> TranslateRdna2ToFragmentSpirv(
+        const Rdna2ShaderAnalysis& analysis);
 };
 
 } // namespace yotei::graphics
