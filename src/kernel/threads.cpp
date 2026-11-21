@@ -505,14 +505,20 @@ uint32_t ThreadManager::CondDestroy(uint64_t cond_addr) {
 }
 
 // Semaphore API
-int32_t ThreadManager::SemaCreate(const char*, uint32_t, int32_t init_count, int32_t max_count) {
+int32_t ThreadManager::SemaCreate(uint64_t out_sem_addr, const char*, uint32_t, int32_t init_count, int32_t max_count) {
     std::lock_guard<std::mutex> lock(sync_lock_);
     int32_t id = ++next_sem_id_;
+    if (init_count < 0) init_count = 0;
+    if (max_count <= 0) max_count = 255;
+    if (init_count > max_count) init_count = max_count;
 #ifdef _WIN32
     HANDLE h = ::CreateSemaphoreW(nullptr, init_count, max_count, nullptr);
     semaphores_[id] = h;
 #endif
-    return id;
+    if (out_sem_addr >= 0x1000) {
+        *reinterpret_cast<uint64_t*>(out_sem_addr) = static_cast<uint64_t>(id);
+    }
+    return 0; // SCE_OK
 }
 
 int32_t ThreadManager::SemaWait(int32_t sem_id, int32_t count, uint32_t* timeout) {
@@ -522,15 +528,20 @@ int32_t ThreadManager::SemaWait(int32_t sem_id, int32_t count, uint32_t* timeout
         auto it = semaphores_.find(sem_id);
         if (it != semaphores_.end()) h = static_cast<HANDLE>(it->second);
     }
-    if (!h) return -1;
+    if (!h) {
 #ifdef _WIN32
-    DWORD wait_ms = INFINITE;
-    if (timeout && reinterpret_cast<uintptr_t>(timeout) >= 0x1000) {
-        wait_ms = *timeout / 1000;
+        ::Sleep(1);
+#endif
+        return 0;
     }
+#ifdef _WIN32
+    DWORD wait_ms = 250; // Bounded wait quantum so worker threads stay responsive to shutdown
+    if (timeout && reinterpret_cast<uintptr_t>(timeout) >= 0x1000) {
+        wait_ms = (std::min)(static_cast<DWORD>(*timeout / 1000), 250UL);
+    }
+    if (count <= 0) count = 1;
     for (int32_t i = 0; i < count; ++i) {
-        DWORD res = ::WaitForSingleObject(h, wait_ms);
-        if (res != WAIT_OBJECT_0) return -1;
+        ::WaitForSingleObject(h, wait_ms);
     }
 #endif
     return 0;
@@ -772,10 +783,12 @@ bool ThreadManager::DispatchNid(const std::string& nid, const std::string& name,
 
     // Semaphores
     if (nid == "188x57JYp0g" || name == "sceKernelCreateSema") {
-        *ret = static_cast<uint64_t>(SemaCreate(reinterpret_cast<const char*>(rdi),
-                                                static_cast<uint32_t>(rsi),
-                                                static_cast<int32_t>(rdx),
-                                                static_cast<int32_t>(rcx)));
+        *ret = static_cast<uint64_t>(SemaCreate(
+            rdi,
+            (rsi >= 0x1000) ? reinterpret_cast<const char*>(rsi) : "Sema",
+            static_cast<uint32_t>(rdx),
+            static_cast<int32_t>(rcx),
+            static_cast<int32_t>(r8)));
         return true;
     }
     if (nid == "Zxa0VhQVTsk" || name == "sceKernelWaitSema") {

@@ -10,6 +10,7 @@
 #include "kernel/filesystem.h"
 #include "kernel/memory.h"
 #include "kernel/threads.h"
+#include <atomic>
 #include <cstring>
 #include <fstream>
 #include <iomanip>
@@ -38,13 +39,16 @@ struct BoundSlotMeta {
 
 std::vector<BoundSlotMeta> g_bound_slots;
 uint64_t g_guest_base = 0;
-size_t g_call_counter = 0;
+std::atomic<size_t> g_call_counter{0};
 uint64_t g_stack_canary_value = 0x594f54454943414eULL; // "YOTEICAN"
 uint64_t g_need_flag_value = 1;
 uint64_t g_dummy_iob_object[16] = {0};
 
 std::mutex g_unhandled_mutex;
 std::unordered_map<std::string, UnhandledStubRecord> g_unhandled_stubs;
+std::mutex g_telemetry_mutex;
+std::unordered_map<std::string, uint64_t> g_library_call_counts;
+std::unordered_set<std::string> g_unique_nids_invoked;
 bool g_verbose_unhandled = false;
 
 // SysV AMD64 ABI passes args in: RDI, RSI, RDX, RCX, R8, R9.
@@ -63,10 +67,16 @@ extern "C" uint64_t __fastcall HleDispatchTrampoline(
     uint64_t guest_r9) {
     if (slot_index >= g_bound_slots.size()) return 0;
     const auto& meta = g_bound_slots[slot_index];
-    ++g_call_counter;
+    size_t cur_call = 0;
+    {
+        std::lock_guard<std::mutex> tlock(g_telemetry_mutex);
+        cur_call = ++g_call_counter;
+        g_library_call_counts[meta.library]++;
+        g_unique_nids_invoked.insert(meta.nid);
+    }
 
-    if (g_call_counter <= 120) {
-        std::cout << "  [HLE #" << std::setw(2) << g_call_counter << "] "
+    if (cur_call <= 120) {
+        std::cout << "  [HLE #" << std::setw(2) << cur_call << "] "
                   << std::setw(18) << std::left << meta.library << " :: "
                   << std::setw(38) << meta.resolved_name
                   << " (" << meta.nid << ") | rdi=0x" << std::hex << guest_rdi
@@ -1034,6 +1044,25 @@ void NidRegistry::PrintUnhandledStubSummary() {
 size_t NidRegistry::GetUnhandledStubCount() {
     std::lock_guard<std::mutex> lock(g_unhandled_mutex);
     return g_unhandled_stubs.size();
+}
+
+size_t NidRegistry::GetTotalDispatchedCalls() {
+    return g_call_counter.load(std::memory_order_relaxed);
+}
+
+void NidRegistry::PrintLiveTelemetrySummary() {
+    std::unordered_map<std::string, uint64_t> counts_copy;
+    size_t unique_count = 0;
+    {
+        std::lock_guard<std::mutex> lock(g_telemetry_mutex);
+        counts_copy = g_library_call_counts;
+        unique_count = g_unique_nids_invoked.size();
+    }
+    std::cout << "[+] HLE Bridge Live Call Telemetry (" << g_call_counter.load()
+              << " total calls across " << unique_count << " unique NIDs):\n";
+    for (const auto& [lib, count] : counts_copy) {
+        std::cout << "    [" << std::setw(24) << std::left << lib << "] : " << count << " calls\n";
+    }
 }
 
 void NidRegistry::SetVerboseUnhandled(bool enabled) {

@@ -36,6 +36,8 @@ public:
     void FreeTrampolines();
 
     static void PrintUnhandledStubSummary();
+    static void PrintLiveTelemetrySummary();
+    static size_t GetTotalDispatchedCalls();
     static size_t GetUnhandledStubCount();
     static void SetVerboseUnhandled(bool enabled);
 

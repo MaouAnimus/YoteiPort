@@ -80,7 +80,7 @@ public:
     uint32_t CondDestroy(uint64_t cond_addr);
 
     // Semaphore
-    int32_t SemaCreate(const char* name, uint32_t attr, int32_t init_count, int32_t max_count);
+    int32_t SemaCreate(uint64_t out_sem_addr, const char* name, uint32_t attr, int32_t init_count, int32_t max_count);
     int32_t SemaWait(int32_t sem_id, int32_t count, uint32_t* timeout);
     int32_t SemaSignal(int32_t sem_id, int32_t count);
     int32_t SemaDelete(int32_t sem_id);
