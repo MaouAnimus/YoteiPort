@@ -42,6 +42,8 @@ public:
 
     bool IsWindowActive() const { return window_created_; }
     uint64_t GetFlipCount() const { return state_.flip_count; }
+    void SetActiveSceneGeometry(uint64_t index_buffer_handle, uint32_t index_count);
+    void UpdateWindowTelemetryTitle(const std::string& telemetry_hud);
 #ifdef _WIN32
     HWND GetHwnd() const { return hwnd_; }
 #endif
@@ -93,6 +95,8 @@ private:
     void* vk_present_queue_ = nullptr;
     uint32_t present_queue_family_ = 0;
     uint64_t acquire_fence_ = 0;
+    uint64_t active_scene_ib_ = 0;
+    uint32_t active_scene_index_count_ = 384;
 };
 
 } // namespace yotei::graphics

@@ -22,6 +22,7 @@ struct VulkanGpuInfo {
     uint64_t bda_buffers_allocated = 0;
     uint64_t compute_dispatches_executed = 0;
     uint64_t draw_calls_executed = 0;
+    uint64_t swapchain_frames_rendered = 0;
 };
 
 struct GpuBufferAllocation {
@@ -93,6 +94,21 @@ public:
         uint32_t height);
     bool TransitionImageToPresentLayout(uint64_t image);
 
+    // Swapchain Framebuffer 3D Rendering API (Milestone 16)
+    bool CreateSwapchainFramebuffers(
+        const std::vector<void*>& image_views,
+        uint32_t width,
+        uint32_t height);
+    void DestroySwapchainFramebuffers();
+    bool RenderSwapchainFrame(
+        uint32_t image_index,
+        uint64_t index_buffer,
+        uint32_t index_count,
+        float clear_r = 0.05f,
+        float clear_g = 0.08f,
+        float clear_b = 0.14f);
+    size_t GetSwapchainFramebufferCount() const { return swapchain_framebuffers_.size(); }
+
     void Shutdown();
 
     // Bindless Descriptor Heap API (Descriptor Set 1)
@@ -149,6 +165,12 @@ private:
     uint64_t bindless_desc_pool_ = 0;
     uint64_t bindless_descriptor_set_ = 0;
     uint64_t bindless_pipeline_layout_ = 0;
+
+    // Swapchain Framebuffer handles (1920x1080 Triple-Buffered)
+    uint64_t swapchain_render_pass_ = 0;
+    std::vector<uint64_t> swapchain_framebuffers_;
+    uint32_t swapchain_fb_width_ = 1920;
+    uint32_t swapchain_fb_height_ = 1080;
 };
 
 } // namespace yotei::graphics

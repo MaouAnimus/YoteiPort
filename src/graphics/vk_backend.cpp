@@ -634,6 +634,41 @@ using PFN_vkCmdCopyImageToBuffer = void (VKAPI_PTR*)(
     VkCommandBuffer, uint64_t, uint32_t, uint64_t,
     uint32_t, const VkBufferImageCopy*);
 
+constexpr uint32_t VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO = 37;
+constexpr uint32_t VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO = 43;
+
+struct VkFramebufferCreateInfo {
+    uint32_t        sType;
+    const void*     pNext;
+    VkFlags         flags;
+    uint64_t        renderPass;
+    uint32_t        attachmentCount;
+    const uint64_t* pAttachments;
+    uint32_t        width;
+    uint32_t        height;
+    uint32_t        layers;
+};
+
+struct VkClearValue {
+    float color[4];
+};
+
+struct VkRenderPassBeginInfo {
+    uint32_t            sType;
+    const void*         pNext;
+    uint64_t            renderPass;
+    uint64_t            framebuffer;
+    VkRect2D            renderArea;
+    uint32_t            clearValueCount;
+    const VkClearValue* pClearValues;
+};
+
+using PFN_vkCreateFramebuffer = VkResult (VKAPI_PTR*)(VkDevice, const VkFramebufferCreateInfo*, const void*, uint64_t*);
+using PFN_vkDestroyFramebuffer = void (VKAPI_PTR*)(VkDevice, uint64_t, const void*);
+using PFN_vkCmdBeginRenderPass = void (VKAPI_PTR*)(VkCommandBuffer, const VkRenderPassBeginInfo*, uint32_t);
+using PFN_vkCmdEndRenderPass = void (VKAPI_PTR*)(VkCommandBuffer);
+using PFN_vkCmdBindIndexBuffer = void (VKAPI_PTR*)(VkCommandBuffer, uint64_t, VkDeviceSize, uint32_t);
+
 } // namespace
 
 VulkanHostBackend& VulkanHostBackend::Instance() {
@@ -2414,12 +2449,228 @@ bool VulkanHostBackend::TransitionImageToPresentLayout(uint64_t image) {
 #endif
 }
 
+bool VulkanHostBackend::CreateSwapchainFramebuffers(
+    const std::vector<void*>& image_views,
+    uint32_t width,
+    uint32_t height) {
+#ifdef _WIN32
+    if (!initialized_ || !vk_device_ || !vulkan_dll_ || image_views.empty()) return false;
+    DestroySwapchainFramebuffers();
+
+    auto get_proc = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
+        ::GetProcAddress(static_cast<HMODULE>(vulkan_dll_), "vkGetInstanceProcAddr"));
+    if (!get_proc) return false;
+
+    auto create_rp = reinterpret_cast<PFN_vkCreateRenderPass>(get_proc(vk_instance_, "vkCreateRenderPass"));
+    auto create_fb = reinterpret_cast<PFN_vkCreateFramebuffer>(get_proc(vk_instance_, "vkCreateFramebuffer"));
+    if (!create_rp || !create_fb) return false;
+
+    swapchain_fb_width_ = width;
+    swapchain_fb_height_ = height;
+
+    // 1. Create Present-Ready RenderPass (LOAD_OP_CLEAR -> STORE_OP_STORE -> PRESENT_SRC_KHR)
+    VkAttachmentDescription color_att{};
+    color_att.flags = 0;
+    color_att.format = 44;              // VK_FORMAT_B8G8R8A8_UNORM
+    color_att.samples = 1;              // VK_SAMPLE_COUNT_1_BIT
+    color_att.loadOp = 1;               // VK_ATTACHMENT_LOAD_OP_CLEAR
+    color_att.storeOp = 0;              // VK_ATTACHMENT_STORE_OP_STORE
+    color_att.stencilLoadOp = 2;        // DONT_CARE
+    color_att.stencilStoreOp = 1;       // DONT_CARE
+    color_att.initialLayout = 0;        // VK_IMAGE_LAYOUT_UNDEFINED
+    color_att.finalLayout = 1000001002; // VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+
+    VkAttachmentReference color_ref{};
+    color_ref.attachment = 0;
+    color_ref.layout = 2; // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+
+    VkSubpassDescription subpass{};
+    subpass.pipelineBindPoint = 0; // GRAPHICS
+    subpass.colorAttachmentCount = 1;
+    subpass.pColorAttachments = &color_ref;
+
+    VkRenderPassCreateInfo rp_ci{};
+    rp_ci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    rp_ci.attachmentCount = 1;
+    rp_ci.pAttachments = &color_att;
+    rp_ci.subpassCount = 1;
+    rp_ci.pSubpasses = &subpass;
+
+    if (create_rp(vk_device_, &rp_ci, nullptr, &swapchain_render_pass_) != VK_SUCCESS || !swapchain_render_pass_) {
+        return false;
+    }
+
+    // 2. Create VkFramebuffer for each triple-buffered swapchain image view
+    for (void* view_ptr : image_views) {
+        uint64_t view_handle = reinterpret_cast<uint64_t>(view_ptr);
+        VkFramebufferCreateInfo fb_ci{};
+        fb_ci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        fb_ci.renderPass = swapchain_render_pass_;
+        fb_ci.attachmentCount = 1;
+        fb_ci.pAttachments = &view_handle;
+        fb_ci.width = width;
+        fb_ci.height = height;
+        fb_ci.layers = 1;
+
+        uint64_t fb = 0;
+        if (create_fb(vk_device_, &fb_ci, nullptr, &fb) == VK_SUCCESS && fb) {
+            swapchain_framebuffers_.push_back(fb);
+        }
+    }
+    return !swapchain_framebuffers_.empty();
+#else
+    return false;
+#endif
+}
+
+void VulkanHostBackend::DestroySwapchainFramebuffers() {
+#ifdef _WIN32
+    if (!vk_device_ || !vulkan_dll_) return;
+    auto get_proc = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
+        ::GetProcAddress(static_cast<HMODULE>(vulkan_dll_), "vkGetInstanceProcAddr"));
+    if (!get_proc) return;
+
+    auto destroy_fb = reinterpret_cast<PFN_vkDestroyFramebuffer>(get_proc(vk_instance_, "vkDestroyFramebuffer"));
+    if (destroy_fb) {
+        for (uint64_t fb : swapchain_framebuffers_) {
+            if (fb) destroy_fb(vk_device_, fb, nullptr);
+        }
+    }
+    swapchain_framebuffers_.clear();
+
+    if (swapchain_render_pass_) {
+        auto destroy_rp = reinterpret_cast<PFN_vkDestroyRenderPass>(get_proc(vk_instance_, "vkDestroyRenderPass"));
+        if (destroy_rp) destroy_rp(vk_device_, swapchain_render_pass_, nullptr);
+        swapchain_render_pass_ = 0;
+    }
+#endif
+}
+
+bool VulkanHostBackend::RenderSwapchainFrame(
+    uint32_t image_index,
+    uint64_t index_buffer,
+    uint32_t index_count,
+    float clear_r,
+    float clear_g,
+    float clear_b) {
+#ifdef _WIN32
+    if (!initialized_ || !vk_device_ || !vk_queue_ || !vulkan_dll_) return false;
+    if (image_index >= swapchain_framebuffers_.size() || !swapchain_render_pass_) return false;
+
+    uint64_t active_pipeline = multi_stage_graphics_pipeline_ ? multi_stage_graphics_pipeline_ : default_graphics_pipeline_;
+    if (!active_pipeline) {
+        CreateDefaultGraphicsPipeline();
+        active_pipeline = default_graphics_pipeline_;
+    }
+
+    auto get_proc = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
+        ::GetProcAddress(static_cast<HMODULE>(vulkan_dll_), "vkGetInstanceProcAddr"));
+    if (!get_proc) return false;
+
+    auto create_pool = reinterpret_cast<PFN_vkCreateCommandPool>(get_proc(vk_instance_, "vkCreateCommandPool"));
+    auto destroy_pool = reinterpret_cast<PFN_vkDestroyCommandPool>(get_proc(vk_instance_, "vkDestroyCommandPool"));
+    auto alloc_cb = reinterpret_cast<PFN_vkAllocateCommandBuffers>(get_proc(vk_instance_, "vkAllocateCommandBuffers"));
+    auto begin_cb = reinterpret_cast<PFN_vkBeginCommandBuffer>(get_proc(vk_instance_, "vkBeginCommandBuffer"));
+    auto end_cb = reinterpret_cast<PFN_vkEndCommandBuffer>(get_proc(vk_instance_, "vkEndCommandBuffer"));
+    auto begin_rp = reinterpret_cast<PFN_vkCmdBeginRenderPass>(get_proc(vk_instance_, "vkCmdBeginRenderPass"));
+    auto end_rp = reinterpret_cast<PFN_vkCmdEndRenderPass>(get_proc(vk_instance_, "vkCmdEndRenderPass"));
+    auto bind_pip = reinterpret_cast<PFN_vkCmdBindPipeline>(get_proc(vk_instance_, "vkCmdBindPipeline"));
+    auto bind_ds = reinterpret_cast<PFN_vkCmdBindDescriptorSets>(get_proc(vk_instance_, "vkCmdBindDescriptorSets"));
+    auto bind_ib = reinterpret_cast<PFN_vkCmdBindIndexBuffer>(get_proc(vk_instance_, "vkCmdBindIndexBuffer"));
+    auto cmd_set_vp = reinterpret_cast<PFN_vkCmdSetViewport>(get_proc(vk_instance_, "vkCmdSetViewport"));
+    auto cmd_set_sc = reinterpret_cast<PFN_vkCmdSetScissor>(get_proc(vk_instance_, "vkCmdSetScissor"));
+    auto cmd_draw_idx = reinterpret_cast<PFN_vkCmdDrawIndexed>(get_proc(vk_instance_, "vkCmdDrawIndexed"));
+    auto cmd_draw = reinterpret_cast<PFN_vkCmdDraw>(get_proc(vk_instance_, "vkCmdDraw"));
+    auto queue_submit = reinterpret_cast<PFN_vkQueueSubmit>(get_proc(vk_instance_, "vkQueueSubmit"));
+    auto queue_wait = reinterpret_cast<PFN_vkQueueWaitIdle>(get_proc(vk_instance_, "vkQueueWaitIdle"));
+
+    if (!create_pool || !destroy_pool || !alloc_cb || !begin_cb || !end_cb || !begin_rp || !end_rp || !queue_submit || !queue_wait) {
+        return false;
+    }
+
+    VkCommandPoolCreateInfo pool_ci{};
+    pool_ci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    pool_ci.flags = 0x00000002;
+    pool_ci.queueFamilyIndex = queue_family_index_;
+    VkCommandPool pool = 0;
+    if (create_pool(vk_device_, &pool_ci, nullptr, &pool) != VK_SUCCESS || !pool) return false;
+
+    VkCommandBufferAllocateInfo cb_ai{};
+    cb_ai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    cb_ai.commandPool = pool;
+    cb_ai.level = 0;
+    cb_ai.commandBufferCount = 1;
+    VkCommandBuffer cmd_buf = nullptr;
+    if (alloc_cb(vk_device_, &cb_ai, &cmd_buf) != VK_SUCCESS || !cmd_buf) {
+        destroy_pool(vk_device_, pool, nullptr);
+        return false;
+    }
+
+    VkCommandBufferBeginInfo begin_info{};
+    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    begin_info.flags = 0x00000001;
+    begin_cb(cmd_buf, &begin_info);
+
+    VkClearValue clear_val{{ clear_r, clear_g, clear_b, 1.0f }};
+    VkRenderPassBeginInfo rp_bi{};
+    rp_bi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    rp_bi.renderPass = swapchain_render_pass_;
+    rp_bi.framebuffer = swapchain_framebuffers_[image_index];
+    rp_bi.renderArea = { {0, 0}, {swapchain_fb_width_, swapchain_fb_height_} };
+    rp_bi.clearValueCount = 1;
+    rp_bi.pClearValues = &clear_val;
+
+    begin_rp(cmd_buf, &rp_bi, 0 /* VK_SUBPASS_CONTENTS_INLINE */);
+
+    if (active_pipeline && bind_pip) {
+        bind_pip(cmd_buf, 0 /* GRAPHICS */, active_pipeline);
+        if (bind_ds && bindless_descriptor_set_ && multi_stage_pipeline_layout_ && active_pipeline == multi_stage_graphics_pipeline_) {
+            bind_ds(cmd_buf, 0 /* GRAPHICS */, multi_stage_pipeline_layout_, 0, 1, &bindless_descriptor_set_, 0, nullptr);
+        }
+        if (cmd_set_vp) {
+            VkViewport vp{ 0.0f, 0.0f, static_cast<float>(swapchain_fb_width_), static_cast<float>(swapchain_fb_height_), 0.0f, 1.0f };
+            cmd_set_vp(cmd_buf, 0, 1, &vp);
+        }
+        if (cmd_set_sc) {
+            VkRect2D sc{ {0, 0}, {swapchain_fb_width_, swapchain_fb_height_} };
+            cmd_set_sc(cmd_buf, 0, 1, &sc);
+        }
+        if (index_count > 0) {
+            if (index_buffer != 0 && bind_ib && cmd_draw_idx) {
+                bind_ib(cmd_buf, index_buffer, 0, 0 /* VK_INDEX_TYPE_UINT16 */);
+                cmd_draw_idx(cmd_buf, index_count, 1, 0, 0, 0);
+            } else if (cmd_draw) {
+                cmd_draw(cmd_buf, index_count, 1, 0, 0);
+            }
+            ++gpu_info_.draw_calls_executed;
+        }
+    }
+
+    end_rp(cmd_buf);
+    end_cb(cmd_buf);
+
+    VkSubmitInfo submit_info{};
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit_info.commandBufferCount = 1;
+    submit_info.pCommandBuffers = &cmd_buf;
+    queue_submit(vk_queue_, 1, &submit_info, 0);
+    queue_wait(vk_queue_);
+
+    destroy_pool(vk_device_, pool, nullptr);
+    ++gpu_info_.swapchain_frames_rendered;
+    return true;
+#else
+    return false;
+#endif
+}
+
 void VulkanHostBackend::Shutdown() {
 #ifdef _WIN32
     if (!initialized_ || !vulkan_dll_) return;
     auto get_proc = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
         ::GetProcAddress(static_cast<HMODULE>(vulkan_dll_), "vkGetInstanceProcAddr"));
     if (get_proc && vk_device_) {
+        DestroySwapchainFramebuffers();
         if (bindless_pipeline_layout_) {
             auto destroy_pl = reinterpret_cast<PFN_vkDestroyPipelineLayout>(get_proc(vk_instance_, "vkDestroyPipelineLayout"));
             if (destroy_pl) destroy_pl(vk_device_, bindless_pipeline_layout_, nullptr);

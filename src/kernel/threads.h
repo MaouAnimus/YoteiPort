@@ -45,6 +45,24 @@ struct GuestThread {
     bool is_detached = false;
 };
 
+struct SceKernelEvent {
+    uint64_t ident = 0;    // 0x00: Event identifier
+    int16_t  filter = -11; // 0x08: EVFILT_USER (-11), EVFILT_VIDEO_OUT (-13), EVFILT_GRAPHICS_CORE (-14)
+    uint16_t flags = 0;    // 0x0A
+    uint32_t fflags = 0;   // 0x0C
+    int64_t  data = 0;     // 0x10
+    uint64_t udata = 0;    // 0x18: User data pointer
+};
+
+struct GuestEqueue {
+    uint64_t handle = 0;
+    std::string name;
+    std::vector<SceKernelEvent> registered_events;
+    std::vector<SceKernelEvent> triggered_events;
+    uint64_t total_waits = 0;
+    uint64_t total_triggers = 0;
+};
+
 class ThreadManager {
 public:
     static ThreadManager& Instance();
@@ -92,6 +110,15 @@ public:
     uint32_t RwlockUnlock(uint64_t rwlock_addr);
     uint32_t RwlockDestroy(uint64_t rwlock_addr);
 
+    // Event Queue (SceKernelEqueue) API for V-Blank Flip, EOP & User Events (Milestone 18)
+    int32_t EqueueCreate(uint64_t out_eq_addr, const char* name);
+    int32_t EqueueAddEvent(uint64_t eq_handle, uint64_t ident, int16_t filter, uint64_t udata);
+    int32_t EqueueTriggerEvent(uint64_t eq_handle, uint64_t ident, uint64_t udata);
+    int32_t EqueueBroadcastFlipAndEop(uint64_t flip_arg);
+    int32_t EqueueDeleteEvent(uint64_t eq_handle, uint64_t ident);
+    int32_t EqueueWait(uint64_t eq_handle, SceKernelEvent* ev_out, int32_t num_events, int32_t* out_count, uint32_t* timeout);
+    size_t GetActiveEqueueCount() const;
+
     // ProcParam parsing
     bool ParseProcParam(const uint8_t* data, size_t size, SceProcParam* out_param);
 
@@ -124,6 +151,8 @@ private:
     std::unordered_map<uint64_t, std::unique_ptr<std::condition_variable_any>> conds_;
     std::unordered_map<int32_t, void*> semaphores_;
     int32_t next_sem_id_ = 100;
+    std::unordered_map<uint64_t, GuestEqueue> equeues_;
+    uint64_t next_equeue_id_ = 0xE0001;
 };
 
 // Helper for invoking a guest SysV AMD64 function from host

@@ -74,6 +74,7 @@ public:
     const AgcDriverStats& GetStats() const { return stats_; }
     size_t GetRegisteredResourceCount() const { return resources_.size(); }
     size_t GetRegisteredShaderCount() const { return shaders_.size(); }
+    void PrintLiveAgcBreakdown() const;
 
 private:
     AgcDriverHleManager() = default;
@@ -91,6 +92,8 @@ private:
     AgcDriverStats stats_{};
     std::vector<AgcRegisteredResource> resources_;
     std::vector<AgcRegisteredShader> shaders_;
+    std::unordered_map<std::string, uint64_t> fn_call_counts_;
+    std::unordered_map<std::string, uint64_t> fn_last_rdi_;
 };
 
 } // namespace yotei::graphics

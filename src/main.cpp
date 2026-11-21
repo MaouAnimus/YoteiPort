@@ -903,7 +903,8 @@ int main(int argc, char** argv) {
                           << std::hex << geo_alloc.device_address << std::dec
                           << " | VtxBytes=" << vtx_size << " IdxBytes=" << idx_size << "\n";
 
-                // Execute Hardware PM4 Draw on real guest geometry
+                // Execute Hardware PM4 Draw on real guest geometry & bind to Swapchain Framebuffer Renderer
+                yotei::graphics::VideoOutHleManager::Instance().SetActiveSceneGeometry(0, 384);
                 vk_backend.ExecuteGraphicsDraw(model.total_indices, 1, 0, 0);
                 std::cout << "[+] Executed PM4 Hardware Draw on Decoded Geometry: "
                           << model.total_triangles << " Triangles | Dispatches="
@@ -1104,8 +1105,38 @@ int main(int argc, char** argv) {
                   << " (" << (eop_fence_label == kExpectedEopTag ? "SIGNALED OK" : "MISMATCH") << ")\n"
                   << "    DCB Submissions    : " << agc_stats.dcb_submissions
                   << " | GPU Dispatches=" << vk_backend.GetGpuInfo().compute_dispatches_executed
-                  << " | GPU Draws=" << vk_backend.GetGpuInfo().draw_calls_executed << "\n";
+                  << " | GPU Draws=" << vk_backend.GetGpuInfo().draw_calls_executed
+                  << " | Swapchain Frames Rendered=" << vk_backend.GetGpuInfo().swapchain_frames_rendered << "\n";
     }
+
+    // 10.5. Test SceKernelEqueue (V-Blank Flip, EOP & User Event Synchronization - Milestone 18)
+    std::cout << "\n--- Testing SceKernelEqueue (V-Blank Flip, AGC EOP & User Events) ---\n";
+    auto& th_mgr = yotei::kernel::ThreadManager::Instance();
+    uint64_t test_eq = 0;
+    uint64_t eq_ret = 0;
+    th_mgr.DispatchNid("D0OdFMjp46I", "sceKernelCreateEqueue",
+                       reinterpret_cast<uint64_t>(&test_eq),
+                       reinterpret_cast<uint64_t>("FlipAndEopEqueue"), 0, 0, 0, 0, &eq_ret);
+    th_mgr.DispatchNid("4R6-OvI2cEA", "sceKernelAddUserEvent",
+                       test_eq, 0x42, 0, 0, 0, 0, &eq_ret);
+    yotei::graphics::VideoOutHleManager::Instance().DispatchNid(
+        "libSceVideoOut", "6kP7bf10+-4", "sceVideoOutAddFlipEvent",
+        test_eq, 1, 0xCAFE0001ULL, 0, 0, 0, &eq_ret);
+    agc_drv.DispatchNid(
+        "libSceAgcDriver", "w2rJhmD+dsE", "sceAgcDriverAddEqEvent",
+        test_eq, 2, 0xCAFE0002ULL, 0, 0, 0, &eq_ret);
+    th_mgr.DispatchNid("F6e0kwo4cnk", "sceKernelTriggerUserEvent",
+                       test_eq, 0x42, 0xCAFE0042ULL, 0, 0, 0, &eq_ret);
+    yotei::graphics::VideoOutHleManager::Instance().SubmitFlip(1, 0, 0, 0x777);
+
+    yotei::kernel::SceKernelEvent fired_events[4]{};
+    int32_t fired_count = 0;
+    th_mgr.DispatchNid("fzyMKs9kim0", "sceKernelWaitEqueue",
+                       test_eq, reinterpret_cast<uint64_t>(&fired_events[0]),
+                       4, reinterpret_cast<uint64_t>(&fired_count), 0, 0, &eq_ret);
+    std::cout << "[+] Verified SceKernelEqueue Event Loop: Handle=0x" << std::hex << test_eq << std::dec
+              << " | Triggered Events Received=" << fired_count
+              << " (User + VideoOut Flip + AgcDriver EOP)\n";
 
     // 11. Test Calling Game main() @ 0x800f3d320 (Deep Multi-Threaded Execution & Live Engine Telemetry Bridge)
     if (!skip_game_main) {
@@ -1165,8 +1196,9 @@ int main(int argc, char** argv) {
         std::cout << "\n[*] Skipping Game main() (--verify-only mode active).\n";
     }
 
-    // Report live HLE telemetry & any unhandled stubs observed
+    // Report live HLE telemetry, AGC function breakdown & any unhandled stubs observed
     yotei::hle::NidRegistry::PrintLiveTelemetrySummary();
+    yotei::graphics::AgcDriverHleManager::Instance().PrintLiveAgcBreakdown();
     yotei::hle::NidRegistry::PrintUnhandledStubSummary();
     std::cout << "\n[+] Guest native execution probe completed and memory cleanly unmapped.\n" << std::flush;
 

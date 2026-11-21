@@ -1,5 +1,6 @@
 #include "graphics/video_out_hle.h"
 #include "graphics/vk_backend.h"
+#include "kernel/threads.h"
 #include <iostream>
 #include <iomanip>
 #include <cstring>
@@ -331,9 +332,14 @@ bool VideoOutHleManager::CreateVulkanSwapchain(uint32_t width, uint32_t height) 
         create_fence(dev, &fci, nullptr, &acquire_fence_);
     }
 
+    if (!swapchain_image_views_.empty()) {
+        vk.CreateSwapchainFramebuffers(swapchain_image_views_, width, height);
+    }
+
     std::cout << "[+] Initialized Vulkan Swapchain: " << width << "x" << height
               << " | Triple-Buffered (" << swapchain_image_count_
-              << " images) | Format=B8G8R8A8_UNORM | PresentMode=FIFO (V-Sync)\n";
+              << " images / " << vk.GetSwapchainFramebufferCount()
+              << " framebuffers) | Format=B8G8R8A8_UNORM | PresentMode=FIFO (V-Sync)\n";
     return true;
 #else
     return false;
@@ -347,6 +353,7 @@ void VideoOutHleManager::DestroyVulkanSwapchain() {
     VkDevice dev = vk.GetDevice();
 
     if (dev) {
+        vk.DestroySwapchainFramebuffers();
         if (acquire_fence_) {
             auto destroy_fence = reinterpret_cast<PFN_vkDestroyFence>(
                 vk.GetProcAddress("vkDestroyFence"));
@@ -380,6 +387,22 @@ void VideoOutHleManager::DestroyVulkanSwapchain() {
         }
     }
     swapchain_created_ = false;
+#endif
+}
+
+void VideoOutHleManager::SetActiveSceneGeometry(uint64_t index_buffer_handle, uint32_t index_count) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    active_scene_ib_ = index_buffer_handle;
+    active_scene_index_count_ = index_count;
+}
+
+void VideoOutHleManager::UpdateWindowTelemetryTitle(const std::string& telemetry_hud) {
+#ifdef _WIN32
+    if (hwnd_) {
+        SetWindowTextA(hwnd_, telemetry_hud.c_str());
+    }
+#else
+    (void)telemetry_hud;
 #endif
 }
 
@@ -421,7 +444,14 @@ bool VideoOutHleManager::SubmitFlip(int32_t handle, int32_t buffer_index, int32_
             if (acquire_img(dev, reinterpret_cast<VkSwapchainKHR>(vk_swapchain_), 1000000000ULL, 0, acquire_fence_, &img_idx) == VK_SUCCESS) {
                 wait_fences(dev, 1, &acquire_fence_, 1, 1000000000ULL);
                 if (img_idx < swapchain_images_.size()) {
-                    vk.TransitionImageToPresentLayout(reinterpret_cast<uint64_t>(swapchain_images_[img_idx]));
+                    // Render 3D scene directly into acquired swapchain framebuffer (or fallback layout transition)
+                    float phase = static_cast<float>(state_.flip_count % 60) / 60.0f;
+                    float cr = 0.04f + 0.03f * phase;
+                    float cg = 0.07f + 0.04f * phase;
+                    float cb = 0.14f + 0.05f * phase;
+                    if (!vk.RenderSwapchainFrame(img_idx, active_scene_ib_, active_scene_index_count_, cr, cg, cb)) {
+                        vk.TransitionImageToPresentLayout(reinterpret_cast<uint64_t>(swapchain_images_[img_idx]));
+                    }
                 }
                 VkSwapchainKHR sw = reinterpret_cast<VkSwapchainKHR>(vk_swapchain_);
                 VkPresentInfoKHR pi{};
@@ -440,6 +470,7 @@ bool VideoOutHleManager::SubmitFlip(int32_t handle, int32_t buffer_index, int32_
                   << " | Handle=" << handle << " BufferIdx=" << buffer_index
                   << " Mode=" << flip_mode << " Arg=0x" << std::hex << flip_arg << std::dec << "\n" << std::flush;
     }
+    yotei::kernel::ThreadManager::Instance().EqueueBroadcastFlipAndEop(static_cast<uint64_t>(flip_arg));
     return true;
 }
 
@@ -597,6 +628,12 @@ bool VideoOutHleManager::DispatchNid(const std::string&, const std::string& nid,
     if (nid == "SbU3dwp80lQ" || name == "sceVideoOutGetFlipStatus") {
         *ret = static_cast<uint64_t>(SceVideoOutGetFlipStatus(
             static_cast<int32_t>(rdi), rsi));
+        return true;
+    }
+    if (nid == "6kP7bf10+-4" || name == "sceVideoOutAddFlipEvent") {
+        // sceVideoOutAddFlipEvent(SceKernelEqueue eq, int32_t handle, void* udata)
+        yotei::kernel::ThreadManager::Instance().EqueueAddEvent(rdi, rsi, -13 /* EVFILT_VIDEO_OUT */, rdx);
+        *ret = 0;
         return true;
     }
     if (nid == "zgXifHT9ErY" || name == "sceVideoOutIsFlipPending") {

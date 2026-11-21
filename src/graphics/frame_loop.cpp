@@ -3,10 +3,14 @@
 #include "graphics/video_out_hle.h"
 #include "graphics/vk_backend.h"
 #include "audio/audio_out_hle.h"
+#include "hle/nid_registry.h"
 #include "input/pad_hle.h"
+#include "kernel/threads.h"
 #include <chrono>
 #include <cmath>
+#include <iomanip>
 #include <iostream>
+#include <sstream>
 
 namespace yotei::graphics {
 
@@ -111,6 +115,18 @@ FrameTelemetry FrameLoopEngine::ExecuteFrameTick(
 
     auto t_end = std::chrono::high_resolution_clock::now();
     telemetry.frame_time_ms = std::chrono::duration<double, std::milli>(t_end - t_start).count();
+
+    // 6. Update Dynamic Win32 Window Title with Live Telemetry HUD
+    double inst_fps = (telemetry.frame_time_ms > 0.0) ? (1000.0 / telemetry.frame_time_ms) : 0.0;
+    std::ostringstream hud;
+    hud << "Ghost of Yotei (PPSA26344) | Frame #" << (telemetry.frame_index + 1)
+        << " | " << std::fixed << std::setprecision(2) << telemetry.frame_time_ms << " ms ("
+        << std::setprecision(0) << inst_fps << " FPS)"
+        << " | Hi-Z: Drawn=" << telemetry.submeshes_drawn << " Culled=" << telemetry.submeshes_culled
+        << " | Workers=" << yotei::kernel::ThreadManager::Instance().GetActiveThreadCount()
+        << " | HLE Calls=" << yotei::hle::NidRegistry::GetTotalDispatchedCalls();
+    video_out.UpdateWindowTelemetryTitle(hud.str());
+
     return telemetry;
 }
 

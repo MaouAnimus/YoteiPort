@@ -637,6 +637,124 @@ uint32_t ThreadManager::RwlockDestroy(uint64_t rwlock_addr) {
     return 0;
 }
 
+// Event Queue (SceKernelEqueue) API (Milestone 18)
+int32_t ThreadManager::EqueueCreate(uint64_t out_eq_addr, const char* name) {
+    std::lock_guard<std::mutex> lock(sync_lock_);
+    uint64_t eq_id = next_equeue_id_++;
+    GuestEqueue eq{};
+    eq.handle = eq_id;
+    eq.name = (name && reinterpret_cast<uintptr_t>(name) >= 0x1000) ? name : "SceKernelEqueue";
+    equeues_[eq_id] = std::move(eq);
+    if (out_eq_addr >= 0x1000) {
+        *reinterpret_cast<uint64_t*>(out_eq_addr) = eq_id;
+    }
+    return 0; // SCE_OK
+}
+
+int32_t ThreadManager::EqueueAddEvent(uint64_t eq_handle, uint64_t ident, int16_t filter, uint64_t udata) {
+    std::lock_guard<std::mutex> lock(sync_lock_);
+    auto& eq = equeues_[eq_handle];
+    eq.handle = eq_handle;
+    SceKernelEvent ev{};
+    ev.ident = ident;
+    ev.filter = filter;
+    ev.flags = 1; // EV_ADD
+    ev.udata = udata;
+    eq.registered_events.push_back(ev);
+    return 0; // SCE_OK
+}
+
+int32_t ThreadManager::EqueueTriggerEvent(uint64_t eq_handle, uint64_t ident, uint64_t udata) {
+    std::lock_guard<std::mutex> lock(sync_lock_);
+    auto& eq = equeues_[eq_handle];
+    eq.handle = eq_handle;
+    SceKernelEvent ev{};
+    ev.ident = ident;
+    ev.filter = -11; // EVFILT_USER
+    ev.udata = udata;
+    for (const auto& reg : eq.registered_events) {
+        if (reg.ident == ident) {
+            ev.filter = reg.filter;
+            if (udata == 0) ev.udata = reg.udata;
+            break;
+        }
+    }
+    eq.triggered_events.push_back(ev);
+    ++eq.total_triggers;
+    return 0; // SCE_OK
+}
+
+int32_t ThreadManager::EqueueBroadcastFlipAndEop(uint64_t flip_arg) {
+    std::lock_guard<std::mutex> lock(sync_lock_);
+    for (auto& [id, eq] : equeues_) {
+        for (const auto& reg : eq.registered_events) {
+            if (reg.filter == -13 /* EVFILT_VIDEO_OUT */ || reg.filter == -14 /* EVFILT_GRAPHICS_CORE */) {
+                SceKernelEvent ev = reg;
+                ev.data = static_cast<int64_t>(flip_arg);
+                eq.triggered_events.push_back(ev);
+                ++eq.total_triggers;
+            }
+        }
+    }
+    return 0;
+}
+
+int32_t ThreadManager::EqueueDeleteEvent(uint64_t eq_handle, uint64_t ident) {
+    std::lock_guard<std::mutex> lock(sync_lock_);
+    auto it = equeues_.find(eq_handle);
+    if (it != equeues_.end()) {
+        auto& vec = it->second.registered_events;
+        vec.erase(std::remove_if(vec.begin(), vec.end(),
+                                 [ident](const SceKernelEvent& e) { return e.ident == ident; }),
+                  vec.end());
+    }
+    return 0;
+}
+
+int32_t ThreadManager::EqueueWait(uint64_t eq_handle, SceKernelEvent* ev_out, int32_t num_events, int32_t* out_count, uint32_t* /*timeout*/) {
+    std::lock_guard<std::mutex> lock(sync_lock_);
+    auto& eq = equeues_[eq_handle];
+    eq.handle = eq_handle;
+    ++eq.total_waits;
+
+    int32_t written = 0;
+    int32_t max_ev = (num_events > 0) ? num_events : 1;
+    bool valid_out = (reinterpret_cast<uintptr_t>(ev_out) >= 0x1000);
+
+    while (!eq.triggered_events.empty() && written < max_ev) {
+        if (valid_out) {
+            ev_out[written] = eq.triggered_events.front();
+        }
+        eq.triggered_events.erase(eq.triggered_events.begin());
+        ++written;
+    }
+
+    // If no event was queued yet, synthesize an immediate ready event from registered events so render/flip threads never stall
+    if (written == 0) {
+        SceKernelEvent synth{};
+        if (!eq.registered_events.empty()) {
+            synth = eq.registered_events.front();
+        } else {
+            synth.ident = 1;
+            synth.filter = -13; // EVFILT_VIDEO_OUT
+        }
+        if (valid_out) {
+            ev_out[0] = synth;
+        }
+        written = 1;
+    }
+
+    if (reinterpret_cast<uintptr_t>(out_count) >= 0x1000) {
+        *out_count = written;
+    }
+    return 0; // SCE_OK
+}
+
+size_t ThreadManager::GetActiveEqueueCount() const {
+    std::lock_guard<std::mutex> lock(sync_lock_);
+    return equeues_.size();
+}
+
 bool ThreadManager::ParseProcParam(const uint8_t* data, size_t size, SceProcParam* out_param) {
     if (!data || size < 0x20 || !out_param) return false;
     out_param->size = *reinterpret_cast<const uint64_t*>(data);
@@ -826,6 +944,33 @@ bool ThreadManager::DispatchNid(const std::string& nid, const std::string& name,
     }
     if (nid == "BB+kb08Tl9A" || name == "scePthreadRwlockDestroy") {
         *ret = RwlockDestroy(rdi);
+        return true;
+    }
+
+    // Event Queues (SceKernelEqueue)
+    if (nid == "D0OdFMjp46I" || name == "sceKernelCreateEqueue") {
+        *ret = static_cast<uint64_t>(EqueueCreate(rdi, reinterpret_cast<const char*>(rsi)));
+        return true;
+    }
+    if (nid == "4R6-OvI2cEA" || name == "sceKernelAddUserEvent") {
+        *ret = static_cast<uint64_t>(EqueueAddEvent(rdi, rsi, -11 /* EVFILT_USER */, 0));
+        return true;
+    }
+    if (nid == "F6e0kwo4cnk" || name == "sceKernelTriggerUserEvent") {
+        *ret = static_cast<uint64_t>(EqueueTriggerEvent(rdi, rsi, rdx));
+        return true;
+    }
+    if (nid == "LJDwdSNTnDg" || name == "sceKernelDeleteUserEvent") {
+        *ret = static_cast<uint64_t>(EqueueDeleteEvent(rdi, rsi));
+        return true;
+    }
+    if (nid == "fzyMKs9kim0" || name == "sceKernelWaitEqueue") {
+        *ret = static_cast<uint64_t>(EqueueWait(
+            rdi,
+            reinterpret_cast<SceKernelEvent*>(rsi),
+            static_cast<int32_t>(rdx),
+            reinterpret_cast<int32_t*>(rcx),
+            reinterpret_cast<uint32_t*>(r8)));
         return true;
     }
 

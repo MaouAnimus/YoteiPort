@@ -3,6 +3,7 @@
 #include "graphics/rdna2_shader.h"
 #include "graphics/video_out_hle.h"
 #include "graphics/vk_backend.h"
+#include "kernel/threads.h"
 #include <cstring>
 #include <iomanip>
 #include <iostream>
@@ -113,6 +114,10 @@ bool AgcDriverHleManager::DispatchNid(
         initialized_ = true;
     }
 
+    std::string fn_key = library + "::" + resolved_name + " (" + nid + ")";
+    fn_call_counts_[fn_key]++;
+    fn_last_rdi_[fn_key] = rdi;
+
     // -------------------------------------------------------------------------
     // 1. Core AGC Initialization & Mode Queries
     // -------------------------------------------------------------------------
@@ -134,10 +139,12 @@ bool AgcDriverHleManager::DispatchNid(
         resolved_name == "sceAgcGetRegisterDefaults2Internal" ||
         resolved_name == "Gen5::AgcGetRegisterDefaults2" ||
         resolved_name == "Gen5::AgcGetRegisterDefaults2Internal") {
+        // Returns a valid pointer to a static AGC default register table (prevents [RAX+0x38] null dereference in Agc::Core::initialize)
+        alignas(64) static uint8_t s_agc_default_register_table[4096] = {};
         if (IsValidGuestPointer(rdi) && rsi > 0 && rsi <= 0x10000) {
             std::memset(reinterpret_cast<void*>(rdi), 0, static_cast<size_t>(rsi));
         }
-        *out_ret = 0;
+        *out_ret = reinterpret_cast<uint64_t>(&s_agc_default_register_table[0]);
         return true;
     }
     if (nid == "h9z6+0hEydk" || nid == "qj7QZpgr9Uw" ||
@@ -192,10 +199,15 @@ bool AgcDriverHleManager::DispatchNid(
         *out_ret = 0;
         return true;
     }
-    if (nid == "MM4IZSEYytQ" || nid == "XlNp7jzGiPo" || nid == "w2rJhmD+dsE" ||
+    if (nid == "w2rJhmD+dsE" || resolved_name == "sceAgcDriverAddEqEvent") {
+        // sceAgcDriverAddEqEvent(SceKernelEqueue eq, SceAgcCoreEqEventType type, void* udata)
+        yotei::kernel::ThreadManager::Instance().EqueueAddEvent(rdi, (rsi != 0) ? rsi : 1, -14 /* EVFILT_GRAPHICS_CORE */, rdx);
+        *out_ret = 0;
+        return true;
+    }
+    if (nid == "MM4IZSEYytQ" || nid == "XlNp7jzGiPo" ||
         resolved_name == "sceAgcDriverSetHsOffchipParam" ||
-        resolved_name == "sceAgcDriverSetTFRing" ||
-        resolved_name == "sceAgcDriverAddEqEvent") {
+        resolved_name == "sceAgcDriverSetTFRing") {
         *out_ret = 0;
         return true;
     }
@@ -437,6 +449,19 @@ bool AgcDriverHleManager::DispatchNid(
     (void)r9;
     *out_ret = 0;
     return true;
+}
+
+void AgcDriverHleManager::PrintLiveAgcBreakdown() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::cout << "[+] Live libSceAgc & libSceAgcDriver Function Call Breakdown ("
+              << fn_call_counts_.size() << " distinct AGC functions invoked):\n";
+    for (const auto& [key, cnt] : fn_call_counts_) {
+        auto it_rdi = fn_last_rdi_.find(key);
+        uint64_t last_arg = (it_rdi != fn_last_rdi_.end()) ? it_rdi->second : 0;
+        std::cout << "    " << std::setw(54) << std::left << key
+                  << " : " << std::setw(5) << cnt << " calls | last_rdi=0x"
+                  << std::hex << last_arg << std::dec << "\n";
+    }
 }
 
 } // namespace yotei::graphics
