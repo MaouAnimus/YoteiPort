@@ -3,6 +3,7 @@
 #include "graphics/video_out_hle.h"
 #include "graphics/vk_backend.h"
 #include "graphics/xtbs_decoder.h"
+#include "graphics/smbs_decoder.h"
 #include "audio/audio_out_hle.h"
 #include "audio/ajm_hle.h"
 #include "audio/wasapi_backend.h"
@@ -860,7 +861,56 @@ int main(int argc, char** argv) {
         }
     }
 
-    // 6. Test Calling Game main() @ 0x800f3d320
+    // 6. Test SMBS (.xmesh) Geometry Unpacker & 64-bit BDA Streaming
+    std::cout << "\n--- Testing SMBS (.xmesh) Geometry Unpacker & 64-bit BDA Streaming ---\n";
+    auto& smbs_dec = yotei::graphics::SmbsDecoder::Instance();
+    auto test_xmesh_path = vfs.ResolveGuestPath("/app0/cache_ps5/meshes/action_katana.xmesh");
+    if (!std::filesystem::exists(test_xmesh_path)) {
+        test_xmesh_path = vfs.ResolveGuestPath("/app0/cache_ps5/meshes/action_katana_2.xmesh");
+    }
+
+    if (std::filesystem::exists(test_xmesh_path)) {
+        yotei::graphics::SmbsModel model{};
+        if (smbs_dec.DecodeFromFile(test_xmesh_path.string(), model)) {
+            std::cout << "[+] Decoded SMBS Mesh: '" << model.asset_name << "'\n"
+                      << "    Submeshes  : " << model.num_submeshes << " | LOD Groups: " << model.num_lods << "\n"
+                      << "    Vertices   : " << model.total_vertices << " ("
+                      << (model.packed_vertices.size() * sizeof(yotei::graphics::SmbsVertex)) << " bytes)\n"
+                      << "    Indices    : " << model.total_indices << " | Triangles: " << model.total_triangles << "\n";
+
+            // Upload Geometry to 64-bit BDA GPU Buffer
+            size_t vtx_size = model.packed_vertices.size() * sizeof(yotei::graphics::SmbsVertex);
+            size_t idx_size = model.packed_indices.size() * sizeof(uint16_t);
+            size_t total_geo_size = vtx_size + idx_size;
+
+            auto geo_alloc = vk_backend.AllocateBufferWithDeviceAddress(
+                total_geo_size,
+                0x00000080 | 0x00000040 | 0x00020000 /* VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT */,
+                true);
+
+            if (geo_alloc.buffer_handle && geo_alloc.device_address) {
+                if (geo_alloc.host_mapped_ptr) {
+                    uint8_t* dst = static_cast<uint8_t*>(geo_alloc.host_mapped_ptr);
+                    std::memcpy(dst, model.packed_vertices.data(), vtx_size);
+                    std::memcpy(dst + vtx_size, model.packed_indices.data(), idx_size);
+                }
+                std::cout << "[+] Uploaded Geometry via 64-bit BDA: DevAddr=0x"
+                          << std::hex << geo_alloc.device_address << std::dec
+                          << " | VtxBytes=" << vtx_size << " IdxBytes=" << idx_size << "\n";
+
+                // Execute Hardware PM4 Draw on real guest geometry
+                vk_backend.ExecuteGraphicsDraw(model.total_indices, 1, 0, 0);
+                std::cout << "[+] Executed PM4 Hardware Draw on Decoded Geometry: "
+                          << model.total_triangles << " Triangles | Dispatches="
+                          << vk_backend.GetGpuInfo().compute_dispatches_executed
+                          << " Draws=" << vk_backend.GetGpuInfo().draw_calls_executed << "\n";
+
+                vk_backend.FreeBufferWithDeviceAddress(geo_alloc);
+            }
+        }
+    }
+
+    // 7. Test Calling Game main() @ 0x800f3d320
     if (!skip_game_main) {
         uint64_t game_main = mapper.GetMainAddress();
         std::cout << "\n--- Testing Game main() Entry Point (Native x86-64) ---\n";
