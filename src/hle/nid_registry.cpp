@@ -1,4 +1,5 @@
 #include "hle/nid_registry.h"
+#include "graphics/agc_driver_hle.h"
 #include "graphics/pm4_decoder.h"
 #include "graphics/video_out_hle.h"
 #include "audio/audio_out_hle.h"
@@ -83,15 +84,22 @@ extern "C" uint64_t __fastcall HleDispatchTrampoline(
         return sub_ret;
     }
 
-    // 2. Delegate AGC / AgcDriver / VideoOut graphics calls
-    if (graphics::AgcPm4Backend::Instance().DispatchNid(
+    // 2. Delegate libSceVideoOut / Swapchain presentation calls first
+    if (graphics::VideoOutHleManager::Instance().DispatchNid(
             meta.library, meta.nid, meta.resolved_name,
             guest_rdi, guest_rsi, guest_rdx, guest_rcx, guest_r8, guest_r9, &sub_ret)) {
         return sub_ret;
     }
 
-    // 2.5. Delegate libSceVideoOut / Swapchain presentation calls
-    if (graphics::VideoOutHleManager::Instance().DispatchNid(
+    // 2.2. Delegate libSceAgc & libSceAgcDriver Context / DCB / ACB calls
+    if (graphics::AgcDriverHleManager::Instance().DispatchNid(
+            meta.library, meta.nid, meta.resolved_name,
+            guest_rdi, guest_rsi, guest_rdx, guest_rcx, guest_r8, guest_r9, &sub_ret)) {
+        return sub_ret;
+    }
+
+    // 2.5. Delegate fallback AGC / PM4 calls
+    if (graphics::AgcPm4Backend::Instance().DispatchNid(
             meta.library, meta.nid, meta.resolved_name,
             guest_rdi, guest_rsi, guest_rdx, guest_rcx, guest_r8, guest_r9, &sub_ret)) {
         return sub_ret;

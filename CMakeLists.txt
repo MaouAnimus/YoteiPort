@@ -18,6 +18,7 @@ add_executable(yotei_runtime
     src/kernel/filesystem.cpp
     src/kernel/threads.cpp
     src/graphics/pm4_decoder.cpp
+    src/graphics/agc_driver_hle.cpp
     src/graphics/rdna2_shader.cpp
     src/graphics/vk_backend.cpp
     src/graphics/video_out_hle.cpp

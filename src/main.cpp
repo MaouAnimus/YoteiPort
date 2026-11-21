@@ -1,4 +1,5 @@
 #include "graphics/pm4_decoder.h"
+#include "graphics/agc_driver_hle.h"
 #include "graphics/rdna2_shader.h"
 #include "graphics/video_out_hle.h"
 #include "graphics/vk_backend.h"
@@ -1028,7 +1029,85 @@ int main(int argc, char** argv) {
         frame_loop.Shutdown();
     }
 
-    // 10. Test Calling Game main() @ 0x800f3d320
+    // 10. Test libSceAgc & libSceAgcDriver Context HLE (DCB Recording, EOP Fence & Submission)
+    std::cout << "\n--- Testing libSceAgc & libSceAgcDriver Context HLE (DCB -> PM4 -> Vulkan) ---\n";
+    auto& agc_drv = yotei::graphics::AgcDriverHleManager::Instance();
+    if (agc_drv.Initialize()) {
+        uint64_t agc_ret = 0;
+        uint32_t init_out = 0xFFFFFFFFU;
+        uint32_t owner_handle = 0;
+        uint32_t res_handle = 0;
+
+        // 1. Initialize AGC & Register Owner + Resource via NID Dispatch
+        agc_drv.DispatchNid("libSceAgc", "23LRUSvYu1M", "sceAgcInit",
+                            reinterpret_cast<uint64_t>(&init_out), 0, 0, 0, 0, 0, &agc_ret);
+        agc_drv.DispatchNid("libSceAgcDriver", "X-Nm5KLREeg", "sceAgcDriverRegisterOwner",
+                            reinterpret_cast<uint64_t>(&owner_handle),
+                            reinterpret_cast<uint64_t>("SuckerPunch::RenderEngine"), 0, 0, 0, 0, &agc_ret);
+        agc_drv.DispatchNid("libSceAgcDriver", "W5z4eZrjEas", "sceAgcDriverRegisterResource",
+                            reinterpret_cast<uint64_t>(&res_handle), owner_handle,
+                            0x1000200000ULL, 0x100000ULL,
+                            reinterpret_cast<uint64_t>("Gbuffer::AlbedoRT"), 0, &agc_ret);
+
+        // 2. Register an RDNA2 Shader via sceAgcCreateShader
+        uint64_t shader_ptr = 0;
+        uint64_t shader_hdr[4] = {};
+        uint32_t dummy_isa[4] = { 0xBEFC0080U, 0xBF810000U, 0, 0 }; // s_mov_b32, s_endpgm
+        agc_drv.DispatchNid("libSceAgc", "f3dg2CSgRKY", "sceAgcCreateShader",
+                            reinterpret_cast<uint64_t>(&shader_ptr),
+                            reinterpret_cast<uint64_t>(&shader_hdr[0]),
+                            reinterpret_cast<uint64_t>(&dummy_isa[0]), 0, 0, 0, &agc_ret);
+
+        // 3. Allocate a Guest DrawCommandBuffer (DCB) & Record PM4 Packets via libSceAgc NIDs
+        std::vector<uint32_t> guest_dcb_ring(256, 0);
+        yotei::graphics::GuestAgcCommandBuffer guest_dcb{};
+        guest_dcb.cmd_base = guest_dcb_ring.data();
+        guest_dcb.cmd_cur  = guest_dcb_ring.data();
+        guest_dcb.cmd_end  = guest_dcb_ring.data() + guest_dcb_ring.size();
+        uint64_t dcb_addr  = reinterpret_cast<uint64_t>(&guest_dcb);
+
+        uint64_t eop_fence_label = 0;
+        constexpr uint64_t kExpectedEopTag = 0x594F544549454F50ULL; // "YOTEIEOP"
+
+        agc_drv.DispatchNid("libSceAgc", "+kSrjIVxKFE", "sceAgcDcbPushMarker",
+                            dcb_addr, reinterpret_cast<uint64_t>("Frame>Deferred>Gbuffer"), 0, 0, 0, 0, &agc_ret);
+        agc_drv.DispatchNid("libSceAgc", "k3GhuSNmBLU", "sceAgcCbDispatch",
+                            dcb_addr, 32, 1, 1, 0, 0, &agc_ret);
+        agc_drv.DispatchNid("libSceAgc", "-KRzWekV120", "sceAgcDcbSetIndexSize_0600",
+                            dcb_addr, 0 /* UINT16 */, 0, 0, 0, 0, &agc_ret);
+        agc_drv.DispatchNid("libSceAgc", "l4fM9K-Lyks", "sceAgcDcbSetIndexBuffer",
+                            dcb_addr, 0x1000001000ULL, 0, 0, 0, 0, &agc_ret);
+        agc_drv.DispatchNid("libSceAgc", "tSBxhAPyytQ", "sceAgcDcbSetNumInstances",
+                            dcb_addr, 1, 0, 0, 0, 0, &agc_ret);
+        agc_drv.DispatchNid("libSceAgc", "q88lQ+GP5Yk", "sceAgcDcbDrawIndex",
+                            dcb_addr, 384, 0x1000001000ULL, 0, 0, 0, &agc_ret);
+        agc_drv.DispatchNid("libSceAgc", "i1jyy49AjXU", "sceAgcDcbWriteData",
+                            dcb_addr, 0, reinterpret_cast<uint64_t>(&eop_fence_label), kExpectedEopTag, 0, 0, &agc_ret);
+        agc_drv.DispatchNid("libSceAgc", "H7uZqCoNuWk", "sceAgcDcbPopMarker",
+                            dcb_addr, 0, 0, 0, 0, 0, &agc_ret);
+
+        size_t recorded_dwords = static_cast<size_t>(guest_dcb.cmd_cur - guest_dcb.cmd_base);
+        size_t recorded_bytes  = recorded_dwords * sizeof(uint32_t);
+
+        // 4. Submit recorded Guest DCB via sceAgcDriverSubmitDcb -> executes on Host Vulkan 1.4 GPU
+        agc_drv.DispatchNid("libSceAgcDriver", "UglJIZjGssM", "sceAgcDriverSubmitDcb",
+                            reinterpret_cast<uint64_t>(guest_dcb.cmd_base), recorded_bytes, 0, 0, 0, 0, &agc_ret);
+
+        const auto& agc_stats = agc_drv.GetStats();
+        std::cout << "[+] Verified libSceAgc / libSceAgcDriver Context Pipeline:\n"
+                  << "    Registered Owners  : " << agc_stats.owners_registered
+                  << " | Resources: " << agc_stats.resources_registered
+                  << " | Shaders: " << agc_stats.shaders_created << "\n"
+                  << "    DCB PM4 Recorded   : " << agc_stats.dcb_packets_emitted
+                  << " packets (" << recorded_dwords << " dwords / " << recorded_bytes << " bytes)\n"
+                  << "    EOP Fence Label    : 0x" << std::hex << eop_fence_label << std::dec
+                  << " (" << (eop_fence_label == kExpectedEopTag ? "SIGNALED OK" : "MISMATCH") << ")\n"
+                  << "    DCB Submissions    : " << agc_stats.dcb_submissions
+                  << " | GPU Dispatches=" << vk_backend.GetGpuInfo().compute_dispatches_executed
+                  << " | GPU Draws=" << vk_backend.GetGpuInfo().draw_calls_executed << "\n";
+    }
+
+    // 11. Test Calling Game main() @ 0x800f3d320
     if (!skip_game_main) {
         uint64_t game_main = mapper.GetMainAddress();
         std::cout << "\n--- Testing Game main() Entry Point (Native x86-64) ---\n";
@@ -1067,6 +1146,7 @@ int main(int argc, char** argv) {
     yotei::vfs::OodleDecompressor::Instance().Shutdown();
     yotei::kernel::ThreadManager::Instance().Shutdown();
     yotei::input::PadHleManager::Instance().Shutdown();
+    yotei::graphics::AgcDriverHleManager::Instance().Shutdown();
     yotei::graphics::VideoOutHleManager::Instance().Shutdown();
     yotei::graphics::VulkanHostBackend::Instance().Shutdown();
 
