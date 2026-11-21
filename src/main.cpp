@@ -2,6 +2,9 @@
 #include "graphics/rdna2_shader.h"
 #include "graphics/video_out_hle.h"
 #include "graphics/vk_backend.h"
+#include "audio/audio_out_hle.h"
+#include "audio/ajm_hle.h"
+#include "audio/wasapi_backend.h"
 #include "hle/ampr_hle.h"
 #include "hle/nid_registry.h"
 #include "input/pad_hle.h"
@@ -9,6 +12,7 @@
 #include "kernel/memory.h"
 #include "kernel/threads.h"
 #include "loader/elf_mapper.h"
+#include <cmath>
 #include <cstring>
 #include <iomanip>
 #include <iostream>
@@ -745,6 +749,38 @@ int main(int argc, char** argv) {
     // Initialize Host Input Subsystem (libScePad XInput)
     yotei::input::PadHleManager::Instance().Initialize();
 
+    // Initialize Host Audio Subsystem (libSceAudioOut2 & WASAPI / Null Sink)
+    std::cout << "\n--- Testing Host Audio Subsystem (libSceAudioOut2 & WASAPI) ---\n";
+    auto& audio_hle = yotei::audio::AudioOut2HleManager::Instance();
+    auto& ajm_hle = yotei::audio::AjmHleManager::Instance();
+    audio_hle.Initialize();
+    ajm_hle.Initialize(nullptr);
+
+    const auto& audio_dev = yotei::audio::WasapiHostBackend::Instance().GetDeviceInfo();
+    std::cout << "[+] Host Audio Backend: " << (audio_dev.is_null_sink ? "VIRTUAL NULL SINK" : "WASAPI CORE AUDIO") << "\n"
+              << "    Endpoint Name : " << audio_dev.device_name << "\n"
+              << "    Format        : " << audio_dev.sample_rate << " Hz | " << audio_dev.channels
+              << " Channels | Buffer=" << audio_dev.buffer_frames << " frames\n";
+
+    // Test synthetic audio port & context creation and 48 kHz sine wave burst
+    int32_t test_port = 0;
+    int32_t test_ctx = 0;
+    if (audio_hle.PortCreate("Main_Speaker", yotei::audio::SCE_AUDIO_OUT_PORT_TYPE_MAIN, 0, &test_port) == 0 &&
+        audio_hle.ContextCreate(test_port, nullptr, &test_ctx) == 0) {
+        // Generate 48 kHz stereo 440 Hz (concert A) sine wave burst (512 frames)
+        std::vector<float> sine_burst(512 * 2);
+        for (size_t f = 0; f < 512; ++f) {
+            float s = 0.2f * std::sin(2.0f * 3.1415926535f * 440.0f * static_cast<float>(f) / 48000.0f);
+            sine_burst[f * 2 + 0] = s;
+            sine_burst[f * 2 + 1] = s;
+        }
+        audio_hle.ContextPush(test_ctx, sine_burst.data(), 512, 0xAA55);
+        uint32_t q_level = 0;
+        audio_hle.ContextGetQueueLevel(test_ctx, &q_level);
+        std::cout << "[+] Verified AudioOut2 Stream: PortID=" << test_port << " CtxID=" << test_ctx
+                  << " | Pushed 512 PCM frames | QueueLevel=" << q_level << " frames\n";
+    }
+
     // 4. Test Calling Game main() @ 0x800f3d320
     if (!skip_game_main) {
         uint64_t game_main = mapper.GetMainAddress();
@@ -779,6 +815,8 @@ int main(int argc, char** argv) {
     // Report any unhandled stubs observed
     yotei::hle::NidRegistry::PrintUnhandledStubSummary();
 
+    yotei::audio::AudioOut2HleManager::Instance().Shutdown();
+    yotei::audio::AjmHleManager::Instance().Finalize();
     yotei::kernel::ThreadManager::Instance().Shutdown();
     yotei::input::PadHleManager::Instance().Shutdown();
     yotei::graphics::VideoOutHleManager::Instance().Shutdown();

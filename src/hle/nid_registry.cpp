@@ -1,6 +1,9 @@
 #include "hle/nid_registry.h"
 #include "graphics/pm4_decoder.h"
 #include "graphics/video_out_hle.h"
+#include "audio/audio_out_hle.h"
+#include "audio/ajm_hle.h"
+#include "audio/wasapi_backend.h"
 #include "hle/ampr_hle.h"
 #include "input/pad_hle.h"
 #include "kernel/filesystem.h"
@@ -337,80 +340,137 @@ extern "C" uint64_t __fastcall HleDispatchTrampoline(
 
     // --- P0 Critical Stubs: Return SCE_OK to unblock early boot ---
 
-    // libSceAudioOut2 (18 NIDs) - Audio output, called very early
+    // libSceAudioOut2 (18 NIDs) - Audio output
     if (meta.library == "libSceAudioOut2") {
-        if (meta.resolved_name == "sceAudioOut2Initialize") return 0;
+        auto& audio = yotei::audio::AudioOut2HleManager::Instance();
+        if (meta.resolved_name == "sceAudioOut2Initialize") {
+            return audio.Initialize() ? 0 : -1;
+        }
         if (meta.resolved_name == "sceAudioOut2PortCreate") {
-            if (guest_rdx != 0) *reinterpret_cast<uint32_t*>(guest_rdx) = 1;
-            else if (guest_rsi != 0) *reinterpret_cast<uint32_t*>(guest_rsi) = 1;
-            return 0;
+            int32_t handle = 0;
+            const char* name = reinterpret_cast<const char*>(guest_rdi);
+            uint32_t port_type = static_cast<uint32_t>(guest_rsi);
+            uint32_t param = static_cast<uint32_t>(guest_rdx);
+            int32_t* out_h = reinterpret_cast<int32_t*>(guest_rcx ? guest_rcx : (guest_rdx ? guest_rdx : guest_rsi));
+            int32_t rc = audio.PortCreate(name, port_type, param, &handle);
+            if (out_h) *out_h = handle;
+            return rc;
         }
         if (meta.resolved_name == "sceAudioOut2UserCreate") {
-            if (guest_rdx != 0) *reinterpret_cast<uint32_t*>(guest_rdx) = 1;
-            else if (guest_rsi != 0) *reinterpret_cast<uint32_t*>(guest_rsi) = 1;
-            return 0;
+            int32_t user = 0;
+            int32_t* out_u = reinterpret_cast<int32_t*>(guest_rsi ? guest_rsi : guest_rdi);
+            int32_t rc = audio.UserCreate(reinterpret_cast<void*>(guest_rdi), &user);
+            if (out_u) *out_u = user;
+            return rc;
         }
         if (meta.resolved_name == "sceAudioOut2ContextCreate") {
-            if (guest_rcx != 0) *reinterpret_cast<uint32_t*>(guest_rcx) = 1;
-            else if (guest_rdx != 0) *reinterpret_cast<uint32_t*>(guest_rdx) = 1;
-            return 0;
+            int32_t ctx = 0;
+            int32_t port_h = static_cast<int32_t>(guest_rdi);
+            void* param = reinterpret_cast<void*>(guest_rsi);
+            int32_t* out_c = reinterpret_cast<int32_t*>(guest_rdx ? guest_rdx : guest_rcx);
+            int32_t rc = audio.ContextCreate(port_h, param, &ctx);
+            if (out_c) *out_c = ctx;
+            return rc;
         }
         if (meta.resolved_name == "sceAudioOut2ContextQueryMemory") {
-            if (guest_rsi != 0) *reinterpret_cast<uint64_t*>(guest_rsi) = 0x10000; // 64 KiB
-            return 0;
+            uint64_t mem_sz = 65536;
+            uint64_t* out_sz = reinterpret_cast<uint64_t*>(guest_rsi ? guest_rsi : guest_rdi);
+            int32_t rc = audio.ContextQueryMemory(reinterpret_cast<void*>(guest_rdi), &mem_sz);
+            if (out_sz) *out_sz = mem_sz;
+            return rc;
         }
         if (meta.resolved_name == "sceAudioOut2ContextGetQueueLevel") {
-            if (guest_rsi != 0) *reinterpret_cast<uint32_t*>(guest_rsi) = 0;
-            return 0;
+            uint32_t level = 0;
+            int32_t ctx = static_cast<int32_t>(guest_rdi);
+            uint32_t* out_lvl = reinterpret_cast<uint32_t*>(guest_rsi);
+            int32_t rc = audio.ContextGetQueueLevel(ctx, &level);
+            if (out_lvl) *out_lvl = level;
+            return rc;
         }
         if (meta.resolved_name == "sceAudioOut2PortGetState") {
-            if (guest_rsi != 0) std::memset(reinterpret_cast<void*>(guest_rsi), 0, 64);
-            return 0;
+            return audio.PortGetState(static_cast<int32_t>(guest_rdi), reinterpret_cast<void*>(guest_rsi));
         }
-        if (meta.resolved_name == "sceAudioOut2Open") {
-            if (guest_rdi != 0) *reinterpret_cast<int32_t*>(guest_rdi) = 1; // port_id
-            return 0; // SCE_OK
+        if (meta.resolved_name == "sceAudioOut2PortDestroy" || meta.resolved_name == "sceAudioOut2Close") {
+            return audio.PortDestroy(static_cast<int32_t>(guest_rdi));
         }
-        if (meta.resolved_name == "sceAudioOut2Close" || meta.resolved_name == "sceAudioOut2PortDestroy") return 0;
-        if (meta.resolved_name == "sceAudioOut2Output" || meta.resolved_name == "sceAudioOut2ContextPush") return 0;
-        if (meta.resolved_name == "sceAudioOut2ContextAdvance") return 0;
-        if (meta.resolved_name == "sceAudioOut2GetConfig") {
-            if (guest_rsi != 0) {
-                auto* cfg = reinterpret_cast<int32_t*>(guest_rsi);
-                cfg[0] = 48000; // sample_rate
-                cfg[1] = 2;     // channels
-                cfg[2] = 16;    // bits
-                cfg[3] = 256;   // buffer_size
-            }
-            return 0;
+        if (meta.resolved_name == "sceAudioOut2ContextDestroy") {
+            return audio.ContextDestroy(static_cast<int32_t>(guest_rdi));
         }
-        if (meta.resolved_name == "sceAudioOut2SetVolume") return 0;
+        if (meta.resolved_name == "sceAudioOut2ContextPush" || meta.resolved_name == "sceAudioOut2Output") {
+            int32_t ctx = static_cast<int32_t>(guest_rdi);
+            const void* pcm = reinterpret_cast<const void*>(guest_rsi);
+            uint32_t count = static_cast<uint32_t>(guest_rdx);
+            uint64_t tag = guest_rcx;
+            return audio.ContextPush(ctx, pcm, count, tag);
+        }
+        if (meta.resolved_name == "sceAudioOut2SetVolume") {
+            return audio.SetVolume(static_cast<int32_t>(guest_rdi), static_cast<int32_t>(guest_rsi));
+        }
         if (meta.resolved_name == "sceAudioOut2GetVolume") {
-            if (guest_rsi != 0) *reinterpret_cast<float*>(guest_rsi) = 1.0f;
-            return 0;
+            int32_t vol = 100;
+            int32_t rc = audio.GetVolume(static_cast<int32_t>(guest_rdi), &vol);
+            if (guest_rsi != 0) *reinterpret_cast<float*>(guest_rsi) = static_cast<float>(vol) / 100.0f;
+            return rc;
         }
-        if (meta.resolved_name == "sceAudioOut2Pause") return 0;
-        if (meta.resolved_name == "sceAudioOut2Resume") return 0;
-        if (meta.resolved_name == "sceAudioOut2GetPortStatus") {
-            if (guest_rsi != 0) *reinterpret_cast<int32_t*>(guest_rsi) = 1; // playing
-            return 0;
+        if (meta.resolved_name == "sceAudioOut2Pause") {
+            return audio.Pause(static_cast<int32_t>(guest_rdi));
+        }
+        if (meta.resolved_name == "sceAudioOut2Resume") {
+            return audio.Resume(static_cast<int32_t>(guest_rdi));
+        }
+        if (meta.resolved_name == "sceAudioOut2Set3DLatency") {
+            return audio.Set3DLatency(static_cast<int32_t>(guest_rdi), static_cast<uint32_t>(guest_rsi));
+        }
+        if (meta.resolved_name == "sceAudioOut2MasteringInit") {
+            return audio.MasteringInit(reinterpret_cast<void*>(guest_rdi));
         }
         // Default for any other AudioOut2: SCE_OK
         return 0;
     }
 
-    // libSceAjm (17 NIDs) - Audio Job Manager, used by AudioOut2 internally
+    // libSceAjm (17 NIDs) - Audio Job Manager
     if (meta.library == "libSceAjm") {
-        if (meta.resolved_name == "sceAjmCreateJob") {
-            if (guest_rdi != 0) *reinterpret_cast<uint32_t*>(guest_rdi) = 1; // job_handle
-            return 0;
+        auto& ajm = yotei::audio::AjmHleManager::Instance();
+        if (meta.resolved_name == "sceAjmInitialize") {
+            return ajm.Initialize(reinterpret_cast<void*>(guest_rdi));
         }
-        if (meta.resolved_name == "sceAjmSubmitJob") return 0;
-        if (meta.resolved_name == "sceAjmWaitJob") return 0;
-        if (meta.resolved_name == "sceAjmDestroyJob") return 0;
-        if (meta.resolved_name == "sceAjmGetJobStatus") {
-            if (guest_rsi != 0) *reinterpret_cast<int32_t*>(guest_rsi) = 2; // done
-            return 0;
+        if (meta.resolved_name == "sceAjmFinalize") {
+            return ajm.Finalize();
+        }
+        if (meta.resolved_name == "sceAjmInstanceCreate") {
+            int32_t inst = 0;
+            int32_t* out_inst = reinterpret_cast<int32_t*>(guest_rsi ? guest_rsi : guest_rdi);
+            int32_t rc = ajm.InstanceCreate(reinterpret_cast<void*>(guest_rdi), &inst);
+            if (out_inst) *out_inst = inst;
+            return rc;
+        }
+        if (meta.resolved_name == "sceAjmInstanceDestroy") {
+            return ajm.InstanceDestroy(static_cast<int32_t>(guest_rdi));
+        }
+        if (meta.resolved_name == "sceAjmModuleRegister") {
+            return ajm.ModuleRegister(static_cast<int32_t>(guest_rdi), static_cast<uint32_t>(guest_rsi), reinterpret_cast<void*>(guest_rdx));
+        }
+        if (meta.resolved_name == "sceAjmBatchInitialize") {
+            uint64_t bid = 0;
+            uint64_t* out_b = reinterpret_cast<uint64_t*>(guest_rdx ? guest_rdx : guest_rsi);
+            int32_t rc = ajm.BatchInitialize(static_cast<int32_t>(guest_rdi), reinterpret_cast<void*>(guest_rsi), &bid);
+            if (out_b) *out_b = bid;
+            return rc;
+        }
+        if (meta.resolved_name == "sceAjmBatchStart") {
+            return ajm.BatchStart(guest_rdi, reinterpret_cast<void*>(guest_rsi));
+        }
+        if (meta.resolved_name == "sceAjmBatchWait") {
+            return ajm.BatchWait(guest_rdi, static_cast<uint32_t>(guest_rsi));
+        }
+        if (meta.resolved_name == "sceAjmBatchJobGetStatistics") {
+            return ajm.BatchJobGetStatistics(guest_rdi, reinterpret_cast<void*>(guest_rsi));
+        }
+        if (meta.resolved_name == "sceAjmDecAt9ParseConfigData") {
+            return ajm.DecAt9ParseConfigData(reinterpret_cast<const void*>(guest_rdi), static_cast<uint32_t>(guest_rsi), reinterpret_cast<void*>(guest_rdx));
+        }
+        if (meta.resolved_name == "sceAjmBatchErrorDump") {
+            return ajm.BatchErrorDump(guest_rdi, reinterpret_cast<void*>(guest_rsi));
         }
         // Default for any other Ajm: SCE_OK
         return 0;

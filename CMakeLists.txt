@@ -22,11 +22,15 @@ add_executable(yotei_runtime
     src/graphics/vk_backend.cpp
     src/graphics/video_out_hle.cpp
     src/input/pad_hle.cpp
+    src/audio/wasapi_backend.cpp
+    src/audio/audio_out_hle.cpp
+    src/audio/ajm_hle.cpp
 )
 
 target_include_directories(yotei_runtime PRIVATE src)
 
 if(MSVC)
+    target_link_libraries(yotei_runtime PRIVATE ole32 avrt)
     # Explicitly add Windows SDK and UCRT include paths (vcvars may not set them up in BuildTools)
     # Windows SDK 10.0.26100.0
     target_include_directories(yotei_runtime PRIVATE
