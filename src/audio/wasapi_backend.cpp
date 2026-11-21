@@ -28,12 +28,12 @@ bool WasapiHostBackend::Initialize(uint32_t sample_rate, uint32_t channels) {
   if (initialized_)
     return true;
 
-    // Allocate internal PCM ring buffer (1 second worth of samples)
-    size_t total_samples = sample_rate * channels;
-    ring_capacity_ = total_samples;
-    ring_buffer_.assign(total_samples, 0.0f);
-    ring_read_pos_ = 0;
-    ring_write_pos_ = 0;
+  // Allocate internal PCM ring buffer (1 second worth of samples)
+  size_t total_samples = sample_rate * channels;
+  ring_capacity_ = total_samples;
+  ring_buffer_.assign(total_samples, 0.0f);
+  ring_read_pos_ = 0;
+  ring_write_pos_ = 0;
 
   // Attempt native WASAPI Shared Mode
   if (InitWasapi(sample_rate, channels)) {

@@ -128,26 +128,26 @@ int32_t AudioOut2HleManager::ContextPush(int32_t context, const void *pcm,
   if (!pcm || sample_count == 0)
     return SCE_AUDIO_OUT_OK;
 
-    SceAudioOutContextConfig* ctx = nullptr;
-    {
-        std::lock_guard<std::mutex> lock(state_mutex_);
-        auto it = contexts_.find(context);
-        if (it != contexts_.end()) {
-            ctx = &it->second;
-            ctx->last_tag = tag;
-            ctx->total_pushed_frames += sample_count;
-        }
+  SceAudioOutContextConfig *ctx = nullptr;
+  {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    auto it = contexts_.find(context);
+    if (it != contexts_.end()) {
+      ctx = &it->second;
+      ctx->last_tag = tag;
+      ctx->total_pushed_frames += sample_count;
     }
+}
 
-  // Route audio directly to host WASAPI backend
-  auto &wasapi = WasapiHostBackend::Instance();
-  if (ctx && ctx->format == SCE_AUDIO_OUT_PARAM_FORMAT_S16_STEREO) {
-    wasapi.PushPcmInt16(reinterpret_cast<const int16_t *>(pcm), sample_count);
-  } else {
-    wasapi.PushPcmFloat(reinterpret_cast<const float *>(pcm), sample_count);
-  }
+// Route audio directly to host WASAPI backend
+auto &wasapi = WasapiHostBackend::Instance();
+if (ctx && ctx->format == SCE_AUDIO_OUT_PARAM_FORMAT_S16_STEREO) {
+  wasapi.PushPcmInt16(reinterpret_cast<const int16_t *>(pcm), sample_count);
+} else {
+  wasapi.PushPcmFloat(reinterpret_cast<const float *>(pcm), sample_count);
+}
 
-  return SCE_AUDIO_OUT_OK;
+return SCE_AUDIO_OUT_OK;
 }
 
 int32_t AudioOut2HleManager::ContextGetQueueLevel(int32_t context,
