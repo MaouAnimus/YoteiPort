@@ -1,6 +1,8 @@
 #include "graphics/video_out_hle.h"
 #include "graphics/vk_backend.h"
 #include "kernel/threads.h"
+#include <algorithm>
+#include <cmath>
 #include <iostream>
 #include <iomanip>
 #include <cstring>
@@ -399,6 +401,101 @@ void VideoOutHleManager::SetActiveSceneGeometry(uint64_t index_buffer_handle, ui
     active_scene_index_count_ = index_count;
 }
 
+void VideoOutHleManager::BindOrbitingSceneMesh(
+    const std::vector<SmbsVertex>& vertices,
+    uint64_t gpu_buffer_handle,
+    void* host_mapped_ptr,
+    uint64_t index_byte_offset,
+    uint32_t index_count) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    active_scene_vb_ = gpu_buffer_handle;
+    active_scene_ib_ = gpu_buffer_handle;
+    active_scene_ib_offset_ = index_byte_offset;
+    active_scene_index_count_ = index_count;
+    mapped_vtx_ptr_ = host_mapped_ptr;
+
+    normalized_vertices_ = vertices;
+    if (!normalized_vertices_.empty()) {
+        float min_x = 1e9f, min_y = 1e9f, min_z = 1e9f;
+        float max_x = -1e9f, max_y = -1e9f, max_z = -1e9f;
+        for (const auto& v : normalized_vertices_) {
+            min_x = std::min(min_x, v.x); max_x = std::max(max_x, v.x);
+            min_y = std::min(min_y, v.y); max_y = std::max(max_y, v.y);
+            min_z = std::min(min_z, v.z); max_z = std::max(max_z, v.z);
+        }
+        float cx = 0.5f * (min_x + max_x);
+        float cy = 0.5f * (min_y + max_y);
+        float cz = 0.5f * (min_z + max_z);
+        float span = std::max({ max_x - min_x, max_y - min_y, max_z - min_z, 0.001f });
+        float inv_scale = 1.65f / span;
+        for (auto& v : normalized_vertices_) {
+            v.x = (v.x - cx) * inv_scale;
+            v.y = (v.y - cy) * inv_scale;
+            v.z = (v.z - cz) * inv_scale;
+        }
+    }
+    UpdateOrbitingMeshVertices(0);
+}
+
+void VideoOutHleManager::UpdateOrbitingMeshVertices(uint64_t frame_idx) {
+    if (!mapped_vtx_ptr_ || normalized_vertices_.empty()) return;
+
+    auto* dst = reinterpret_cast<GpuLitVertex*>(mapped_vtx_ptr_);
+    float yaw = static_cast<float>(frame_idx) * 0.045f + 0.65f;
+    float pitch = 0.30f + 0.12f * std::sin(static_cast<float>(frame_idx) * 0.025f);
+    float cy = std::cos(yaw), sy = std::sin(yaw);
+    float cp = std::cos(pitch), sp = std::sin(pitch);
+
+    const float aspect = 1920.0f / 1080.0f;
+    const float focal = 1.85f;
+    const float cam_dist = 2.15f;
+
+    // Directional key light + rim light
+    const float lx = 0.577f, ly = 0.577f, lz = -0.577f;
+
+    const size_t n = normalized_vertices_.size();
+    for (size_t i = 0; i < n; ++i) {
+        const auto& sv = normalized_vertices_[i];
+
+        // 1. Rotate position around Y (yaw) then X (pitch)
+        float rx = sv.x * cy + sv.z * sy;
+        float rz0 = -sv.x * sy + sv.z * cy;
+        float ry = sv.y * cp - rz0 * sp;
+        float rz = sv.y * sp + rz0 * cp + cam_dist;
+
+        // 2. Rotate normal around Y then X
+        float nrx = sv.nx * cy + sv.nz * sy;
+        float nrz0 = -sv.nx * sy + sv.nz * cy;
+        float nry = sv.ny * cp - nrz0 * sp;
+        float nrz = sv.ny * sp + nrz0 * cp;
+
+        float ndotl = std::max(0.0f, nrx * lx + nry * ly + nrz * lz);
+        float rim = std::pow(1.0f - std::min(1.0f, std::abs(nrz)), 2.0f);
+        float spec = std::pow(ndotl, 8.0f) * 0.55f;
+
+        // Material zones along the katana longitudinal axis:
+        // Handle (tsuka) -> Gold guard (tsuba) -> Forged steel blade (hamon)
+        float axis_coord = sv.y + sv.x + sv.z;
+        float base_r = 0.76f, base_g = 0.80f, base_b = 0.88f; // Forged tamahagane steel
+        if (std::abs(axis_coord) < 0.08f) {
+            base_r = 0.92f; base_g = 0.74f; base_b = 0.28f;   // Gold tsuba guard
+        } else if (axis_coord < -0.08f) {
+            base_r = 0.55f; base_g = 0.16f; base_b = 0.18f;   // Crimson silk tsuka-ito wrap
+        }
+
+        float light = 0.28f + 0.72f * ndotl + 0.25f * rim;
+        dst[i].cx = (rx * focal) / aspect;
+        dst[i].cy = -(ry * focal); // Vulkan Y-down clip space
+        dst[i].cz = std::clamp((rz - 0.5f) / 4.0f, 0.01f, 0.99f);
+        dst[i].cw = std::max(0.2f, rz);
+
+        dst[i].r = std::min(1.0f, base_r * light + spec);
+        dst[i].g = std::min(1.0f, base_g * light + spec);
+        dst[i].b = std::min(1.0f, base_b * light + spec * 1.1f);
+        dst[i].a = 1.0f;
+    }
+}
+
 void VideoOutHleManager::UpdateWindowTelemetryTitle(const std::string& telemetry_hud) {
 #ifdef _WIN32
     if (hwnd_) {
@@ -447,12 +544,19 @@ bool VideoOutHleManager::SubmitFlip(int32_t handle, int32_t buffer_index, int32_
             if (acquire_img(dev, reinterpret_cast<VkSwapchainKHR>(vk_swapchain_), 1000000000ULL, 0, acquire_fence_, &img_idx) == VK_SUCCESS) {
                 wait_fences(dev, 1, &acquire_fence_, 1, 1000000000ULL);
                 if (img_idx < swapchain_images_.size()) {
-                    // Render 3D scene directly into acquired swapchain framebuffer (or fallback layout transition)
+                    // Transform 3D Katana mesh for current orbit angle & render into acquired swapchain framebuffer
+                    UpdateOrbitingMeshVertices(state_.flip_count);
                     float phase = static_cast<float>(state_.flip_count % 60) / 60.0f;
-                    float cr = 0.04f + 0.03f * phase;
-                    float cg = 0.07f + 0.04f * phase;
-                    float cb = 0.14f + 0.05f * phase;
-                    if (!vk.RenderSwapchainFrame(img_idx, active_scene_ib_, active_scene_index_count_, cr, cg, cb)) {
+                    float cr = 0.04f + 0.02f * phase;
+                    float cg = 0.06f + 0.03f * phase;
+                    float cb = 0.12f + 0.04f * phase;
+                    if (!vk.RenderSwapchainFrame(
+                            img_idx,
+                            active_scene_vb_,
+                            active_scene_ib_,
+                            active_scene_ib_offset_,
+                            active_scene_index_count_,
+                            cr, cg, cb)) {
                         vk.TransitionImageToPresentLayout(reinterpret_cast<uint64_t>(swapchain_images_[img_idx]));
                     }
                 }
@@ -503,23 +607,36 @@ int32_t VideoOutHleManager::SceVideoOutClose(int32_t) {
     return 0; // SCE_OK
 }
 
-int32_t VideoOutHleManager::SceVideoOutRegisterBuffers2(int32_t handle, int32_t start_index,
-                                                      uint64_t addresses, int32_t num_buffers, uint64_t attr) {
+int32_t VideoOutHleManager::SceVideoOutRegisterBuffers2(
+    int32_t handle,
+    int32_t set_index,
+    int32_t buffer_index_start,
+    uint64_t buffers_ptr,
+    int32_t num_buffers,
+    uint64_t attr_ptr) {
     std::lock_guard<std::mutex> lock(mutex_);
-    state_.registered_buffers.clear();
-    const uint64_t* ptrs = reinterpret_cast<const uint64_t*>(addresses);
+    if (num_buffers <= 0 || num_buffers > 16) {
+        num_buffers = 1;
+    }
 
+    uint64_t first_guest_addr = 0;
+    const uint64_t* ptrs = (buffers_ptr > 0x10000ULL) ? reinterpret_cast<const uint64_t*>(buffers_ptr) : nullptr;
     for (int32_t i = 0; i < num_buffers; ++i) {
         VideoOutBufferInfo buf{};
-        buf.guest_address = ptrs ? ptrs[i] : 0;
+        // SceVideoOutBuffers is { const void* data; const void* metadata; } (16 bytes per entry)
+        buf.guest_address = ptrs ? ptrs[i * 2] : 0;
+        if (i == 0) first_guest_addr = buf.guest_address;
         buf.width = state_.width;
         buf.height = state_.height;
         state_.registered_buffers.push_back(buf);
     }
 
     std::cout << "[+] SceVideoOutRegisterBuffers2: Handle=" << handle
-              << " (" << num_buffers << " buffers registered starting at index " << start_index
-              << ", attr=0x" << std::hex << attr << std::dec << ")\n";
+              << " SetIndex=" << set_index
+              << " StartIdx=" << buffer_index_start
+              << " Count=" << num_buffers
+              << " ScanoutAddr=0x" << std::hex << first_guest_addr
+              << " Attr=0x" << attr_ptr << std::dec << "\n" << std::flush;
     return 0; // SCE_OK
 }
 
@@ -586,12 +703,23 @@ int32_t VideoOutHleManager::SceVideoOutIsOutputSupported(int32_t, int32_t) {
     return 1; // Output supported!
 }
 
-bool VideoOutHleManager::DispatchNid(const std::string&, const std::string& nid,
+bool VideoOutHleManager::DispatchNid(const std::string& library, const std::string& nid,
                                      const std::string& name,
                                      uint64_t rdi, uint64_t rsi, uint64_t rdx,
                                      uint64_t rcx, uint64_t r8, uint64_t r9,
                                      uint64_t* ret) {
     if (!ret) return false;
+    if (library != "libSceVideoOut" && library != "libSceVideoOutVrrStatus") {
+        return false;
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        std::string key = library + "::" + name + " (" + nid + ")";
+        fn_call_counts_[key]++;
+        fn_last_rdi_[key] = rdi;
+        fn_last_rsi_[key] = rsi;
+    }
 
     if (nid == "Up36PTk687E" || name == "sceVideoOutOpen") {
         *ret = static_cast<uint64_t>(SceVideoOutOpen(
@@ -600,9 +728,14 @@ bool VideoOutHleManager::DispatchNid(const std::string&, const std::string& nid,
         return true;
     }
     if (nid == "rKBUtgRrtbk" || name == "sceVideoOutRegisterBuffers2") {
+        // PS5 ABI: sceVideoOutRegisterBuffers2(handle=rdi, setIndex=rsi, bufferIndexStart=rdx, buffers=rcx, bufferNum=r8, attribute=r9)
         *ret = static_cast<uint64_t>(SceVideoOutRegisterBuffers2(
-            static_cast<int32_t>(rdi), static_cast<int32_t>(rsi),
-            rdx, static_cast<int32_t>(rcx), r8));
+            static_cast<int32_t>(rdi),
+            static_cast<int32_t>(rsi),
+            static_cast<int32_t>(rdx),
+            rcx,
+            static_cast<int32_t>(r8),
+            r9));
         return true;
     }
     if (nid == "PjS5uASwcV8" || name == "sceVideoOutSetBufferAttribute2") {
@@ -668,6 +801,19 @@ bool VideoOutHleManager::DispatchNid(const std::string&, const std::string& nid,
     }
 
     return false;
+}
+
+void VideoOutHleManager::PrintLiveVideoOutBreakdown() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::cout << "[+] Live libSceVideoOut Function Call Breakdown ("
+              << fn_call_counts_.size() << " distinct VideoOut functions invoked):\n";
+    for (const auto& [key, cnt] : fn_call_counts_) {
+        uint64_t last_rdi = fn_last_rdi_.count(key) ? fn_last_rdi_.at(key) : 0;
+        uint64_t last_rsi = fn_last_rsi_.count(key) ? fn_last_rsi_.at(key) : 0;
+        std::cout << "    " << std::setw(54) << std::left << key
+                  << " : " << std::setw(5) << cnt << " calls | last_rdi=0x"
+                  << std::hex << last_rdi << " last_rsi=0x" << last_rsi << std::dec << "\n";
+    }
 }
 
 } // namespace yotei::graphics

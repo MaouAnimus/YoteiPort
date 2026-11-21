@@ -16,6 +16,14 @@ namespace {
 thread_local uint64_t g_current_tcb = 0;
 thread_local uint64_t g_current_guest_tid = 1;
 
+static uint64_t InvokeGuestThreadSafeSeh(uint64_t entry_fn, uint64_t arg) {
+    __try {
+        return InvokeGuestSysV(entry_fn, arg, 0, 0, 0);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return 0;
+    }
+}
+
 DWORD WINAPI GuestThreadEntry(LPVOID param) {
     auto* th = reinterpret_cast<GuestThread*>(param);
     if (!th) return 1;
@@ -32,7 +40,7 @@ DWORD WINAPI GuestThreadEntry(LPVOID param) {
                   << " Arg=0x" << th->arg << std::dec << "\n" << std::flush;
     }
 
-    th->return_value = InvokeGuestSysV(th->entry_fn, th->arg, 0, 0, 0);
+    th->return_value = InvokeGuestThreadSafeSeh(th->entry_fn, th->arg);
 
     th->is_finished = true;
     std::cout << "  [THREAD] Finished Guest Thread ID=" << th->thread_id

@@ -94,15 +94,18 @@ public:
         uint32_t height);
     bool TransitionImageToPresentLayout(uint64_t image);
 
-    // Swapchain Framebuffer 3D Rendering API (Milestone 16)
+    // Swapchain Framebuffer 3D Rendering API (Milestone 16 & Milestone 22)
     bool CreateSwapchainFramebuffers(
         const std::vector<void*>& image_views,
         uint32_t width,
         uint32_t height);
+    bool CreateSwapchainLitMeshPipeline();
     void DestroySwapchainFramebuffers();
     bool RenderSwapchainFrame(
         uint32_t image_index,
+        uint64_t vertex_buffer,
         uint64_t index_buffer,
+        uint64_t index_offset,
         uint32_t index_count,
         float clear_r = 0.05f,
         float clear_g = 0.08f,
@@ -168,6 +171,8 @@ private:
 
     // Swapchain Framebuffer handles (1920x1080 Triple-Buffered)
     uint64_t swapchain_render_pass_ = 0;
+    uint64_t swapchain_mesh_pipeline_layout_ = 0;
+    uint64_t swapchain_mesh_pipeline_ = 0;
     std::vector<uint64_t> swapchain_framebuffers_;
     uint32_t swapchain_fb_width_ = 1920;
     uint32_t swapchain_fb_height_ = 1080;

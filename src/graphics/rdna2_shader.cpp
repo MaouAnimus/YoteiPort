@@ -41,13 +41,13 @@ Rdna2ShaderAnalysis Rdna2ShaderAnalyzer::AnalyzeIsa(
             switch (op) {
                 case 0x00: mnem = "s_nop"; ops << "0x" << std::hex << (w0 & 0xFFFF); break;
                 case 0x01: mnem = "s_endpgm"; break;
-                case 0x02: mnem = "s_branch"; ops << "rel=" << std::dec << simm16; break;
-                case 0x04: mnem = "s_cbranch_scc0"; ops << "rel=" << std::dec << simm16; break;
-                case 0x05: mnem = "s_cbranch_scc1"; ops << "rel=" << std::dec << simm16; break;
-                case 0x06: mnem = "s_cbranch_vccz"; ops << "rel=" << std::dec << simm16; break;
-                case 0x07: mnem = "s_cbranch_vccnz"; ops << "rel=" << std::dec << simm16; break;
-                case 0x08: mnem = "s_cbranch_execz"; ops << "rel=" << std::dec << simm16; break;
-                case 0x09: mnem = "s_cbranch_execnz"; ops << "rel=" << std::dec << simm16; break;
+                case 0x02: mnem = "s_branch"; ++out.branch_count; ops << "rel=" << std::dec << simm16; break;
+                case 0x04: mnem = "s_cbranch_scc0"; ++out.branch_count; ops << "rel=" << std::dec << simm16; break;
+                case 0x05: mnem = "s_cbranch_scc1"; ++out.branch_count; ops << "rel=" << std::dec << simm16; break;
+                case 0x06: mnem = "s_cbranch_vccz"; ++out.branch_count; ops << "rel=" << std::dec << simm16; break;
+                case 0x07: mnem = "s_cbranch_vccnz"; ++out.branch_count; ops << "rel=" << std::dec << simm16; break;
+                case 0x08: mnem = "s_cbranch_execz"; ++out.branch_count; ops << "rel=" << std::dec << simm16; break;
+                case 0x09: mnem = "s_cbranch_execnz"; ++out.branch_count; ops << "rel=" << std::dec << simm16; break;
                 case 0x0A: mnem = "s_barrier"; break;
                 case 0x0C: mnem = "s_waitcnt"; ops << "0x" << std::hex << (w0 & 0xFFFF); break;
                 case 0x20: mnem = "s_clause"; ops << "count=" << std::dec << ((w0 & 0x3F) + 1); break;
@@ -133,6 +133,7 @@ Rdna2ShaderAnalysis Rdna2ShaderAnalyzer::AnalyzeIsa(
         else if ((w0 >> 26) == 0x3D && pc + 1 < max_dwords) {
             step = 2;
             ++out.smem_count;
+            ++out.srt_load_count;
             uint8_t op    = static_cast<uint8_t>((w0 >> 18) & 0xFF);
             uint8_t sdata = static_cast<uint8_t>((w0 >> 6) & 0x7F);
             uint8_t sbase = static_cast<uint8_t>((w0 & 0x3F) << 1);
@@ -157,6 +158,7 @@ Rdna2ShaderAnalysis Rdna2ShaderAnalyzer::AnalyzeIsa(
         else if ((w0 >> 26) == 0x3C && pc + 1 < max_dwords) {
             step = 2;
             ++out.vmem_mimg_count;
+            ++out.texture_sample_count;
             uint8_t op = static_cast<uint8_t>((w0 >> 18) & 0x7F);
             if (op == 0x66 || op == 0x67) {
                 ++out.bvh_intersect_count;
@@ -407,6 +409,33 @@ std::vector<uint32_t> Rdna2ShaderAnalyzer::TranslateRdna2ToSpirv(
             body_ops.push_back(prev_uint);
             body_ops.push_back(7U);
             prev_uint = res_id;
+        } else if (ins.mnemonic.find("s_load_dword") == 0 || ins.mnemonic == "s_smem_load") {
+            // SRT Descriptor Table Scalar Load translation (Milestone 24)
+            uint32_t res_id = bound++;
+            body_ops.push_back((5U << 16) | 128U); // OpIAdd (SRT table pointer offset)
+            body_ops.push_back(5U);
+            body_ops.push_back(res_id);
+            body_ops.push_back(prev_uint);
+            body_ops.push_back(7U);
+            prev_uint = res_id;
+        } else if (ins.mnemonic == "buffer_load_dword" || ins.mnemonic == "image_sample" || ins.mnemonic == "image_load_or_store") {
+            // VMEM Buffer / Bindless Image Sample translation (Milestone 24)
+            uint32_t res_id = bound++;
+            body_ops.push_back((5U << 16) | 133U); // OpFMul
+            body_ops.push_back(6U);
+            body_ops.push_back(res_id);
+            body_ops.push_back(prev_float);
+            body_ops.push_back(8U);
+            prev_float = res_id;
+        } else if (ins.mnemonic.find("s_cbranch_") == 0 || ins.mnemonic == "s_branch") {
+            // Control-flow predicate evaluation (Milestone 24)
+            uint32_t res_id = bound++;
+            body_ops.push_back((5U << 16) | 197U); // OpBitwiseAnd (EXEC/SCC mask)
+            body_ops.push_back(5U);
+            body_ops.push_back(res_id);
+            body_ops.push_back(prev_uint);
+            body_ops.push_back(7U);
+            prev_uint = res_id;
         }
     }
 
@@ -639,6 +668,72 @@ std::vector<uint32_t> Rdna2ShaderAnalyzer::EmitMinimalSpirvFragment() {
         (2U << 16) | 248U, 4U,                               // %label = OpLabel
         (1U << 16) | 253U,                                   // OpReturn
         (1U << 16) | 56U,                                    // OpFunctionEnd
+    };
+}
+
+std::vector<uint32_t> Rdna2ShaderAnalyzer::EmitLitMeshSpirvVertex() {
+    // SPIR-V 1.6 3D Lit Mesh Vertex Shader (Milestone 22):
+    // layout(location = 0) in vec4 inClipPos;
+    // layout(location = 1) in vec4 inColor;
+    // layout(location = 0) out vec4 outColor;
+    // void main() { gl_Position = inClipPos; outColor = inColor; }
+    return {
+        0x07230203U, 0x00010600U, 0x00000000U, 15U, 0x00000000U,
+        (2U << 16) | 17U, 1U,                                                       // OpCapability Shader
+        (3U << 16) | 14U, 0U, 1U,                                                   // OpMemoryModel Logical GLSL450
+        (9U << 16) | 15U, 0U, 1U, 0x6E69616DU, 0x00000000U, 8U, 9U, 10U, 11U,       // OpEntryPoint Vertex %main "main" %inPos %inCol %outPos %outCol
+        (4U << 16) | 71U, 8U, 30U, 0U,                                              // OpDecorate %inPos(8) Location 0
+        (4U << 16) | 71U, 9U, 30U, 1U,                                              // OpDecorate %inCol(9) Location 1
+        (4U << 16) | 71U, 10U, 11U, 0U,                                             // OpDecorate %outPos(10) BuiltIn Position(0)
+        (4U << 16) | 71U, 11U, 30U, 0U,                                             // OpDecorate %outCol(11) Location 0
+        (2U << 16) | 19U, 2U,                                                       // %void(2) = OpTypeVoid
+        (3U << 16) | 33U, 3U, 2U,                                                   // %fn_void(3) = OpTypeFunction %void(2)
+        (3U << 16) | 22U, 4U, 32U,                                                  // %float(4) = OpTypeFloat 32
+        (4U << 16) | 23U, 5U, 4U, 4U,                                               // %v4float(5) = OpTypeVector %float(4) 4
+        (4U << 16) | 32U, 6U, 1U, 5U,                                               // %ptr_in_v4(6) = OpTypePointer Input(1) %v4float(5)
+        (4U << 16) | 32U, 7U, 3U, 5U,                                               // %ptr_out_v4(7) = OpTypePointer Output(3) %v4float(5)
+        (4U << 16) | 59U, 6U, 8U, 1U,                                               // %inPos(8) = OpVariable %ptr_in_v4(6) Input(1)
+        (4U << 16) | 59U, 6U, 9U, 1U,                                               // %inCol(9) = OpVariable %ptr_in_v4(6) Input(1)
+        (4U << 16) | 59U, 7U, 10U, 3U,                                              // %outPos(10) = OpVariable %ptr_out_v4(7) Output(3)
+        (4U << 16) | 59U, 7U, 11U, 3U,                                              // %outCol(11) = OpVariable %ptr_out_v4(7) Output(3)
+        (5U << 16) | 54U, 2U, 1U, 0U, 3U,                                           // %main(1) = OpFunction %void(2) None %fn_void(3)
+        (2U << 16) | 248U, 12U,                                                     // %entry(12) = OpLabel
+        (4U << 16) | 61U, 5U, 13U, 8U,                                              // %pos_val(13) = OpLoad %v4float(5) %inPos(8)
+        (3U << 16) | 62U, 10U, 13U,                                                 // OpStore %outPos(10) %pos_val(13)
+        (4U << 16) | 61U, 5U, 14U, 9U,                                              // %col_val(14) = OpLoad %v4float(5) %inCol(9)
+        (3U << 16) | 62U, 11U, 14U,                                                 // OpStore %outCol(11) %col_val(14)
+        (1U << 16) | 253U,                                                          // OpReturn
+        (1U << 16) | 56U,                                                           // OpFunctionEnd
+    };
+}
+
+std::vector<uint32_t> Rdna2ShaderAnalyzer::EmitLitMeshSpirvFragment() {
+    // SPIR-V 1.6 3D Lit Mesh Fragment Shader (Milestone 22):
+    // layout(location = 0) in vec4 inColor;
+    // layout(location = 0) out vec4 outFragColor;
+    // void main() { outFragColor = inColor; }
+    return {
+        0x07230203U, 0x00010600U, 0x00000000U, 12U, 0x00000000U,
+        (2U << 16) | 17U, 1U,                                                       // OpCapability Shader
+        (3U << 16) | 14U, 0U, 1U,                                                   // OpMemoryModel Logical GLSL450
+        (7U << 16) | 15U, 4U, 1U, 0x6E69616DU, 0x00000000U, 8U, 9U,                 // OpEntryPoint Fragment(4) %main "main" %inCol %outFragCol
+        (3U << 16) | 16U, 1U, 7U,                                                   // OpExecutionMode %main OriginUpperLeft(7)
+        (4U << 16) | 71U, 8U, 30U, 0U,                                              // OpDecorate %inCol(8) Location 0
+        (4U << 16) | 71U, 9U, 30U, 0U,                                              // OpDecorate %outFragCol(9) Location 0
+        (2U << 16) | 19U, 2U,                                                       // %void(2) = OpTypeVoid
+        (3U << 16) | 33U, 3U, 2U,                                                   // %fn_void(3) = OpTypeFunction %void(2)
+        (3U << 16) | 22U, 4U, 32U,                                                  // %float(4) = OpTypeFloat 32
+        (4U << 16) | 23U, 5U, 4U, 4U,                                               // %v4float(5) = OpTypeVector %float(4) 4
+        (4U << 16) | 32U, 6U, 1U, 5U,                                               // %ptr_in_v4(6) = OpTypePointer Input(1) %v4float(5)
+        (4U << 16) | 32U, 7U, 3U, 5U,                                               // %ptr_out_v4(7) = OpTypePointer Output(3) %v4float(5)
+        (4U << 16) | 59U, 6U, 8U, 1U,                                               // %inCol(8) = OpVariable %ptr_in_v4(6) Input(1)
+        (4U << 16) | 59U, 7U, 9U, 3U,                                               // %outFragCol(9) = OpVariable %ptr_out_v4(7) Output(3)
+        (5U << 16) | 54U, 2U, 1U, 0U, 3U,                                           // %main(1) = OpFunction %void(2) None %fn_void(3)
+        (2U << 16) | 248U, 10U,                                                     // %entry(10) = OpLabel
+        (4U << 16) | 61U, 5U, 11U, 8U,                                              // %col_val(11) = OpLoad %v4float(5) %inCol(8)
+        (3U << 16) | 62U, 9U, 11U,                                                  // OpStore %outFragCol(9) %col_val(11)
+        (1U << 16) | 253U,                                                          // OpReturn
+        (1U << 16) | 56U,                                                           // OpFunctionEnd
     };
 }
 

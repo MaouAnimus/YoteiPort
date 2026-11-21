@@ -25,6 +25,7 @@
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <immintrin.h>
 #endif
 
 namespace yotei::hle {
@@ -52,6 +53,20 @@ std::unordered_map<std::string, uint64_t> g_library_call_counts;
 std::unordered_set<std::string> g_unique_nids_invoked;
 bool g_verbose_unhandled = false;
 
+struct GameMainCallRecord {
+    size_t global_seq = 0;
+    std::string library;
+    std::string resolved_name;
+    std::string nid;
+    uint64_t rdi = 0;
+    uint64_t rsi = 0;
+    uint64_t rdx = 0;
+    uint64_t repeat_count = 1;
+};
+
+std::atomic<uint32_t> g_game_main_host_tid{0};
+std::vector<GameMainCallRecord> g_main_thread_timeline;
+
 // SysV AMD64 ABI passes args in: RDI, RSI, RDX, RCX, R8, R9.
 // Our generated 32-byte x86-64 trampoline translates a SysV call into MS x64 call:
 //   RCX = slot_index
@@ -74,6 +89,26 @@ extern "C" uint64_t __fastcall HleDispatchTrampoline(
         cur_call = ++g_call_counter;
         g_library_call_counts[meta.library]++;
         g_unique_nids_invoked.insert(meta.nid);
+#ifdef _WIN32
+        uint32_t target_tid = g_game_main_host_tid.load(std::memory_order_relaxed);
+        if (target_tid != 0 && ::GetCurrentThreadId() == target_tid && meta.library != "libc") {
+            if (!g_main_thread_timeline.empty() &&
+                g_main_thread_timeline.back().nid == meta.nid) {
+                g_main_thread_timeline.back().repeat_count++;
+                g_main_thread_timeline.back().rdi = guest_rdi;
+                g_main_thread_timeline.back().rsi = guest_rsi;
+                g_main_thread_timeline.back().rdx = guest_rdx;
+            } else {
+                if (g_main_thread_timeline.size() >= 256) {
+                    g_main_thread_timeline.erase(g_main_thread_timeline.begin());
+                }
+                g_main_thread_timeline.push_back({
+                    cur_call, meta.library, meta.resolved_name, meta.nid,
+                    guest_rdi, guest_rsi, guest_rdx, 1
+                });
+            }
+        }
+#endif
     }
 
     if (cur_call <= 120) {
@@ -780,6 +815,22 @@ extern "C" uint64_t __fastcall HleDispatchTrampoline(
         return 0;
     }
 
+    // libSceNpUniversalDataSystem & libSceNpTrophy2 (Milestone 23: Handle/Context Creation & Worker Polling Yield)
+    if (meta.library == "libSceNpUniversalDataSystem" || meta.library == "libSceNpTrophy2") {
+        if (meta.resolved_name.find("CreateHandle") != std::string::npos ||
+            meta.resolved_name.find("CreateContext") != std::string::npos) {
+            if (guest_rdi > 0x1000) {
+                *reinterpret_cast<uint32_t*>(guest_rdi) = 1;
+            }
+            return 0;
+        }
+        if (meta.nid == "tpFJ8LIKvPw" || meta.nid == "y3zHpdZO6ME") {
+            // Worker_23 / Worker_24 background sync calls: yield quantum to prevent tight spin
+            Sleep(1);
+        }
+        return 0;
+    }
+
     // --- libc File I/O Stubs (using host stdio) ---
     static std::mutex g_file_mutex;
     static std::unordered_map<uint64_t, FILE*> g_file_map;
@@ -1155,6 +1206,31 @@ void NidRegistry::PrintLiveTelemetrySummary() {
 
 void NidRegistry::SetVerboseUnhandled(bool enabled) {
     g_verbose_unhandled = enabled;
+}
+
+void NidRegistry::SetGameMainThreadId(uint32_t host_tid) {
+    g_game_main_host_tid.store(host_tid, std::memory_order_relaxed);
+}
+
+void NidRegistry::PrintGameMainTimeline() {
+    std::vector<GameMainCallRecord> copy;
+    {
+        std::lock_guard<std::mutex> lock(g_telemetry_mutex);
+        copy = g_main_thread_timeline;
+    }
+    std::cout << "[+] Game main() Primary Thread Execution Timeline ("
+              << copy.size() << " compressed call phases):\n";
+    size_t start_idx = (copy.size() > 32) ? (copy.size() - 32) : 0;
+    for (size_t i = start_idx; i < copy.size(); ++i) {
+        const auto& rec = copy[i];
+        std::cout << "    [Phase #" << std::setw(2) << (i + 1) << " | Global #"
+                  << std::setw(5) << rec.global_seq << "] "
+                  << std::setw(18) << std::left << rec.library << " :: "
+                  << std::setw(36) << rec.resolved_name
+                  << " (" << rec.nid << ") x" << rec.repeat_count
+                  << " | rdi=0x" << std::hex << rec.rdi
+                  << " rsi=0x" << rec.rsi << " rdx=0x" << rec.rdx << std::dec << "\n";
+    }
 }
 
 } // namespace yotei::hle

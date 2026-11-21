@@ -668,6 +668,20 @@ using PFN_vkDestroyFramebuffer = void (VKAPI_PTR*)(VkDevice, uint64_t, const voi
 using PFN_vkCmdBeginRenderPass = void (VKAPI_PTR*)(VkCommandBuffer, const VkRenderPassBeginInfo*, uint32_t);
 using PFN_vkCmdEndRenderPass = void (VKAPI_PTR*)(VkCommandBuffer);
 using PFN_vkCmdBindIndexBuffer = void (VKAPI_PTR*)(VkCommandBuffer, uint64_t, VkDeviceSize, uint32_t);
+using PFN_vkCmdBindVertexBuffers = void (VKAPI_PTR*)(VkCommandBuffer, uint32_t, uint32_t, const uint64_t*, const VkDeviceSize*);
+
+struct VkVertexInputBindingDescription {
+    uint32_t binding;
+    uint32_t stride;
+    uint32_t inputRate;
+};
+
+struct VkVertexInputAttributeDescription {
+    uint32_t location;
+    uint32_t binding;
+    uint32_t format;
+    uint32_t offset;
+};
 
 } // namespace
 
@@ -2517,7 +2531,155 @@ bool VulkanHostBackend::CreateSwapchainFramebuffers(
             swapchain_framebuffers_.push_back(fb);
         }
     }
+    CreateSwapchainLitMeshPipeline();
     return !swapchain_framebuffers_.empty();
+#else
+    return false;
+#endif
+}
+
+bool VulkanHostBackend::CreateSwapchainLitMeshPipeline() {
+#ifdef _WIN32
+    if (!initialized_ || !vk_device_ || !vulkan_dll_ || !swapchain_render_pass_) return false;
+    if (swapchain_mesh_pipeline_) return true;
+
+    auto get_proc = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
+        ::GetProcAddress(static_cast<HMODULE>(vulkan_dll_), "vkGetInstanceProcAddr"));
+    if (!get_proc) return false;
+
+    auto create_sm = reinterpret_cast<PFN_vkCreateShaderModule>(get_proc(vk_instance_, "vkCreateShaderModule"));
+    auto destroy_sm = reinterpret_cast<PFN_vkDestroyShaderModule>(get_proc(vk_instance_, "vkDestroyShaderModule"));
+    auto create_pl = reinterpret_cast<PFN_vkCreatePipelineLayout>(get_proc(vk_instance_, "vkCreatePipelineLayout"));
+    auto create_gp = reinterpret_cast<PFN_vkCreateGraphicsPipelines>(get_proc(vk_instance_, "vkCreateGraphicsPipelines"));
+    if (!create_sm || !destroy_sm || !create_pl || !create_gp) return false;
+
+    auto vs_spirv = Rdna2ShaderAnalyzer::EmitLitMeshSpirvVertex();
+    auto fs_spirv = Rdna2ShaderAnalyzer::EmitLitMeshSpirvFragment();
+
+    VkShaderModuleCreateInfo vs_ci{};
+    vs_ci.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    vs_ci.codeSize = vs_spirv.size() * sizeof(uint32_t);
+    vs_ci.pCode = vs_spirv.data();
+    VkShaderModule vs_mod = 0;
+    if (create_sm(vk_device_, &vs_ci, nullptr, &vs_mod) != VK_SUCCESS || !vs_mod) return false;
+
+    VkShaderModuleCreateInfo fs_ci{};
+    fs_ci.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    fs_ci.codeSize = fs_spirv.size() * sizeof(uint32_t);
+    fs_ci.pCode = fs_spirv.data();
+    VkShaderModule fs_mod = 0;
+    if (create_sm(vk_device_, &fs_ci, nullptr, &fs_mod) != VK_SUCCESS || !fs_mod) {
+        destroy_sm(vk_device_, vs_mod, nullptr);
+        return false;
+    }
+
+    VkPipelineLayoutCreateInfo pl_ci{};
+    pl_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    if (create_pl(vk_device_, &pl_ci, nullptr, &swapchain_mesh_pipeline_layout_) != VK_SUCCESS || !swapchain_mesh_pipeline_layout_) {
+        destroy_sm(vk_device_, vs_mod, nullptr);
+        destroy_sm(vk_device_, fs_mod, nullptr);
+        return false;
+    }
+
+    VkPipelineShaderStageCreateInfo stages[2]{};
+    stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    stages[0].stage = 0x00000001; // VK_SHADER_STAGE_VERTEX_BIT
+    stages[0].module = vs_mod;
+    stages[0].pName = "main";
+
+    stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    stages[1].stage = 0x00000010; // VK_SHADER_STAGE_FRAGMENT_BIT
+    stages[1].module = fs_mod;
+    stages[1].pName = "main";
+
+    // Vertex Input: stride = 32 bytes (vec4 clip_pos + vec4 color)
+    VkVertexInputBindingDescription binding_desc{};
+    binding_desc.binding = 0;
+    binding_desc.stride = 32;
+    binding_desc.inputRate = 0; // VK_VERTEX_INPUT_RATE_VERTEX
+
+    VkVertexInputAttributeDescription attr_descs[2]{};
+    attr_descs[0].location = 0;
+    attr_descs[0].binding = 0;
+    attr_descs[0].format = 109; // VK_FORMAT_R32G32B32A32_SFLOAT
+    attr_descs[0].offset = 0;
+
+    attr_descs[1].location = 1;
+    attr_descs[1].binding = 0;
+    attr_descs[1].format = 109; // VK_FORMAT_R32G32B32A32_SFLOAT
+    attr_descs[1].offset = 16;
+
+    VkPipelineVertexInputStateCreateInfo vi_ci{};
+    vi_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    vi_ci.vertexBindingDescriptionCount = 1;
+    vi_ci.pVertexBindingDescriptions = &binding_desc;
+    vi_ci.vertexAttributeDescriptionCount = 2;
+    vi_ci.pVertexAttributeDescriptions = attr_descs;
+
+    VkPipelineInputAssemblyStateCreateInfo ia_ci{};
+    ia_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    ia_ci.topology = 3; // VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
+
+    VkViewport viewport{0.0f, 0.0f, static_cast<float>(swapchain_fb_width_), static_cast<float>(swapchain_fb_height_), 0.0f, 1.0f};
+    VkRect2D scissor{{0, 0}, {swapchain_fb_width_, swapchain_fb_height_}};
+    VkPipelineViewportStateCreateInfo vp_ci{};
+    vp_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    vp_ci.viewportCount = 1;
+    vp_ci.pViewports = &viewport;
+    vp_ci.scissorCount = 1;
+    vp_ci.pScissors = &scissor;
+
+    VkPipelineRasterizationStateCreateInfo rast_ci{};
+    rast_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rast_ci.polygonMode = 0; // FILL
+    rast_ci.cullMode = 0;    // NONE (two-sided katana mesh rendering)
+    rast_ci.frontFace = 0;   // CCW
+    rast_ci.lineWidth = 1.0f;
+
+    VkPipelineMultisampleStateCreateInfo ms_ci{};
+    ms_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    ms_ci.rasterizationSamples = 1;
+
+    VkPipelineColorBlendAttachmentState cb_att{};
+    cb_att.blendEnable = 0;
+    cb_att.colorWriteMask = 0x0000000FU;
+
+    VkPipelineColorBlendStateCreateInfo cb_ci{};
+    cb_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    cb_ci.attachmentCount = 1;
+    cb_ci.pAttachments = &cb_att;
+
+    uint32_t dyn_states[] = { 0, 1 };
+    VkPipelineDynamicStateCreateInfo dyn_ci{};
+    dyn_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dyn_ci.dynamicStateCount = 2;
+    dyn_ci.pDynamicStates = dyn_states;
+
+    VkGraphicsPipelineCreateInfo gp_ci{};
+    gp_ci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    gp_ci.stageCount = 2;
+    gp_ci.pStages = stages;
+    gp_ci.pVertexInputState = &vi_ci;
+    gp_ci.pInputAssemblyState = &ia_ci;
+    gp_ci.pViewportState = &vp_ci;
+    gp_ci.pRasterizationState = &rast_ci;
+    gp_ci.pMultisampleState = &ms_ci;
+    gp_ci.pColorBlendState = &cb_ci;
+    gp_ci.pDynamicState = &dyn_ci;
+    gp_ci.layout = swapchain_mesh_pipeline_layout_;
+    gp_ci.renderPass = swapchain_render_pass_;
+    gp_ci.subpass = 0;
+    gp_ci.basePipelineIndex = -1;
+
+    VkPipeline pipeline = 0;
+    VkResult rc = create_gp(vk_device_, 0, 1, &gp_ci, nullptr, &pipeline);
+    destroy_sm(vk_device_, vs_mod, nullptr);
+    destroy_sm(vk_device_, fs_mod, nullptr);
+    if (rc != VK_SUCCESS || !pipeline) {
+        return false;
+    }
+    swapchain_mesh_pipeline_ = pipeline;
+    return true;
 #else
     return false;
 #endif
@@ -2529,6 +2691,17 @@ void VulkanHostBackend::DestroySwapchainFramebuffers() {
     auto get_proc = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
         ::GetProcAddress(static_cast<HMODULE>(vulkan_dll_), "vkGetInstanceProcAddr"));
     if (!get_proc) return;
+
+    if (swapchain_mesh_pipeline_) {
+        auto destroy_pip = reinterpret_cast<PFN_vkDestroyPipeline>(get_proc(vk_instance_, "vkDestroyPipeline"));
+        if (destroy_pip) destroy_pip(vk_device_, swapchain_mesh_pipeline_, nullptr);
+        swapchain_mesh_pipeline_ = 0;
+    }
+    if (swapchain_mesh_pipeline_layout_) {
+        auto destroy_pl = reinterpret_cast<PFN_vkDestroyPipelineLayout>(get_proc(vk_instance_, "vkDestroyPipelineLayout"));
+        if (destroy_pl) destroy_pl(vk_device_, swapchain_mesh_pipeline_layout_, nullptr);
+        swapchain_mesh_pipeline_layout_ = 0;
+    }
 
     auto destroy_fb = reinterpret_cast<PFN_vkDestroyFramebuffer>(get_proc(vk_instance_, "vkDestroyFramebuffer"));
     if (destroy_fb) {
@@ -2548,7 +2721,9 @@ void VulkanHostBackend::DestroySwapchainFramebuffers() {
 
 bool VulkanHostBackend::RenderSwapchainFrame(
     uint32_t image_index,
+    uint64_t vertex_buffer,
     uint64_t index_buffer,
+    uint64_t index_offset,
     uint32_t index_count,
     float clear_r,
     float clear_g,
@@ -2557,7 +2732,10 @@ bool VulkanHostBackend::RenderSwapchainFrame(
     if (!initialized_ || !vk_device_ || !vk_queue_ || !vulkan_dll_) return false;
     if (image_index >= swapchain_framebuffers_.size() || !swapchain_render_pass_) return false;
 
-    uint64_t active_pipeline = multi_stage_graphics_pipeline_ ? multi_stage_graphics_pipeline_ : default_graphics_pipeline_;
+    bool use_lit_mesh = (vertex_buffer != 0 && swapchain_mesh_pipeline_ != 0);
+    uint64_t active_pipeline = use_lit_mesh
+        ? swapchain_mesh_pipeline_
+        : (multi_stage_graphics_pipeline_ ? multi_stage_graphics_pipeline_ : default_graphics_pipeline_);
     if (!active_pipeline) {
         CreateDefaultGraphicsPipeline();
         active_pipeline = default_graphics_pipeline_;
@@ -2576,6 +2754,7 @@ bool VulkanHostBackend::RenderSwapchainFrame(
     auto end_rp = reinterpret_cast<PFN_vkCmdEndRenderPass>(get_proc(vk_instance_, "vkCmdEndRenderPass"));
     auto bind_pip = reinterpret_cast<PFN_vkCmdBindPipeline>(get_proc(vk_instance_, "vkCmdBindPipeline"));
     auto bind_ds = reinterpret_cast<PFN_vkCmdBindDescriptorSets>(get_proc(vk_instance_, "vkCmdBindDescriptorSets"));
+    auto bind_vb = reinterpret_cast<PFN_vkCmdBindVertexBuffers>(get_proc(vk_instance_, "vkCmdBindVertexBuffers"));
     auto bind_ib = reinterpret_cast<PFN_vkCmdBindIndexBuffer>(get_proc(vk_instance_, "vkCmdBindIndexBuffer"));
     auto cmd_set_vp = reinterpret_cast<PFN_vkCmdSetViewport>(get_proc(vk_instance_, "vkCmdSetViewport"));
     auto cmd_set_sc = reinterpret_cast<PFN_vkCmdSetScissor>(get_proc(vk_instance_, "vkCmdSetScissor"));
@@ -2624,7 +2803,7 @@ bool VulkanHostBackend::RenderSwapchainFrame(
 
     if (active_pipeline && bind_pip) {
         bind_pip(cmd_buf, 0 /* GRAPHICS */, active_pipeline);
-        if (bind_ds && bindless_descriptor_set_ && multi_stage_pipeline_layout_ && active_pipeline == multi_stage_graphics_pipeline_) {
+        if (!use_lit_mesh && bind_ds && bindless_descriptor_set_ && multi_stage_pipeline_layout_ && active_pipeline == multi_stage_graphics_pipeline_) {
             bind_ds(cmd_buf, 0 /* GRAPHICS */, multi_stage_pipeline_layout_, 0, 1, &bindless_descriptor_set_, 0, nullptr);
         }
         if (cmd_set_vp) {
@@ -2636,8 +2815,12 @@ bool VulkanHostBackend::RenderSwapchainFrame(
             cmd_set_sc(cmd_buf, 0, 1, &sc);
         }
         if (index_count > 0) {
+            if (use_lit_mesh && bind_vb) {
+                VkDeviceSize vb_offset = 0;
+                bind_vb(cmd_buf, 0, 1, &vertex_buffer, &vb_offset);
+            }
             if (index_buffer != 0 && bind_ib && cmd_draw_idx) {
-                bind_ib(cmd_buf, index_buffer, 0, 0 /* VK_INDEX_TYPE_UINT16 */);
+                bind_ib(cmd_buf, index_buffer, index_offset, 0 /* VK_INDEX_TYPE_UINT16 */);
                 cmd_draw_idx(cmd_buf, index_count, 1, 0, 0, 0);
             } else if (cmd_draw) {
                 cmd_draw(cmd_buf, index_count, 1, 0, 0);

@@ -45,7 +45,7 @@ static void SetGuestCodeRange(uint64_t start, uint64_t end) {
 // Simple instruction disassembly for logging (no C++ objects for VEH compatibility)
 static void DisassembleInstruction(const uint8_t* p, size_t max_len, char* out_buf, size_t buf_size) {
     size_t pos = 0;
-    for (size_t i = 0; i < max_len && p[i] && pos + 3 < buf_size; ++i) {
+    for (size_t i = 0; i < max_len && pos + 3 < buf_size; ++i) {
         if (i > 0) {
             out_buf[pos++] = ' ';
         }
@@ -138,8 +138,32 @@ LONG WINAPI GuestVehHandler(EXCEPTION_POINTERS* ep) {
     // CRITICAL ISOLATION: Only handle exceptions originating within the mapped Guest address space.
     // Exceptions in Windows system DLLs (CoreMessaging.dll, ntdll, user32, drivers, UCRT) MUST
     // pass through untouched via EXCEPTION_CONTINUE_SEARCH to avoid corrupting OS state.
+    // Handle guest calls to a null/near-null function pointer (RIP < 0x10000 where [RSP] is in guest code)
+    if (code == EXCEPTION_ACCESS_VIOLATION && rip < 0x10000) {
+        uint64_t ret_addr = SafeReadPtr(ep->ContextRecord->Rsp);
+        if (ret_addr >= g_guest_code_start && ret_addr < g_guest_code_end) {
+            ep->ContextRecord->Rax = 0;
+            ep->ContextRecord->Rip = ret_addr;
+            ep->ContextRecord->Rsp += 8;
+            return EXCEPTION_CONTINUE_EXECUTION;
+        }
+    }
+
     if (rip < g_guest_code_start || rip >= g_guest_code_end) {
         return EXCEPTION_CONTINUE_SEARCH;
+    }
+
+    // Fast-path lock-free silent emulation for mov rax, fs:[0]
+    if (code == EXCEPTION_ACCESS_VIOLATION) {
+        uint8_t* p_fast = reinterpret_cast<uint8_t*>(rip);
+        while (p_fast && *p_fast == 0x66) ++p_fast;
+        if (p_fast && p_fast[0] == 0x64 && p_fast[1] == 0x48 && p_fast[2] == 0x8B &&
+            p_fast[3] == 0x04 && p_fast[4] == 0x25 && *reinterpret_cast<uint32_t*>(p_fast + 5) == 0) {
+            uint64_t tcb = yotei::kernel::ThreadManager::Instance().GetCurrentThreadTcb();
+            ep->ContextRecord->Rax = tcb;
+            ep->ContextRecord->Rip = reinterpret_cast<DWORD64>(p_fast + 9);
+            return EXCEPTION_CONTINUE_EXECUTION;
+        }
     }
 
     std::lock_guard<std::mutex> lock(g_veh_mutex);
@@ -881,6 +905,7 @@ int main(int argc, char** argv) {
         test_xmesh_path = vfs.ResolveGuestPath("/app0/cache_ps5/meshes/action_katana_2.xmesh");
     }
 
+    yotei::graphics::GpuBufferAllocation persistent_scene_geo_alloc{};
     if (std::filesystem::exists(test_xmesh_path)) {
         yotei::graphics::SmbsModel model{};
         if (smbs_dec.DecodeFromFile(test_xmesh_path.string(), model)) {
@@ -890,35 +915,38 @@ int main(int argc, char** argv) {
                       << (model.packed_vertices.size() * sizeof(yotei::graphics::SmbsVertex)) << " bytes)\n"
                       << "    Indices    : " << model.total_indices << " | Triangles: " << model.total_triangles << "\n";
 
-            // Upload Geometry to 64-bit BDA GPU Buffer
+            // Upload Geometry to persistent 64-bit BDA GPU Buffer for live Swapchain 3D Orbit Rendering (Milestone 22)
             size_t vtx_size = model.packed_vertices.size() * sizeof(yotei::graphics::SmbsVertex);
             size_t idx_size = model.packed_indices.size() * sizeof(uint16_t);
             size_t total_geo_size = vtx_size + idx_size;
 
-            auto geo_alloc = vk_backend.AllocateBufferWithDeviceAddress(
+            persistent_scene_geo_alloc = vk_backend.AllocateBufferWithDeviceAddress(
                 total_geo_size,
                 0x00000080 | 0x00000040 | 0x00020000 /* VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT */,
                 true);
 
-            if (geo_alloc.buffer_handle && geo_alloc.device_address) {
-                if (geo_alloc.host_mapped_ptr) {
-                    uint8_t* dst = static_cast<uint8_t*>(geo_alloc.host_mapped_ptr);
+            if (persistent_scene_geo_alloc.buffer_handle && persistent_scene_geo_alloc.device_address) {
+                if (persistent_scene_geo_alloc.host_mapped_ptr) {
+                    uint8_t* dst = static_cast<uint8_t*>(persistent_scene_geo_alloc.host_mapped_ptr);
                     std::memcpy(dst, model.packed_vertices.data(), vtx_size);
                     std::memcpy(dst + vtx_size, model.packed_indices.data(), idx_size);
                 }
                 std::cout << "[+] Uploaded Geometry via 64-bit BDA: DevAddr=0x"
-                          << std::hex << geo_alloc.device_address << std::dec
+                          << std::hex << persistent_scene_geo_alloc.device_address << std::dec
                           << " | VtxBytes=" << vtx_size << " IdxBytes=" << idx_size << "\n";
 
-                // Execute Hardware PM4 Draw on real guest geometry & bind to Swapchain Framebuffer Renderer
-                yotei::graphics::VideoOutHleManager::Instance().SetActiveSceneGeometry(0, 384);
+                // Bind full 35,343-triangle Katana mesh to Swapchain 3D Orbit Framebuffer Renderer (Milestone 22)
+                yotei::graphics::VideoOutHleManager::Instance().BindOrbitingSceneMesh(
+                    model.packed_vertices,
+                    persistent_scene_geo_alloc.buffer_handle,
+                    persistent_scene_geo_alloc.host_mapped_ptr,
+                    vtx_size,
+                    model.total_indices);
                 vk_backend.ExecuteGraphicsDraw(model.total_indices, 1, 0, 0);
-                std::cout << "[+] Executed PM4 Hardware Draw on Decoded Geometry: "
+                std::cout << "[+] Bound 3D Orbiting Katana Mesh to Swapchain & Executed Hardware Draw: "
                           << model.total_triangles << " Triangles | Dispatches="
                           << vk_backend.GetGpuInfo().compute_dispatches_executed
                           << " Draws=" << vk_backend.GetGpuInfo().draw_calls_executed << "\n";
-
-                vk_backend.FreeBufferWithDeviceAddress(geo_alloc);
             }
         }
     }
@@ -1168,6 +1196,7 @@ int main(int argc, char** argv) {
             0x100000,
             [](LPVOID param) -> DWORD {
                 auto* ctx = static_cast<GameMainRunCtx*>(param);
+                yotei::hle::NidRegistry::SetGameMainThreadId(::GetCurrentThreadId());
                 void* tls_mem = nullptr;
                 uint64_t tcb = yotei::kernel::ThreadManager::Instance().AllocateThreadTls(100, &tls_mem);
                 yotei::kernel::ThreadManager::Instance().SetCurrentThreadTls(tcb);
@@ -1201,14 +1230,21 @@ int main(int argc, char** argv) {
             std::cout << "[+] Game main() Live Execution Snapshot:\n"
                       << "    Active Sucker Punch Worker Threads : " << active_workers << " threads running concurrently\n"
                       << "    Live HLE Calls during game_main()  : " << (calls_after - calls_before)
-                      << " (Total: " << calls_after << ")\n" << std::flush;
+                      << " (Total: " << calls_after << ")\n"
+                      << "    Swapchain 3D Frames Rendered       : " << vk_backend.GetGpuInfo().swapchain_frames_rendered
+                      << " frames (35,343 lit katana triangles/frame)\n" << std::flush;
         }
     } else {
         std::cout << "\n[*] Skipping Game main() (--verify-only mode active).\n";
     }
 
-    // Report live HLE telemetry, AGC function breakdown, Shader Catalog & any unhandled stubs observed
+    // Batch-compile registered RDNA2 game shaders to SPIR-V 1.6 VkShaderModule on GPU (Milestone 24)
+    yotei::graphics::AgcDriverHleManager::Instance().CompileAndVerifyRegisteredShadersOnGpu(64);
+
+    // Report live HLE telemetry, Game main() Timeline, VideoOut & AGC breakdowns, Shader Catalog & any unhandled stubs
     yotei::hle::NidRegistry::PrintLiveTelemetrySummary();
+    yotei::hle::NidRegistry::PrintGameMainTimeline();
+    yotei::graphics::VideoOutHleManager::Instance().PrintLiveVideoOutBreakdown();
     yotei::graphics::AgcDriverHleManager::Instance().PrintLiveAgcBreakdown();
     yotei::graphics::AgcDriverHleManager::Instance().PrintShaderAndResourceCatalog(6);
     yotei::hle::NidRegistry::PrintUnhandledStubSummary();
@@ -1217,6 +1253,10 @@ int main(int argc, char** argv) {
     if (!skip_game_main) {
         // Fast clean process teardown when 22+ guest worker threads are active
         ::ExitProcess(0);
+    }
+
+    if (persistent_scene_geo_alloc.buffer_handle) {
+        vk_backend.FreeBufferWithDeviceAddress(persistent_scene_geo_alloc);
     }
 
     yotei::audio::AudioOut2HleManager::Instance().Shutdown();

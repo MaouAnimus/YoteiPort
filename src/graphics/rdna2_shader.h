@@ -24,6 +24,9 @@ struct Rdna2ShaderAnalysis {
     uint32_t bvh_intersect_count = 0;
     uint32_t ds_lds_count = 0;
     uint32_t exp_count = 0;
+    uint32_t branch_count = 0;
+    uint32_t srt_load_count = 0;
+    uint32_t texture_sample_count = 0;
     bool     terminated_by_endpgm = false;
     std::vector<Rdna2Instruction> sample_disassembly;
 };
@@ -52,6 +55,12 @@ public:
 
     // Emit a minimal valid SPIR-V v1.6 fragment/pixel shader binary
     static std::vector<uint32_t> EmitMinimalSpirvFragment();
+
+    // Emit a 3D Lit Mesh SPIR-V v1.6 Vertex Shader (Location 0: vec4 ClipPos, Location 1: vec4 Color -> gl_Position + Location 0 outColor)
+    static std::vector<uint32_t> EmitLitMeshSpirvVertex();
+
+    // Emit a 3D Lit Mesh SPIR-V v1.6 Fragment Shader (Location 0: vec4 inColor -> Location 0 outFragColor)
+    static std::vector<uint32_t> EmitLitMeshSpirvFragment();
 
     // Translate a decoded RDNA2 shader into an executable Vulkan SPIR-V compute module
     static std::vector<uint32_t> TranslateRdna2ToSpirv(

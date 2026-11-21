@@ -37,6 +37,8 @@ public:
 
     static void PrintUnhandledStubSummary();
     static void PrintLiveTelemetrySummary();
+    static void PrintGameMainTimeline();
+    static void SetGameMainThreadId(uint32_t host_tid);
     static size_t GetTotalDispatchedCalls();
     static size_t GetUnhandledStubCount();
     static void SetVerboseUnhandled(bool enabled);
