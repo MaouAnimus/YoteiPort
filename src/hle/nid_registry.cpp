@@ -91,19 +91,35 @@ extern "C" uint64_t __fastcall HleDispatchTrampoline(
         g_unique_nids_invoked.insert(meta.nid);
 #ifdef _WIN32
         uint32_t target_tid = g_game_main_host_tid.load(std::memory_order_relaxed);
-        if (target_tid != 0 && ::GetCurrentThreadId() == target_tid && meta.library != "libc") {
+        if (target_tid != 0 && ::GetCurrentThreadId() == target_tid) {
+            std::string disp_name = meta.resolved_name;
+            if (meta.resolved_name == "fopen" && guest_rdi > 0x10000ULL) {
+                disp_name += "('" + std::string(reinterpret_cast<const char*>(guest_rdi)) + "')";
+            }
+            // Collapse 1-step consecutive identical NIDs OR 2-step alternating loops (e.g., fread/memcpy or RegisterResource/CreateShader)
+            bool collapsed = false;
             if (!g_main_thread_timeline.empty() &&
                 g_main_thread_timeline.back().nid == meta.nid) {
                 g_main_thread_timeline.back().repeat_count++;
                 g_main_thread_timeline.back().rdi = guest_rdi;
                 g_main_thread_timeline.back().rsi = guest_rsi;
                 g_main_thread_timeline.back().rdx = guest_rdx;
-            } else {
+                collapsed = true;
+            } else if (g_main_thread_timeline.size() >= 2 &&
+                       g_main_thread_timeline[g_main_thread_timeline.size() - 2].nid == meta.nid) {
+                auto& prev2 = g_main_thread_timeline[g_main_thread_timeline.size() - 2];
+                prev2.repeat_count++;
+                prev2.rdi = guest_rdi;
+                prev2.rsi = guest_rsi;
+                prev2.rdx = guest_rdx;
+                collapsed = true;
+            }
+            if (!collapsed) {
                 if (g_main_thread_timeline.size() >= 256) {
                     g_main_thread_timeline.erase(g_main_thread_timeline.begin());
                 }
                 g_main_thread_timeline.push_back({
-                    cur_call, meta.library, meta.resolved_name, meta.nid,
+                    cur_call, meta.library, disp_name, meta.nid,
                     guest_rdi, guest_rsi, guest_rdx, 1
                 });
             }

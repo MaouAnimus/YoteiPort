@@ -901,6 +901,45 @@ bool VulkanHostBackend::VerifySpirvShaderModule(const std::vector<uint32_t>& spi
     return false;
 }
 
+uint64_t VulkanHostBackend::CompileAndCacheSpirvShaderModule(
+    uint64_t isa_hash,
+    const std::vector<uint32_t>& spirv_words) {
+#ifdef _WIN32
+    if (!initialized_ || !vk_device_ || !vulkan_dll_ || spirv_words.empty()) return 0;
+    if (isa_hash != 0) {
+        auto it = shader_module_cache_.find(isa_hash);
+        if (it != shader_module_cache_.end()) {
+            return it->second;
+        }
+    }
+
+    auto get_proc = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
+        ::GetProcAddress(static_cast<HMODULE>(vulkan_dll_), "vkGetInstanceProcAddr"));
+    if (!get_proc) return 0;
+
+    auto create_sm = reinterpret_cast<PFN_vkCreateShaderModule>(
+        get_proc(vk_instance_, "vkCreateShaderModule"));
+    if (!create_sm) return 0;
+
+    VkShaderModuleCreateInfo sm_ci{};
+    sm_ci.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    sm_ci.codeSize = spirv_words.size() * sizeof(uint32_t);
+    sm_ci.pCode = spirv_words.data();
+
+    VkShaderModule mod = 0;
+    if (create_sm(vk_device_, &sm_ci, nullptr, &mod) == VK_SUCCESS && mod != 0) {
+        if (isa_hash != 0) {
+            shader_module_cache_[isa_hash] = mod;
+        }
+        gpu_info_.spirv_module_verified = true;
+        gpu_info_.cached_shader_modules = static_cast<uint32_t>(shader_module_cache_.size());
+        gpu_info_.total_spirv_bytes_compiled += sm_ci.codeSize;
+        return mod;
+    }
+#endif
+    return 0;
+}
+
 bool VulkanHostBackend::ExecuteCompute(
     const std::vector<uint32_t>& spirv_words,
     uint32_t groups_x,
@@ -2853,6 +2892,15 @@ void VulkanHostBackend::Shutdown() {
     auto get_proc = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
         ::GetProcAddress(static_cast<HMODULE>(vulkan_dll_), "vkGetInstanceProcAddr"));
     if (get_proc && vk_device_) {
+        if (!shader_module_cache_.empty()) {
+            auto destroy_sm = reinterpret_cast<PFN_vkDestroyShaderModule>(get_proc(vk_instance_, "vkDestroyShaderModule"));
+            if (destroy_sm) {
+                for (const auto& [hash, mod] : shader_module_cache_) {
+                    if (mod) destroy_sm(vk_device_, mod, nullptr);
+                }
+            }
+            shader_module_cache_.clear();
+        }
         DestroySwapchainFramebuffers();
         if (bindless_pipeline_layout_) {
             auto destroy_pl = reinterpret_cast<PFN_vkDestroyPipelineLayout>(get_proc(vk_instance_, "vkDestroyPipelineLayout"));

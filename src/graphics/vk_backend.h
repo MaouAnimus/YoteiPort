@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace yotei::graphics {
@@ -19,6 +20,8 @@ struct VulkanGpuInfo {
     bool     bindless_supported = false;
     uint32_t bindless_textures_registered = 0;
     uint32_t bindless_samplers_registered = 0;
+    uint32_t cached_shader_modules = 0;
+    uint64_t total_spirv_bytes_compiled = 0;
     uint64_t bda_buffers_allocated = 0;
     uint64_t compute_dispatches_executed = 0;
     uint64_t draw_calls_executed = 0;
@@ -39,6 +42,8 @@ public:
 
     bool Initialize();
     bool VerifySpirvShaderModule(const std::vector<uint32_t>& spirv_words);
+    uint64_t CompileAndCacheSpirvShaderModule(uint64_t isa_hash, const std::vector<uint32_t>& spirv_words);
+    size_t GetCachedShaderModuleCount() const { return shader_module_cache_.size(); }
     bool ExecuteCompute(
         const std::vector<uint32_t>& spirv_words,
         uint32_t groups_x = 1,
@@ -176,6 +181,9 @@ private:
     std::vector<uint64_t> swapchain_framebuffers_;
     uint32_t swapchain_fb_width_ = 1920;
     uint32_t swapchain_fb_height_ = 1080;
+
+    // Persistent GPU Shader Module Cache (isa_hash -> VkShaderModule, Milestone 27)
+    std::unordered_map<uint64_t, uint64_t> shader_module_cache_;
 };
 
 } // namespace yotei::graphics

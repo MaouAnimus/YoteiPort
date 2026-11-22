@@ -479,6 +479,7 @@ size_t AgcDriverHleManager::CompileAndVerifyRegisteredShadersOnGpu(size_t max_co
 
     size_t compiled_ok = 0;
     size_t attempted = 0;
+    uint64_t total_spirv_bytes = 0;
     for (auto& sh : shaders_) {
         if (attempted >= max_compile_batch) break;
         if (!IsValidGuestPointer(sh.code_addr)) continue;
@@ -486,12 +487,17 @@ size_t AgcDriverHleManager::CompileAndVerifyRegisteredShadersOnGpu(size_t max_co
         auto analysis = Rdna2ShaderAnalyzer::AnalyzeIsa(reinterpret_cast<const uint32_t*>(sh.code_addr), 64, 16);
         auto spirv = Rdna2ShaderAnalyzer::TranslateRdna2ToSpirv(analysis, 64, 1, 1);
         sh.spirv_bytes = static_cast<uint32_t>(spirv.size() * sizeof(uint32_t));
-        if (vk.VerifySpirvShaderModule(spirv)) {
+        total_spirv_bytes += sh.spirv_bytes;
+        uint64_t mod = vk.CompileAndCacheSpirvShaderModule(sh.isa_hash, spirv);
+        if (mod != 0) {
+            sh.vk_shader_module = mod;
             sh.spirv_verified_on_gpu = true;
             ++compiled_ok;
         }
     }
     stats_.shaders_compiled_to_spirv = compiled_ok;
+    stats_.unique_cached_vk_modules = vk.GetCachedShaderModuleCount();
+    stats_.total_spirv_bytes_generated = total_spirv_bytes;
     return compiled_ok;
 }
 
@@ -506,13 +512,15 @@ void AgcDriverHleManager::PrintShaderAndResourceCatalog(size_t max_sample_shader
         total_branches += sh.branch_count;
     }
 
-    std::cout << "[+] Live Registered AGC Shader & Resource Catalog (Milestones 19 & 24):\n"
+    std::cout << "[+] Live Registered AGC Shader & Resource Catalog (Milestones 19, 24 & 27):\n"
               << "    Total Shaders Registered   : " << shaders_.size()
               << " (" << stats_.total_shader_instructions << " RDNA2 instructions decoded | SALU="
               << total_salu << " VALU=" << total_valu << " VMEM=" << total_vmem
               << " SMEM/SRT=" << total_smem << " Branches=" << total_branches << ")\n"
-              << "    SPIR-V 1.6 GPU Compiled    : " << stats_.shaders_compiled_to_spirv
-              << " live game shaders compiled to VkShaderModule on GPU\n"
+              << "    SPIR-V 1.6 GPU Compiled    : " << stats_.shaders_compiled_to_spirv << " / " << shaders_.size()
+              << " shaders compiled (" << stats_.unique_cached_vk_modules
+              << " unique cached VkShaderModule handles | "
+              << stats_.total_spirv_bytes_generated << " bytes SPIR-V)\n"
               << "    Total Resources Registered : " << resources_.size()
               << " | Owners: " << stats_.owners_registered << "\n";
 
@@ -521,13 +529,13 @@ void AgcDriverHleManager::PrintShaderAndResourceCatalog(size_t max_sample_shader
         const auto& sh = shaders_[i];
         if (sh.isa_hash == 0) continue;
         std::cout << "      Shader[#" << std::setw(3) << i << "] CodeAddr=0x" << std::hex << sh.code_addr
-                  << " Hash=0x" << sh.isa_hash << std::dec
+                  << " Hash=0x" << sh.isa_hash << " VkMod=0x" << sh.vk_shader_module << std::dec
                   << " | Insns=" << sh.instruction_count
                   << " (SALU=" << sh.salu_count << " VALU=" << sh.valu_count
                   << " VMEM=" << sh.vmem_count << " SRT=" << sh.smem_count
                   << " BR=" << sh.branch_count << ")"
                   << " | SPIR-V=" << sh.spirv_bytes << "B ("
-                  << (sh.spirv_verified_on_gpu ? "VkShaderModule OK" : "pending") << ")\n";
+                  << (sh.spirv_verified_on_gpu ? "CACHED OK" : "pending") << ")\n";
         ++shown;
     }
 }

@@ -138,14 +138,25 @@ LONG WINAPI GuestVehHandler(EXCEPTION_POINTERS* ep) {
     // CRITICAL ISOLATION: Only handle exceptions originating within the mapped Guest address space.
     // Exceptions in Windows system DLLs (CoreMessaging.dll, ntdll, user32, drivers, UCRT) MUST
     // pass through untouched via EXCEPTION_CONTINUE_SEARCH to avoid corrupting OS state.
-    // Handle guest calls to a null/near-null function pointer (RIP < 0x10000 where [RSP] is in guest code)
-    if (code == EXCEPTION_ACCESS_VIOLATION && rip < 0x10000) {
+    // Handle guest calls to a null/near-null or unmapped function pointer where [RSP] is in guest code
+    if (code == EXCEPTION_ACCESS_VIOLATION && (rip < g_guest_code_start || rip >= g_guest_code_end)) {
         uint64_t ret_addr = SafeReadPtr(ep->ContextRecord->Rsp);
         if (ret_addr >= g_guest_code_start && ret_addr < g_guest_code_end) {
-            ep->ContextRecord->Rax = 0;
-            ep->ContextRecord->Rip = ret_addr;
-            ep->ContextRecord->Rsp += 8;
-            return EXCEPTION_CONTINUE_EXECUTION;
+            MEMORY_BASIC_INFORMATION mbi{};
+            bool is_exec = false;
+            if (rip >= 0x10000ULL && VirtualQuery(reinterpret_cast<LPCVOID>(rip), &mbi, sizeof(mbi)) != 0) {
+                is_exec = (mbi.State == MEM_COMMIT) &&
+                          (mbi.Protect & (PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY));
+            }
+            if (!is_exec) {
+                std::lock_guard<std::mutex> lock(g_veh_mutex);
+                std::cout << "  [VEH] Guest called unmapped/null function pointer RIP=0x" << std::hex << rip
+                          << " from Guest ReturnAddr=0x" << ret_addr << std::dec << " -> returning 0 to caller\n" << std::flush;
+                ep->ContextRecord->Rax = 0;
+                ep->ContextRecord->Rip = ret_addr;
+                ep->ContextRecord->Rsp += 8;
+                return EXCEPTION_CONTINUE_EXECUTION;
+            }
         }
     }
 
@@ -469,13 +480,26 @@ LONG WINAPI GuestVehHandler(EXCEPTION_POINTERS* ep) {
     return EXCEPTION_CONTINUE_SEARCH;
 }
 
-static bool ProbeGuestFunctionSeh(uint64_t fn, uint64_t arg0, uint64_t arg1, uint64_t* out_ret, DWORD* out_exc) {
+static int CaptureSehFilter(EXCEPTION_POINTERS* ep, DWORD* out_exc, uint64_t* out_rip, uint64_t* out_rsp) {
+    if (out_exc && ep && ep->ExceptionRecord) *out_exc = ep->ExceptionRecord->ExceptionCode;
+    if (out_rip && ep && ep->ContextRecord) *out_rip = ep->ContextRecord->Rip;
+    if (out_rsp && ep && ep->ContextRecord) *out_rsp = ep->ContextRecord->Rsp;
+    return EXCEPTION_EXECUTE_HANDLER;
+}
+
+static bool ProbeGuestFunctionSeh(
+    uint64_t fn,
+    uint64_t arg0,
+    uint64_t arg1,
+    uint64_t* out_ret,
+    DWORD* out_exc,
+    uint64_t* out_fault_rip = nullptr,
+    uint64_t* out_fault_rsp = nullptr) {
     __try {
         uint64_t r = yotei::kernel::InvokeGuestSysV(fn, arg0, arg1, 0, 0);
         if (out_ret) *out_ret = r;
         return true;
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        if (out_exc) *out_exc = GetExceptionCode();
+    } __except (CaptureSehFilter(GetExceptionInformation(), out_exc, out_fault_rip, out_fault_rsp)) {
         return false;
     }
 }
@@ -1185,9 +1209,12 @@ int main(int argc, char** argv) {
             uint64_t entry_addr;
             uint64_t argv_addr;
             uint64_t return_val;
+            uint64_t fault_rip;
+            uint64_t fault_rsp;
             DWORD    exception_code;
             bool     completed;
-        } run_ctx{ game_main, reinterpret_cast<uint64_t>(&dummy_argv[0]), 0, 0, false };
+            bool     thread_exited;
+        } run_ctx{ game_main, reinterpret_cast<uint64_t>(&dummy_argv[0]), 0, 0, 0, 0, false, false };
 
         size_t calls_before = yotei::hle::NidRegistry::GetTotalDispatchedCalls();
 
@@ -1200,7 +1227,11 @@ int main(int argc, char** argv) {
                 void* tls_mem = nullptr;
                 uint64_t tcb = yotei::kernel::ThreadManager::Instance().AllocateThreadTls(100, &tls_mem);
                 yotei::kernel::ThreadManager::Instance().SetCurrentThreadTls(tcb);
-                ctx->completed = ProbeGuestFunctionSeh(ctx->entry_addr, 1, ctx->argv_addr, &ctx->return_val, &ctx->exception_code);
+                ctx->completed = ProbeGuestFunctionSeh(
+                    ctx->entry_addr, 1, ctx->argv_addr,
+                    &ctx->return_val, &ctx->exception_code,
+                    &ctx->fault_rip, &ctx->fault_rsp);
+                ctx->thread_exited = true;
                 return 0;
             },
             &run_ctx,
@@ -1228,7 +1259,28 @@ int main(int argc, char** argv) {
             size_t active_workers = yotei::kernel::ThreadManager::Instance().GetActiveThreadCount();
             size_t calls_after = yotei::hle::NidRegistry::GetTotalDispatchedCalls();
             std::cout << "[+] Game main() Live Execution Snapshot:\n"
-                      << "    Active Sucker Punch Worker Threads : " << active_workers << " threads running concurrently\n"
+                      << "    Main Runner Status                 : ";
+            if (!run_ctx.thread_exited) {
+                CONTEXT live_ctx{};
+                live_ctx.ContextFlags = CONTEXT_CONTROL | CONTEXT_INTEGER;
+                uint64_t live_rip = 0, live_rsp = 0, live_ret = 0;
+                if (::SuspendThread(h_main_runner) != (DWORD)-1) {
+                    if (::GetThreadContext(h_main_runner, &live_ctx)) {
+                        live_rip = live_ctx.Rip;
+                        live_rsp = live_ctx.Rsp;
+                        live_ret = SafeReadPtr(live_rsp);
+                    }
+                    ::ResumeThread(h_main_runner);
+                }
+                std::cout << "ACTIVE / RUNNING IN MAIN LOOP (LiveRIP=0x" << std::hex << live_rip
+                          << " RSP=0x" << live_rsp << " TopStack=0x" << live_ret << std::dec << ")\n";
+            } else if (run_ctx.completed) {
+                std::cout << "RETURNED CLEANLY (ret=0x" << std::hex << run_ctx.return_val << std::dec << ")\n";
+            } else {
+                std::cout << "TERMINATED ON EXCEPTION 0x" << std::hex << run_ctx.exception_code
+                          << " at RIP=0x" << run_ctx.fault_rip << " RSP=0x" << run_ctx.fault_rsp << std::dec << "\n";
+            }
+            std::cout << "    Active Sucker Punch Worker Threads : " << active_workers << " threads running concurrently\n"
                       << "    Live HLE Calls during game_main()  : " << (calls_after - calls_before)
                       << " (Total: " << calls_after << ")\n"
                       << "    Swapchain 3D Frames Rendered       : " << vk_backend.GetGpuInfo().swapchain_frames_rendered
@@ -1238,8 +1290,8 @@ int main(int argc, char** argv) {
         std::cout << "\n[*] Skipping Game main() (--verify-only mode active).\n";
     }
 
-    // Batch-compile registered RDNA2 game shaders to SPIR-V 1.6 VkShaderModule on GPU (Milestone 24)
-    yotei::graphics::AgcDriverHleManager::Instance().CompileAndVerifyRegisteredShadersOnGpu(64);
+    // Batch-compile ALL 578 registered RDNA2 game shaders to cached SPIR-V 1.6 VkShaderModule handles on GPU (Milestone 27)
+    yotei::graphics::AgcDriverHleManager::Instance().CompileAndVerifyRegisteredShadersOnGpu(1024);
 
     // Report live HLE telemetry, Game main() Timeline, VideoOut & AGC breakdowns, Shader Catalog & any unhandled stubs
     yotei::hle::NidRegistry::PrintLiveTelemetrySummary();

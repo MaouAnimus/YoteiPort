@@ -623,11 +623,23 @@ int32_t VideoOutHleManager::SceVideoOutRegisterBuffers2(
     const uint64_t* ptrs = (buffers_ptr > 0x10000ULL) ? reinterpret_cast<const uint64_t*>(buffers_ptr) : nullptr;
     for (int32_t i = 0; i < num_buffers; ++i) {
         VideoOutBufferInfo buf{};
+        buf.set_index = set_index;
+        buf.buffer_index = buffer_index_start + i;
         // SceVideoOutBuffers is { const void* data; const void* metadata; } (16 bytes per entry)
         buf.guest_address = ptrs ? ptrs[i * 2] : 0;
+        buf.metadata_address = ptrs ? ptrs[i * 2 + 1] : 0;
         if (i == 0) first_guest_addr = buf.guest_address;
         buf.width = state_.width;
         buf.height = state_.height;
+#ifdef _WIN32
+        if (buf.guest_address > 0x10000ULL) {
+            MEMORY_BASIC_INFORMATION mbi{};
+            if (VirtualQuery(reinterpret_cast<LPCVOID>(buf.guest_address), &mbi, sizeof(mbi)) != 0 &&
+                mbi.State == MEM_COMMIT) {
+                buf.is_mapped = true;
+            }
+        }
+#endif
         state_.registered_buffers.push_back(buf);
     }
 
@@ -813,6 +825,15 @@ void VideoOutHleManager::PrintLiveVideoOutBreakdown() const {
         std::cout << "    " << std::setw(54) << std::left << key
                   << " : " << std::setw(5) << cnt << " calls | last_rdi=0x"
                   << std::hex << last_rdi << " last_rsi=0x" << last_rsi << std::dec << "\n";
+    }
+    if (!state_.registered_buffers.empty()) {
+        std::cout << "    Registered Guest Scanout Buffers (" << state_.registered_buffers.size() << " total):\n";
+        for (const auto& b : state_.registered_buffers) {
+            std::cout << "      [Set=" << b.set_index << " BufIdx=" << b.buffer_index << "] ScanoutAddr=0x"
+                      << std::hex << b.guest_address << " MetaAddr=0x" << b.metadata_address << std::dec
+                      << " (" << b.width << "x" << b.height << " | DirectMem="
+                      << (b.is_mapped ? "COMMITTED & MAPPED" : "UNMAPPED") << ")\n";
+        }
     }
 }
 

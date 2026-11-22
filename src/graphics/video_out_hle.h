@@ -24,11 +24,15 @@ struct GpuLitVertex {
 };
 
 struct VideoOutBufferInfo {
+    int32_t set_index = 0;
+    int32_t buffer_index = 0;
     uint64_t guest_address = 0;
+    uint64_t metadata_address = 0;
     uint32_t width = 1920;
     uint32_t height = 1080;
     uint32_t pitch = 1920 * 4;
     uint32_t format = 0;
+    bool is_mapped = false;
 };
 
 struct VideoOutState {

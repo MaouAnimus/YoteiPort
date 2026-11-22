@@ -30,6 +30,7 @@ struct AgcRegisteredShader {
     uint64_t header_addr = 0;
     uint64_t code_addr = 0;
     uint64_t isa_hash = 0;
+    uint64_t vk_shader_module = 0;
     uint32_t instruction_count = 0;
     uint32_t salu_count = 0;
     uint32_t valu_count = 0;
@@ -46,6 +47,8 @@ struct AgcDriverStats {
     uint64_t resources_registered = 0;
     uint64_t shaders_created = 0;
     uint64_t shaders_compiled_to_spirv = 0;
+    uint64_t unique_cached_vk_modules = 0;
+    uint64_t total_spirv_bytes_generated = 0;
     uint64_t total_shader_instructions = 0;
     uint64_t dcb_packets_emitted = 0;
     uint64_t dcb_submissions = 0;
