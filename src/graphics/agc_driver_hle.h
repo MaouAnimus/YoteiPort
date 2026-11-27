@@ -53,6 +53,7 @@ struct AgcDriverStats {
     uint64_t dcb_packets_emitted = 0;
     uint64_t dcb_submissions = 0;
     uint64_t acb_submissions = 0;
+    uint64_t sh_reg_writes = 0;
     uint64_t eop_fences_signaled = 0;
     uint64_t flips_scheduled = 0;
 };
@@ -106,6 +107,7 @@ private:
     AgcDriverStats stats_{};
     std::vector<AgcRegisteredResource> resources_;
     std::vector<AgcRegisteredShader> shaders_;
+    std::vector<std::string> live_markers_;
     std::unordered_map<std::string, uint64_t> fn_call_counts_;
     std::unordered_map<std::string, uint64_t> fn_last_rdi_;
 };

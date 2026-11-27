@@ -225,6 +225,24 @@ bool AgcDriverHleManager::DispatchNid(
         if (IsValidGuestPointer(rdi) && IsValidGuestPointer(rsi)) {
             *reinterpret_cast<uint64_t*>(rdi) = rsi;
             *reinterpret_cast<uint64_t*>(rsi) = rdx;
+            const size_t hdr_rel_offsets[] = { 0x08, 0x20, 0x28 };
+            for (size_t off : hdr_rel_offsets) {
+                uint64_t v = *reinterpret_cast<uint64_t*>(rsi + off);
+                if (v >= 0x10ULL && v < 0x10000ULL && (v & 7ULL) == 0) {
+                    uint64_t target = rsi + v;
+                    *reinterpret_cast<uint64_t*>(rsi + off) = target;
+                    if (off == 0x08 && IsValidGuestPointer(target)) {
+                        for (size_t sub = 0x00; sub <= 0x20; sub += 8) {
+                            uint64_t sv = *reinterpret_cast<uint64_t*>(target + sub);
+                            if (sv >= 0x10ULL && sv < 0x10000ULL && (sv & 7ULL) == 0) {
+                                *reinterpret_cast<uint64_t*>(target + sub) = target + sv;
+                            } else if (sub == 0x00 && !IsValidGuestPointer(sv)) {
+                                *reinterpret_cast<uint64_t*>(target + sub) = target + 0x38ULL;
+                            }
+                        }
+                    }
+                }
+            }
         }
         // Probe rdx (or rsi if rdx is not code) for RDNA2 ISA instruction stream
         uint64_t candidate_code = IsValidGuestPointer(rdx) ? rdx : (IsValidGuestPointer(rsi) ? rsi : 0);
@@ -260,8 +278,12 @@ bool AgcDriverHleManager::DispatchNid(
         resolved_name == "Gen5::AgcDcbPushMarker" || resolved_name == "Gen5::AgcAcbPushMarker") {
         if (IsValidGuestPointer(rsi)) {
             const char* marker_str = reinterpret_cast<const char*>(rsi);
+            std::string m_name(marker_str);
+            if (!m_name.empty()) {
+                live_markers_.push_back(m_name);
+            }
             uint32_t nop_payload[8] = { 0x68757053U }; // 'Spuh' marker tag
-            size_t len = std::min<size_t>(std::strlen(marker_str), 24);
+            size_t len = std::min<size_t>(m_name.size(), 24);
             std::memcpy(&nop_payload[1], marker_str, len);
             uint16_t words = static_cast<uint16_t>(1 + ((len + 3) / 4));
             EmitPm4PacketToGuestCb(rdi, static_cast<uint8_t>(Pm4Opcode::IT_NOP), nop_payload, words);
@@ -313,6 +335,17 @@ bool AgcDriverHleManager::DispatchNid(
         }
         uint32_t rel_payload[2] = { static_cast<uint32_t>(rsi), static_cast<uint32_t>(rcx) };
         EmitPm4PacketToGuestCb(rdi, static_cast<uint8_t>(Pm4Opcode::IT_RELEASE_MEM), rel_payload, 2);
+        // Phase VIII: Inspect and decode the guest DCB/ACB command stream accumulated up to this EOP/EventWrite point
+        if (IsValidGuestPointer(rdi)) {
+            const auto* cb = reinterpret_cast<const GuestAgcCommandBuffer*>(rdi);
+            uint64_t base_addr = reinterpret_cast<uint64_t>(cb->cmd_base);
+            uint64_t cur_addr = reinterpret_cast<uint64_t>(cb->cmd_cur);
+            if (IsValidGuestPointer(base_addr) && cur_addr > base_addr && (cur_addr - base_addr) <= 0x100000ULL) {
+                size_t dwords = static_cast<size_t>((cur_addr - base_addr) / sizeof(uint32_t));
+                bool is_acb = (resolved_name.find("Acb") != std::string::npos);
+                SubmitGuestCommandBuffer(cb->cmd_base, dwords, is_acb);
+            }
+        }
         *out_ret = 0;
         return true;
     }
@@ -453,6 +486,50 @@ bool AgcDriverHleManager::DispatchNid(
         return true;
     }
 
+    // -------------------------------------------------------------------------
+    // 8.5. Register Patching & Direct SH/Context/UConfig Register Writes (Phase VIII)
+    // -------------------------------------------------------------------------
+    if (nid == "UZbQjYAwwXM" || resolved_name == "sceAgcCbSetShRegistersDirect") {
+        // sceAgcCbSetShRegistersDirect(cb, const SceAgcShRegister* regs, uint32_t numRegs)
+        if (IsValidGuestPointer(rsi) && rdx > 0 && rdx <= 64) {
+            uint32_t sh_payload[1 + 64]{};
+            sh_payload[0] = 0;
+            for (uint32_t i = 0; i < rdx; ++i) {
+                sh_payload[1 + i] = reinterpret_cast<const uint32_t*>(rsi)[i * 2 + 1];
+            }
+            EmitPm4PacketToGuestCb(rdi, static_cast<uint8_t>(Pm4Opcode::IT_SET_SH_REG), sh_payload, static_cast<uint16_t>(1 + rdx));
+            ++stats_.sh_reg_writes;
+        }
+        *out_ret = 0;
+        return true;
+    }
+    if (nid == "z2duB-hHQSM" || nid == "Qrj4c+61z4A" || nid == "vRoArM9zaIk" || nid == "6lNcCp+fxi4" ||
+        nid == "-HOOCn0JY48" || nid == "hvUfkUIQcOE" ||
+        resolved_name.find("IndirectPatch") != std::string::npos ||
+        resolved_name.find("SetShRegistersIndirect") != std::string::npos ||
+        resolved_name.find("SetUcRegistersIndirect") != std::string::npos) {
+        if (nid == "-HOOCn0JY48" || nid == "hvUfkUIQcOE") {
+            uint32_t sh_payload[2] = { 0, static_cast<uint32_t>(rsi & 0xFFFFFFFFULL) };
+            EmitPm4PacketToGuestCb(rdi, static_cast<uint8_t>(Pm4Opcode::IT_SET_SH_REG), sh_payload, 2);
+        }
+        ++stats_.sh_reg_writes;
+        *out_ret = 0;
+        return true;
+    }
+    if (nid == "57labkp+rSQ" || nid == "KT-hTp-Ch14" ||
+        resolved_name == "sceAgcDcbAcquireMem" || resolved_name == "sceAgcAcbAcquireMem") {
+        uint32_t acq_payload[2] = { static_cast<uint32_t>(rsi), static_cast<uint32_t>(rdx) };
+        EmitPm4PacketToGuestCb(rdi, static_cast<uint8_t>(Pm4Opcode::IT_ACQUIRE_MEM), acq_payload, 2);
+        *out_ret = 0;
+        return true;
+    }
+    if (nid == "-RnpfpxIhec" || resolved_name == "sceAgcAcbDmaData" || resolved_name == "sceAgcDcbDmaData") {
+        uint32_t dma_payload[2] = { static_cast<uint32_t>(rsi), static_cast<uint32_t>(rdx) };
+        EmitPm4PacketToGuestCb(rdi, static_cast<uint8_t>(Pm4Opcode::IT_DMA_DATA), dma_payload, 2);
+        *out_ret = 0;
+        return true;
+    }
+
     // Default handler for all remaining libSceAgc register/patch helpers
     (void)r9;
     *out_ret = 0;
@@ -470,6 +547,18 @@ void AgcDriverHleManager::PrintLiveAgcBreakdown() const {
                   << " : " << std::setw(5) << cnt << " calls | last_rdi=0x"
                   << std::hex << last_arg << std::dec << "\n";
     }
+    if (!live_markers_.empty()) {
+        std::cout << "    Live Guest Render Pass Markers Captured (" << live_markers_.size() << " passes): ";
+        for (size_t i = 0; i < live_markers_.size() && i < 16; ++i) {
+            if (i > 0) std::cout << " -> ";
+            std::cout << "'" << live_markers_[i] << "'";
+        }
+        std::cout << "\n";
+    }
+    std::cout << "    Live AGC Command Stream Telemetry: DCB Submissions=" << stats_.dcb_submissions
+              << " | ACB Submissions=" << stats_.acb_submissions
+              << " | SH/UC Reg Patches=" << stats_.sh_reg_writes
+              << " | EOP Fences Signaled=" << stats_.eop_fences_signaled << "\n";
 }
 
 size_t AgcDriverHleManager::CompileAndVerifyRegisteredShadersOnGpu(size_t max_compile_batch) {

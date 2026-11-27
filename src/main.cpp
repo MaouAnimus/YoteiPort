@@ -205,9 +205,21 @@ LONG WINAPI GuestVehHandler(EXCEPTION_POINTERS* ep) {
             ep->ContextRecord->Rip = 0x8002dca13ULL;
             return EXCEPTION_CONTINUE_EXECUTION;
         }
-        if (rip >= 0x8017335f3ULL && rip <= 0x801733645ULL) {
-            ep->ContextRecord->Rip = 0x80173364dULL;
-            return EXCEPTION_CONTINUE_EXECUTION;
+        if (rip == 0x800b80758ULL && ep->ContextRecord->R8 == 0) {
+            uint64_t saved_rbp = SafeReadPtr(ep->ContextRecord->Rbp);
+            uint64_t saved_rip = SafeReadPtr(ep->ContextRecord->Rbp + 8);
+            if (saved_rip >= g_guest_code_start && saved_rip < g_guest_code_end) {
+                ep->ContextRecord->R15 = SafeReadPtr(ep->ContextRecord->Rbp - 8);
+                ep->ContextRecord->R14 = SafeReadPtr(ep->ContextRecord->Rbp - 16);
+                ep->ContextRecord->R13 = SafeReadPtr(ep->ContextRecord->Rbp - 24);
+                ep->ContextRecord->R12 = SafeReadPtr(ep->ContextRecord->Rbp - 32);
+                ep->ContextRecord->Rbx = SafeReadPtr(ep->ContextRecord->Rbp - 40);
+                ep->ContextRecord->Rax = 0;
+                ep->ContextRecord->Rsp = ep->ContextRecord->Rbp + 16;
+                ep->ContextRecord->Rbp = saved_rbp;
+                ep->ContextRecord->Rip = saved_rip;
+                return EXCEPTION_CONTINUE_EXECUTION;
+            }
         }
     }
 
@@ -245,6 +257,12 @@ LONG WINAPI GuestVehHandler(EXCEPTION_POINTERS* ep) {
 
     // Inspect faulting instruction pointer (no raw byte dump)
     uint8_t* p = reinterpret_cast<uint8_t*>(rip);
+
+    if (code == EXCEPTION_ACCESS_VIOLATION && ep->ExceptionRecord->NumberParameters >= 2) {
+        uint64_t fault_addr = ep->ExceptionRecord->ExceptionInformation[1];
+        std::cout << "    FaultAddr=0x" << std::hex << fault_addr
+                  << " Access=" << ep->ExceptionRecord->ExceptionInformation[0] << std::dec << "\n" << std::flush;
+    }
 
     if (code == EXCEPTION_ACCESS_VIOLATION) {
         // Skip operand-size override prefixes (0x66)
@@ -1291,9 +1309,6 @@ int main(int argc, char** argv) {
                 DWORD wait_rc = ::WaitForSingleObject(h_main_runner, wait_per_tick_ms);
                 frame_loop.ExecuteFrameTick(59, 384, live_cs);
                 if (wait_rc == WAIT_OBJECT_0 && !interactive_mode) break;
-                if (!interactive_mode && yotei::graphics::AgcDriverHleManager::Instance().GetStats().shaders_created >= 1500) {
-                    break;
-                }
             }
             frame_loop.Shutdown();
 

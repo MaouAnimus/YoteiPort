@@ -208,7 +208,12 @@ Rdna2ShaderAnalysis Rdna2ShaderAnalyzer::AnalyzeIsa(
             ++out.valu_count;
             uint8_t vdst = static_cast<uint8_t>(w0 & 0xFF);
             uint16_t op  = static_cast<uint16_t>((w0 >> 16) & 0x3FF);
-            mnem = "v_vop3_op";
+            if (op == 0x151 || op == 0x152) mnem = "v_mad_f32";
+            else if (op == 0x153 || op == 0x14B) mnem = "v_fma_f32";
+            else if (op == 0x169 || op == 0x1C3) mnem = "v_alignbit_b32";
+            else if (op == 0x200 || op == 0x201) mnem = "v_interp_p1_f32";
+            else if (op == 0x202) mnem = "v_interp_p2_f32";
+            else mnem = "v_vop3_op";
             ops << "v" << int(vdst) << " (op=0x" << std::hex << op << ")";
             if (out.sample_disassembly.size() < max_disasm_lines) {
                 out.sample_disassembly.push_back({
@@ -223,18 +228,30 @@ Rdna2ShaderAnalysis Rdna2ShaderAnalyzer::AnalyzeIsa(
             if ((w0 >> 25) == 0x3F) {
                 uint8_t vdst = static_cast<uint8_t>((w0 >> 17) & 0xFF);
                 uint8_t op   = static_cast<uint8_t>((w0 >> 9) & 0xFF);
-                mnem = (op == 0x01) ? "v_mov_b32" : "v_vop1";
+                if (op == 0x01) mnem = "v_mov_b32";
+                else if (op == 0x05) mnem = "v_cvt_f32_i32";
+                else if (op == 0x06) mnem = "v_cvt_f32_u32";
+                else if (op == 0x2A || op == 0x2B) mnem = "v_rcp_f32";
+                else if (op == 0x2E || op == 0x2F) mnem = "v_rsq_f32";
+                else mnem = "v_vop1";
                 ops << "v" << int(vdst) << ", src0=" << int(w0 & 0x1FF);
             } else {
                 uint8_t op   = static_cast<uint8_t>((w0 >> 25) & 0x3F);
                 uint8_t vdst = static_cast<uint8_t>((w0 >> 17) & 0xFF);
                 switch (op) {
+                    case 0x01: mnem = "v_cndmask_b32"; break;
                     case 0x03: mnem = "v_add_f32"; break;
                     case 0x04: mnem = "v_sub_f32"; break;
                     case 0x08: mnem = "v_mul_f32"; break;
+                    case 0x0A: mnem = "v_min_f32"; break;
+                    case 0x0B: mnem = "v_max_f32"; break;
+                    case 0x16: mnem = "v_lshrrev_b32"; break;
+                    case 0x1A: mnem = "v_lshlrev_b32"; break;
                     case 0x1B: mnem = "v_and_b32"; break;
                     case 0x1C: mnem = "v_or_b32"; break;
+                    case 0x1D: mnem = "v_xor_b32"; break;
                     case 0x25: mnem = "v_add_nc_u32"; break;
+                    case 0x26: mnem = "v_sub_nc_u32"; break;
                     case 0x2B: mnem = "v_fmac_f32"; break;
                     default:   mnem = "v_vop2"; break;
                 }
@@ -353,7 +370,10 @@ std::vector<uint32_t> Rdna2ShaderAnalyzer::TranslateRdna2ToSpirv(
             body_ops.push_back(prev_float);
             body_ops.push_back(8U);
             prev_float = res_id;
-        } else if (ins.mnemonic == "v_mul_f32" || ins.mnemonic == "v_fmac_f32") {
+        } else if (ins.mnemonic == "v_mul_f32" || ins.mnemonic == "v_fmac_f32" ||
+                   ins.mnemonic == "v_mad_f32" || ins.mnemonic == "v_fma_f32" ||
+                   ins.mnemonic == "v_interp_p1_f32" || ins.mnemonic == "v_interp_p2_f32" ||
+                   ins.mnemonic == "v_vop3_op") {
             uint32_t res_id = bound++;
             body_ops.push_back((5U << 16) | 133U);
             body_ops.push_back(6U);
@@ -361,7 +381,33 @@ std::vector<uint32_t> Rdna2ShaderAnalyzer::TranslateRdna2ToSpirv(
             body_ops.push_back(prev_float);
             body_ops.push_back(8U);
             prev_float = res_id;
-        } else if (ins.mnemonic == "v_add_nc_u32" || ins.mnemonic == "s_add_u32") {
+        } else if (ins.mnemonic == "v_rcp_f32" || ins.mnemonic == "v_rsq_f32" ||
+                   ins.mnemonic == "v_min_f32" || ins.mnemonic == "v_max_f32" ||
+                   ins.mnemonic == "v_cvt_f32_i32" || ins.mnemonic == "v_cvt_f32_u32") {
+            uint32_t res_id = bound++;
+            body_ops.push_back((5U << 16) | 129U); // OpFAdd
+            body_ops.push_back(6U);
+            body_ops.push_back(res_id);
+            body_ops.push_back(prev_float);
+            body_ops.push_back(8U);
+            prev_float = res_id;
+        } else if (ins.mnemonic == "s_lshl_b32" || ins.mnemonic == "v_lshlrev_b32") {
+            uint32_t res_id = bound++;
+            body_ops.push_back((5U << 16) | 196U); // OpShiftLeftLogical
+            body_ops.push_back(5U);
+            body_ops.push_back(res_id);
+            body_ops.push_back(prev_uint);
+            body_ops.push_back(7U);
+            prev_uint = res_id;
+        } else if (ins.mnemonic == "s_lshr_b32" || ins.mnemonic == "v_lshrrev_b32" || ins.mnemonic == "v_alignbit_b32") {
+            uint32_t res_id = bound++;
+            body_ops.push_back((5U << 16) | 194U); // OpShiftRightLogical
+            body_ops.push_back(5U);
+            body_ops.push_back(res_id);
+            body_ops.push_back(prev_uint);
+            body_ops.push_back(7U);
+            prev_uint = res_id;
+        } else if (ins.mnemonic == "v_add_nc_u32" || ins.mnemonic == "s_add_u32" || ins.mnemonic == "v_cndmask_b32") {
             uint32_t res_id = bound++;
             body_ops.push_back((5U << 16) | 128U);
             body_ops.push_back(5U);
