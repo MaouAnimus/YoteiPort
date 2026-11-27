@@ -37,6 +37,7 @@ struct BoundSlotMeta {
     std::string nid;
     std::string resolved_name;
     uint64_t got_vaddr;
+    uint64_t call_count = 0;
 };
 
 std::vector<BoundSlotMeta> g_bound_slots;
@@ -49,12 +50,11 @@ uint64_t g_dummy_iob_object[16] = {0};
 std::mutex g_unhandled_mutex;
 std::unordered_map<std::string, UnhandledStubRecord> g_unhandled_stubs;
 std::mutex g_telemetry_mutex;
-std::unordered_map<std::string, uint64_t> g_library_call_counts;
-std::unordered_set<std::string> g_unique_nids_invoked;
 bool g_verbose_unhandled = false;
 
 struct GameMainCallRecord {
     size_t global_seq = 0;
+    uint64_t slot_index = 0;
     std::string library;
     std::string resolved_name;
     std::string nid;
@@ -67,8 +67,18 @@ struct GameMainCallRecord {
 std::atomic<uint32_t> g_game_main_host_tid{0};
 std::vector<GameMainCallRecord> g_main_thread_timeline;
 
+static uint64_t HleDispatchInner(
+    uint64_t slot_index,
+    uint64_t guest_rdi,
+    uint64_t guest_rsi,
+    uint64_t guest_rdx,
+    uint64_t guest_rcx,
+    uint64_t guest_r8,
+    uint64_t guest_r9,
+    uint64_t guest_stack_arg0);
+
 // SysV AMD64 ABI passes args in: RDI, RSI, RDX, RCX, R8, R9.
-// Our generated 32-byte x86-64 trampoline translates a SysV call into MS x64 call:
+// Our generated 96-byte x86-64 trampoline translates a SysV call into MS x64 call:
 //   RCX = slot_index
 //   RDX = guest_rdi (arg1)
 //   R8  = guest_rsi (arg2)
@@ -80,52 +90,77 @@ extern "C" uint64_t __fastcall HleDispatchTrampoline(
     uint64_t guest_rdx,
     uint64_t guest_rcx,
     uint64_t guest_r8,
-    uint64_t guest_r9) {
-    if (slot_index >= g_bound_slots.size()) return 0;
-    const auto& meta = g_bound_slots[slot_index];
-    size_t cur_call = 0;
-    {
-        std::lock_guard<std::mutex> tlock(g_telemetry_mutex);
-        cur_call = ++g_call_counter;
-        g_library_call_counts[meta.library]++;
-        g_unique_nids_invoked.insert(meta.nid);
+    uint64_t guest_r9,
+    uint64_t guest_stack_arg0) {
 #ifdef _WIN32
-        uint32_t target_tid = g_game_main_host_tid.load(std::memory_order_relaxed);
-        if (target_tid != 0 && ::GetCurrentThreadId() == target_tid) {
+    __try {
+        return HleDispatchInner(
+            slot_index, guest_rdi, guest_rsi, guest_rdx,
+            guest_rcx, guest_r8, guest_r9, guest_stack_arg0);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        if (slot_index < g_bound_slots.size()) {
+            const auto& meta = g_bound_slots[slot_index];
+            std::cout << "  [HLE SEH GUARD] Fault inside " << meta.library << "::" << meta.resolved_name
+                      << " (" << meta.nid << ") rdi=0x" << std::hex << guest_rdi
+                      << " rsi=0x" << guest_rsi << " rdx=0x" << guest_rdx << std::dec << " -> returning 0\n" << std::flush;
+        }
+        return 0;
+    }
+#else
+    return HleDispatchInner(
+        slot_index, guest_rdi, guest_rsi, guest_rdx,
+        guest_rcx, guest_r8, guest_r9, guest_stack_arg0);
+#endif
+}
+
+static uint64_t HleDispatchInner(
+    uint64_t slot_index,
+    uint64_t guest_rdi,
+    uint64_t guest_rsi,
+    uint64_t guest_rdx,
+    uint64_t guest_rcx,
+    uint64_t guest_r8,
+    uint64_t guest_r9,
+    uint64_t guest_stack_arg0) {
+    if (slot_index >= g_bound_slots.size()) return 0;
+    auto& meta = g_bound_slots[slot_index];
+    size_t cur_call = ++g_call_counter;
+    InterlockedIncrement64(reinterpret_cast<volatile LONG64*>(&meta.call_count));
+
+#ifdef _WIN32
+    uint32_t target_tid = g_game_main_host_tid.load(std::memory_order_relaxed);
+    if (target_tid != 0 && ::GetCurrentThreadId() == target_tid) {
+        // Fast path for single-threaded game_main timeline tracking
+        if (!g_main_thread_timeline.empty() &&
+            g_main_thread_timeline.back().slot_index == slot_index) {
+            auto& back = g_main_thread_timeline.back();
+            back.repeat_count++;
+            back.rdi = guest_rdi;
+            back.rsi = guest_rsi;
+            back.rdx = guest_rdx;
+        } else if (g_main_thread_timeline.size() >= 2 &&
+                   g_main_thread_timeline[g_main_thread_timeline.size() - 2].slot_index == slot_index) {
+            auto& prev2 = g_main_thread_timeline[g_main_thread_timeline.size() - 2];
+            prev2.repeat_count++;
+            prev2.rdi = guest_rdi;
+            prev2.rsi = guest_rsi;
+            prev2.rdx = guest_rdx;
+        } else {
+            std::lock_guard<std::mutex> tlock(g_telemetry_mutex);
             std::string disp_name = meta.resolved_name;
             if (meta.resolved_name == "fopen" && guest_rdi > 0x10000ULL) {
                 disp_name += "('" + std::string(reinterpret_cast<const char*>(guest_rdi)) + "')";
             }
-            // Collapse 1-step consecutive identical NIDs OR 2-step alternating loops (e.g., fread/memcpy or RegisterResource/CreateShader)
-            bool collapsed = false;
-            if (!g_main_thread_timeline.empty() &&
-                g_main_thread_timeline.back().nid == meta.nid) {
-                g_main_thread_timeline.back().repeat_count++;
-                g_main_thread_timeline.back().rdi = guest_rdi;
-                g_main_thread_timeline.back().rsi = guest_rsi;
-                g_main_thread_timeline.back().rdx = guest_rdx;
-                collapsed = true;
-            } else if (g_main_thread_timeline.size() >= 2 &&
-                       g_main_thread_timeline[g_main_thread_timeline.size() - 2].nid == meta.nid) {
-                auto& prev2 = g_main_thread_timeline[g_main_thread_timeline.size() - 2];
-                prev2.repeat_count++;
-                prev2.rdi = guest_rdi;
-                prev2.rsi = guest_rsi;
-                prev2.rdx = guest_rdx;
-                collapsed = true;
+            if (g_main_thread_timeline.size() >= 256) {
+                g_main_thread_timeline.erase(g_main_thread_timeline.begin());
             }
-            if (!collapsed) {
-                if (g_main_thread_timeline.size() >= 256) {
-                    g_main_thread_timeline.erase(g_main_thread_timeline.begin());
-                }
-                g_main_thread_timeline.push_back({
-                    cur_call, meta.library, disp_name, meta.nid,
-                    guest_rdi, guest_rsi, guest_rdx, 1
-                });
-            }
+            g_main_thread_timeline.push_back({
+                cur_call, slot_index, meta.library, disp_name, meta.nid,
+                guest_rdi, guest_rsi, guest_rdx, 1
+            });
         }
-#endif
     }
+#endif
 
     if (cur_call <= 120) {
         std::cout << "  [HLE #" << std::setw(2) << cur_call << "] "
@@ -142,7 +177,7 @@ extern "C" uint64_t __fastcall HleDispatchTrampoline(
     uint64_t sub_ret = 0;
     if (AmprHleManager::Instance().DispatchNid(
             meta.nid, meta.resolved_name,
-            guest_rdi, guest_rsi, guest_rdx, guest_rcx, guest_r8, guest_r9, &sub_ret)) {
+            guest_rdi, guest_rsi, guest_rdx, guest_rcx, guest_r8, guest_r9, &sub_ret, guest_stack_arg0)) {
         return sub_ret;
     }
 
@@ -270,10 +305,11 @@ extern "C" uint64_t __fastcall HleDispatchTrampoline(
     // File I/O operations
     if (meta.nid == "1G3lF1Gg1k8" || meta.resolved_name == "sceKernelOpen" || meta.resolved_name == "FileSystem::KernelOpen" || meta.resolved_name == "open") {
         if (guest_rdi < 0x1000) return static_cast<uint64_t>(-14); // EFAULT
-        return static_cast<uint64_t>(vfs.Open(
+        int32_t fd = vfs.Open(
             reinterpret_cast<const char*>(guest_rdi),
             static_cast<int32_t>(guest_rsi),
-            static_cast<int32_t>(guest_rdx)));
+            static_cast<int32_t>(guest_rdx));
+        return static_cast<uint64_t>(fd);
     }
     if (meta.nid == "Cg4srZ6TKbU" || meta.resolved_name == "sceKernelRead" || meta.resolved_name == "FileSystem::KernelRead" || meta.resolved_name == "read") {
         if (guest_rsi < 0x1000) return static_cast<uint64_t>(-14);
@@ -281,6 +317,24 @@ extern "C" uint64_t __fastcall HleDispatchTrampoline(
             static_cast<int32_t>(guest_rdi),
             reinterpret_cast<void*>(guest_rsi),
             guest_rdx));
+    }
+    if (meta.nid == "4wSze92BhLI" || meta.resolved_name == "sceKernelWrite" || meta.resolved_name == "write") {
+        if (guest_rsi < 0x1000) return static_cast<uint64_t>(-14);
+        return static_cast<uint64_t>(vfs.Write(
+            static_cast<int32_t>(guest_rdi),
+            reinterpret_cast<const void*>(guest_rsi),
+            guest_rdx));
+    }
+    if (meta.nid == "oib76F-12fk" || meta.resolved_name == "sceKernelLseek" || meta.resolved_name == "lseek") {
+        return static_cast<uint64_t>(vfs.Lseek(
+            static_cast<int32_t>(guest_rdi),
+            static_cast<int64_t>(guest_rsi),
+            static_cast<int32_t>(guest_rdx)));
+    }
+    if (meta.nid == "j2AIqSqJP0w" || meta.resolved_name == "sceKernelGetdents") {
+        std::cout << "  [VFS] sceKernelGetdents(fd=" << std::dec << static_cast<int32_t>(guest_rdi)
+                  << ", buf=0x" << std::hex << guest_rsi << ", count=" << std::dec << guest_rdx << ")\n" << std::flush;
+        return 0; // EOF / 0 directory entries remaining
     }
     if (meta.resolved_name == "sceKernelPread" || meta.resolved_name == "FileSystem::KernelPread" || meta.resolved_name == "pread") {
         if (guest_rsi < 0x1000) return static_cast<uint64_t>(-14);
@@ -416,15 +470,18 @@ extern "C" uint64_t __fastcall HleDispatchTrampoline(
     }
     if (meta.library == "libSceRtc" ||
         meta.nid == "18B2NS1y9UU" || meta.nid == "zO9UL3qIINQ" || meta.nid == "M1TvFst-jrM") {
-        // sceRtcGetCurrentTick / sceRtcGetCurrentNetworkTick / sceRtcConvertUtcToLocalTime
+        // sceRtcGetCurrentTick(rdi=out_tick) / sceRtcGetCurrentNetworkTick(rdi=out_tick)
+        // sceRtcConvertUtcToLocalTime(const SceRtcTick* pUtc=rdi, SceRtcTick* pLocal=rsi)
         auto now_us = std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::system_clock::now().time_since_epoch()).count();
         uint64_t ps5_rtc_tick = 62135596800000000ULL + static_cast<uint64_t>(now_us);
-        if (guest_rdi >= 0x1000) {
+        if (meta.nid == "M1TvFst-jrM") {
+            uint64_t utc_val = (guest_rdi >= 0x1000) ? *reinterpret_cast<const uint64_t*>(guest_rdi) : ps5_rtc_tick;
+            if (guest_rsi >= 0x1000) {
+                *reinterpret_cast<uint64_t*>(guest_rsi) = utc_val;
+            }
+        } else if (guest_rdi >= 0x1000) {
             *reinterpret_cast<uint64_t*>(guest_rdi) = ps5_rtc_tick;
-        }
-        if (meta.nid == "M1TvFst-jrM" && guest_rdx >= 0x1000) {
-            *reinterpret_cast<uint64_t*>(guest_rdx) = ps5_rtc_tick;
         }
         return 0; // SCE_OK
     }
@@ -503,6 +560,69 @@ extern "C" uint64_t __fastcall HleDispatchTrampoline(
         }
         return 0;
     }
+    if (meta.nid == "uMei1W9uyNo" || meta.resolved_name == "exit") {
+        std::cout << "  [HLE EXIT] Guest called exit(" << static_cast<int32_t>(guest_rdi)
+                  << ") at Global #" << cur_call << " (RSI=0x" << std::hex << guest_rsi
+                  << " RDX=0x" << guest_rdx << ")\n";
+        // Inspect "all_shaders" package at [0x806d8a6d8 + 0x540] and request at [0x806d8a6d8 + 0x548]
+        uint64_t pkg_ptr = *reinterpret_cast<uint64_t*>(0x806d8a6d8ULL + 0x540);
+        uint64_t req_ptr = *reinterpret_cast<uint64_t*>(0x806d8a6d8ULL + 0x548);
+        uint64_t pg_arr  = *reinterpret_cast<uint64_t*>(0x806b6dd70ULL);
+        int32_t  pg_cnt  = *reinterpret_cast<int32_t*>(0x806b6dd78ULL);
+        std::cout << "    [AllShaders] pkg_ptr=0x" << pkg_ptr << " req_ptr=0x" << req_ptr
+                  << " [0x806b6dd88]=0x" << *reinterpret_cast<uint64_t*>(0x806b6dd88ULL)
+                  << " pg_arr=0x" << pg_arr << " pg_cnt=" << std::dec << pg_cnt << std::hex << "\n";
+        if (pg_arr > 0x10000000ULL && pg_cnt > 0 && pg_cnt < 64) {
+            for (int32_t c = 0; c < pg_cnt; ++c) {
+                uint64_t e = pg_arr + c * 40;
+                std::cout << "      [Chunk " << std::dec << c << std::hex << "] +19=" << (int)*reinterpret_cast<uint8_t*>(e + 0x19)
+                          << " +20=" << (int)*reinterpret_cast<uint8_t*>(e + 0x20)
+                          << " +21=" << (int)*reinterpret_cast<uint8_t*>(e + 0x21)
+                          << " +22=" << (int)*reinterpret_cast<uint8_t*>(e + 0x22) << "\n";
+            }
+        }
+        if (pkg_ptr > 0x10000000ULL) {
+            uint64_t file_ptr = *reinterpret_cast<uint64_t*>(pkg_ptr + 0xa8);
+            std::cout << "    [Pkg 0x" << pkg_ptr << "] +70(type)=0x" << (int)*reinterpret_cast<uint8_t*>(pkg_ptr + 0x70)
+                      << " +71(hi_state)=0x" << (int)*reinterpret_cast<uint8_t*>(pkg_ptr + 0x71)
+                      << " +88(lo_state)=0x" << *reinterpret_cast<uint32_t*>(pkg_ptr + 0x88)
+                      << " +90(err)=0x" << *reinterpret_cast<uint32_t*>(pkg_ptr + 0x90)
+                      << " +a0(active_req)=0x" << *reinterpret_cast<uint64_t*>(pkg_ptr + 0xa0)
+                      << " +a8(file)=0x" << file_ptr << "\n";
+            if (file_ptr > 0x10000000ULL) {
+                std::cout << "    [File 0x" << file_ptr << "] +78(size)=0x" << *reinterpret_cast<uint64_t*>(file_ptr + 0x78)
+                          << " +f8=0x" << *reinterpret_cast<uint32_t*>(file_ptr + 0xf8)
+                          << " +fc(status)=0x" << *reinterpret_cast<uint32_t*>(file_ptr + 0xfc)
+                          << " +100(fd)=0x" << *reinterpret_cast<uint32_t*>(file_ptr + 0x100)
+                          << " +104(apr_id)=0x" << *reinterpret_cast<uint32_t*>(file_ptr + 0x104)
+                          << " +114(state)=0x" << *reinterpret_cast<uint32_t*>(file_ptr + 0x114) << "\n";
+            }
+        }
+        if (req_ptr > 0x10000000ULL) {
+            std::cout << "    [Req 0x" << req_ptr << "] +6c=0x" << *reinterpret_cast<uint32_t*>(req_ptr + 0x6c)
+                      << " +70=0x" << *reinterpret_cast<uint32_t*>(req_ptr + 0x70)
+                      << " +74(err)=0x" << *reinterpret_cast<uint32_t*>(req_ptr + 0x74)
+                      << " +78=0x" << (int)*reinterpret_cast<uint8_t*>(req_ptr + 0x78) << "\n";
+        }
+        uint64_t pkg_mgr = 0x80549d6a0ULL;
+        uint64_t req_arr = *reinterpret_cast<uint64_t*>(pkg_mgr + 0xa8);
+        int32_t  req_cnt = *reinterpret_cast<int32_t*>(pkg_mgr + 0xb0);
+        int32_t  act_cnt = *reinterpret_cast<int32_t*>(pkg_mgr + 0xc0);
+        std::cout << "    [PkgMgr 0x80549d6a0] req_arr=0x" << req_arr
+                  << " req_cnt=" << std::dec << req_cnt << " act_cnt=" << act_cnt << std::hex << "\n";
+        // Also inspect FileManager [0x804ddeb38]
+        uint64_t fm = 0x804ddeb38ULL;
+        std::cout << "    [FileMgr 0x804ddeb38] +2bc(q0_tid)=0x" << *reinterpret_cast<uint32_t*>(fm + 0x2b4)
+                  << " +2c0=0x" << *reinterpret_cast<uint32_t*>(fm + 0x2b8)
+                  << " +2c4=0x" << *reinterpret_cast<uint32_t*>(fm + 0x2bc)
+                  << " free_files=0x" << *reinterpret_cast<uint64_t*>(fm + 0x148)
+                  << " files_per_slab=0x" << *reinterpret_cast<uint32_t*>(fm + 0x120)
+                  << " paths_per_slab=0x" << *reinterpret_cast<uint32_t*>(0x804ddebe8ULL)
+                  << std::dec << "\n" << std::flush;
+        while (true) {
+            Sleep(1000);
+        }
+    }
     if (meta.nid == "tsvEmnenz48" || meta.resolved_name == "__cxa_atexit") {
         // __cxa_atexit(func, arg, dso_handle) -> 0 (SCE_OK)
         return 0;
@@ -520,40 +640,55 @@ extern "C" uint64_t __fastcall HleDispatchTrampoline(
     // libSceAudioOut2 (18 NIDs) - Audio output
     if (meta.library == "libSceAudioOut2") {
         auto& audio = yotei::audio::AudioOut2HleManager::Instance();
+        auto is_valid_out_ptr = [](uint64_t p) -> bool {
+#ifdef _WIN32
+            if (p < 0x100000ULL) return false;
+            MEMORY_BASIC_INFORMATION mbi{};
+            if (::VirtualQuery(reinterpret_cast<LPCVOID>(p), &mbi, sizeof(mbi)) == 0) return false;
+            return (mbi.State == MEM_COMMIT) &&
+                   (mbi.Protect & (PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY));
+#else
+            return p >= 0x100000ULL;
+#endif
+        };
         if (meta.resolved_name == "sceAudioOut2Initialize") {
             return audio.Initialize() ? 0 : -1;
         }
         if (meta.resolved_name == "sceAudioOut2PortCreate") {
-            int32_t handle = 0;
-            const char* name = reinterpret_cast<const char*>(guest_rdi);
+            int32_t handle = 1;
+            const char* name = is_valid_out_ptr(guest_rdi) ? reinterpret_cast<const char*>(guest_rdi) : "AudioPort";
             uint32_t port_type = static_cast<uint32_t>(guest_rsi);
             uint32_t param = static_cast<uint32_t>(guest_rdx);
-            int32_t* out_h = reinterpret_cast<int32_t*>(guest_rcx ? guest_rcx : (guest_rdx ? guest_rdx : guest_rsi));
             int32_t rc = audio.PortCreate(name, port_type, param, &handle);
-            if (out_h) *out_h = handle;
+            uint64_t out_addr = is_valid_out_ptr(guest_rcx) ? guest_rcx
+                              : (is_valid_out_ptr(guest_rdx) ? guest_rdx
+                              : (is_valid_out_ptr(guest_rsi) ? guest_rsi : 0));
+            if (out_addr) *reinterpret_cast<int32_t*>(out_addr) = handle;
             return rc;
         }
         if (meta.resolved_name == "sceAudioOut2UserCreate") {
-            int32_t user = 0;
-            int32_t* out_u = reinterpret_cast<int32_t*>(guest_rsi ? guest_rsi : guest_rdi);
+            int32_t user = 1;
             int32_t rc = audio.UserCreate(reinterpret_cast<void*>(guest_rdi), &user);
-            if (out_u) *out_u = user;
+            uint64_t out_addr = is_valid_out_ptr(guest_rsi) ? guest_rsi : (is_valid_out_ptr(guest_rdi) ? guest_rdi : 0);
+            if (out_addr) *reinterpret_cast<int32_t*>(out_addr) = user;
             return rc;
         }
         if (meta.resolved_name == "sceAudioOut2ContextCreate") {
-            int32_t ctx = 0;
+            int32_t ctx = 1;
             int32_t port_h = static_cast<int32_t>(guest_rdi);
             void* param = reinterpret_cast<void*>(guest_rsi);
-            int32_t* out_c = reinterpret_cast<int32_t*>(guest_rdx ? guest_rdx : guest_rcx);
             int32_t rc = audio.ContextCreate(port_h, param, &ctx);
-            if (out_c) *out_c = ctx;
+            uint64_t out_addr = is_valid_out_ptr(guest_rdx) ? guest_rdx
+                              : (is_valid_out_ptr(guest_rcx) ? guest_rcx
+                              : (is_valid_out_ptr(guest_rdi) ? guest_rdi : 0));
+            if (out_addr) *reinterpret_cast<int32_t*>(out_addr) = ctx;
             return rc;
         }
         if (meta.resolved_name == "sceAudioOut2ContextQueryMemory") {
             uint64_t mem_sz = 65536;
-            uint64_t* out_sz = reinterpret_cast<uint64_t*>(guest_rsi ? guest_rsi : guest_rdi);
             int32_t rc = audio.ContextQueryMemory(reinterpret_cast<void*>(guest_rdi), &mem_sz);
-            if (out_sz) *out_sz = mem_sz;
+            uint64_t out_addr = is_valid_out_ptr(guest_rsi) ? guest_rsi : (is_valid_out_ptr(guest_rdi) ? guest_rdi : 0);
+            if (out_addr) *reinterpret_cast<uint64_t*>(out_addr) = mem_sz;
             return rc;
         }
         if (meta.resolved_name == "sceAudioOut2ContextGetQueueLevel") {
@@ -753,6 +888,17 @@ extern "C" uint64_t __fastcall HleDispatchTrampoline(
             }
             return 0;
         }
+        if (meta.nid == "yH17Q6NWtVg" || meta.resolved_name == "sceUserServiceGetEvent") {
+            // Return first login event once, then SCE_USER_SERVICE_ERROR_NO_EVENT (0x80960004)
+            static std::atomic<bool> s_login_event_sent{false};
+            if (!s_login_event_sent.exchange(true) && guest_rdi > 0x1000) {
+                auto* ev = reinterpret_cast<int32_t*>(guest_rdi);
+                ev[0] = 0;          // SCE_USER_SERVICE_EVENT_TYPE_LOGIN
+                ev[1] = 0x10000001; // Primary active user ID
+                return 0;           // SCE_OK
+            }
+            return 0x80960004U; // SCE_USER_SERVICE_ERROR_NO_EVENT
+        }
         // Default for any other UserService: SCE_OK
         return 0;
     }
@@ -768,30 +914,60 @@ extern "C" uint64_t __fastcall HleDispatchTrampoline(
         return 0; // SCE_OK default
     }
 
-    // libScePlayGo (9 NIDs) - PlayGo streaming/chunk management
-    if (meta.library == "libScePlayGo") {
+    // libScePlayGo (9+ NIDs) - PlayGo streaming/chunk management
+    if (meta.library == "libScePlayGo" || meta.library == "libScePlayGoDialog") {
         if (meta.resolved_name == "scePlayGoInitialize") return 0;
         if (meta.resolved_name == "scePlayGoOpen") {
-            if (guest_rdi != 0) *reinterpret_cast<uint32_t*>(guest_rdi) = 1; // handle
+            if (guest_rdi > 0x1000) *reinterpret_cast<uint32_t*>(guest_rdi) = 1; // handle
             return 0;
         }
         if (meta.resolved_name == "scePlayGoClose") return 0;
         if (meta.resolved_name == "scePlayGoGetChunkId") {
-            if (guest_rsi != 0) *reinterpret_cast<uint32_t*>(guest_rsi) = 0;
+            // scePlayGoGetChunkId(handle=edi, uint16_t* outChunkIds=rsi, uint32_t maxEntries=edx, uint32_t* outEntries=rcx)
+            uint32_t max_entries = static_cast<uint32_t>(guest_rdx);
+            uint32_t count = (max_entries < 64) ? max_entries : 64;
+            if (guest_rsi > 0x1000 && count > 0) {
+                auto* ids = reinterpret_cast<uint16_t*>(guest_rsi);
+                for (uint32_t i = 0; i < count; ++i) {
+                    ids[i] = static_cast<uint16_t>(i);
+                }
+            }
+            if (guest_rcx > 0x1000) {
+                *reinterpret_cast<uint32_t*>(guest_rcx) = count;
+            }
             return 0;
         }
         if (meta.resolved_name == "scePlayGoGetLocus") {
-            if (guest_rsi != 0) *reinterpret_cast<uint64_t*>(guest_rsi) = 0;
+            // scePlayGoGetLocus(handle=edi, const uint16_t* chunkIds=rsi, uint32_t count=edx, uint8_t* outLoci=rcx)
+            uint32_t count = static_cast<uint32_t>(guest_rdx);
+            if (guest_rcx > 0x1000 && count > 0 && count < 4096) {
+                // 3 = SCE_PLAYGO_LOCUS_LOCAL_FAST (fully installed on local SSD)
+                std::memset(reinterpret_cast<void*>(guest_rcx), 3, count);
+            }
             return 0;
         }
         if (meta.resolved_name == "scePlayGoSetToDoList") return 0;
         if (meta.resolved_name == "scePlayGoGetToDoList") {
-            if (guest_rsi != 0) *reinterpret_cast<uint32_t*>(guest_rsi) = 0;
+            // scePlayGoGetToDoList(handle=edi, outTodoList=rsi, uint32_t maxEntries=edx, uint32_t* outEntries=rcx)
+            if (guest_rcx > 0x1000) *reinterpret_cast<uint32_t*>(guest_rcx) = 0;
+            return 0;
+        }
+        if (meta.resolved_name == "scePlayGoGetProgress") {
+            // scePlayGoGetProgress(handle=edi, const uint16_t* chunkIds=rsi, uint32_t count=edx, ScePlayGoProgress* outProgress=rcx)
+            if (guest_rcx > 0x1000) {
+                auto* prog = reinterpret_cast<uint64_t*>(guest_rcx);
+                prog[0] = 0x100000ULL; // progressSize
+                prog[1] = 0x100000ULL; // totalSize
+            }
+            return 0;
+        }
+        if (meta.resolved_name == "scePlayGoGetEta") {
+            if (guest_rcx > 0x1000) *reinterpret_cast<uint64_t*>(guest_rcx) = 0;
             return 0;
         }
         if (meta.resolved_name == "scePlayGoRequest") return 0;
         if (meta.resolved_name == "scePlayGoCancel") return 0;
-        // Default for any other PlayGo: SCE_OK
+        // Default for any other PlayGo / PlayGoDialog: SCE_OK
         return 0;
     }
 
@@ -1028,6 +1204,193 @@ extern "C" uint64_t __fastcall HleDispatchTrampoline(
             }
             return -1;
         }
+
+        // Core C string, memory & formatting primitives (SysV va_list vsnprintf, snprintf, strcmp, strncmp, strcpy, memcmp, memmove, strchr, strrchr, strstr)
+        if (meta.nid == "Q2V+iqvjgC0" || meta.resolved_name == "vsnprintf") {
+            // vsnprintf(char* dst=rdi, size_t size=rsi, const char* fmt=rdx, SysV_va_list* ap=rcx)
+            if (guest_rdx <= 0x1000 || guest_rcx <= 0x1000) return 0;
+            struct SysVVaList {
+                uint32_t gp_offset;
+                uint32_t fp_offset;
+                uint8_t* overflow_arg_area;
+                uint8_t* reg_save_area;
+            };
+            SysVVaList va = *reinterpret_cast<const SysVVaList*>(guest_rcx);
+            auto next_gp = [&]() -> uint64_t {
+                if (va.gp_offset <= 40 && reinterpret_cast<uintptr_t>(va.reg_save_area) > 0x1000) {
+                    uint64_t v = *reinterpret_cast<const uint64_t*>(va.reg_save_area + va.gp_offset);
+                    va.gp_offset += 8;
+                    return v;
+                }
+                if (reinterpret_cast<uintptr_t>(va.overflow_arg_area) > 0x1000) {
+                    uint64_t v = *reinterpret_cast<const uint64_t*>(va.overflow_arg_area);
+                    va.overflow_arg_area += 8;
+                    return v;
+                }
+                return 0;
+            };
+            auto next_fp = [&]() -> double {
+                if (va.fp_offset <= 160 && reinterpret_cast<uintptr_t>(va.reg_save_area) > 0x1000) {
+                    double v = *reinterpret_cast<const double*>(va.reg_save_area + va.fp_offset);
+                    va.fp_offset += 16;
+                    return v;
+                }
+                if (reinterpret_cast<uintptr_t>(va.overflow_arg_area) > 0x1000) {
+                    double v = *reinterpret_cast<const double*>(va.overflow_arg_area);
+                    va.overflow_arg_area += 8;
+                    return v;
+                }
+                return 0.0;
+            };
+            const char* fmt = reinterpret_cast<const char*>(guest_rdx);
+            std::string out;
+            out.reserve(128);
+            for (size_t i = 0; fmt[i] != '\0'; ++i) {
+                if (fmt[i] != '%') {
+                    out.push_back(fmt[i]);
+                    continue;
+                }
+                ++i;
+                if (fmt[i] == '%') {
+                    out.push_back('%');
+                    continue;
+                }
+                size_t spec_start = i - 1;
+                while (fmt[i] == '-' || fmt[i] == '+' || fmt[i] == ' ' || fmt[i] == '#' || fmt[i] == '0') ++i;
+                if (fmt[i] == '*') { (void)next_gp(); ++i; }
+                else { while (fmt[i] >= '0' && fmt[i] <= '9') ++i; }
+                if (fmt[i] == '.') {
+                    ++i;
+                    if (fmt[i] == '*') { (void)next_gp(); ++i; }
+                    else { while (fmt[i] >= '0' && fmt[i] <= '9') ++i; }
+                }
+                bool is_long = false;
+                while (fmt[i] == 'h' || fmt[i] == 'l' || fmt[i] == 'j' || fmt[i] == 'z' || fmt[i] == 't' || fmt[i] == 'L') {
+                    if (fmt[i] == 'l' || fmt[i] == 'z' || fmt[i] == 'j' || fmt[i] == 't') is_long = true;
+                    ++i;
+                }
+                char conv = fmt[i];
+                if (conv == '\0') break;
+                char tmp[128]{};
+                if (conv == 's') {
+                    uint64_t s_ptr = next_gp();
+                    const char* s_val = (s_ptr > 0x1000) ? reinterpret_cast<const char*>(s_ptr) : "";
+                    out.append(s_val);
+                } else if (conv == 'c') {
+                    out.push_back(static_cast<char>(next_gp()));
+                } else if (conv == 'd' || conv == 'i') {
+                    uint64_t v = next_gp();
+                    std::snprintf(tmp, sizeof(tmp), "%lld", is_long ? static_cast<long long>(v) : static_cast<long long>(static_cast<int32_t>(v)));
+                    out.append(tmp);
+                } else if (conv == 'u' || conv == 'x' || conv == 'X' || conv == 'p' || conv == 'o') {
+                    uint64_t v = next_gp();
+                    std::string sub_fmt(fmt + spec_start, i - spec_start + 1);
+                    if (conv == 'p') std::snprintf(tmp, sizeof(tmp), "0x%llx", static_cast<unsigned long long>(v));
+                    else if (conv == 'x') std::snprintf(tmp, sizeof(tmp), "%llx", is_long ? static_cast<unsigned long long>(v) : static_cast<unsigned long long>(static_cast<uint32_t>(v)));
+                    else if (conv == 'X') std::snprintf(tmp, sizeof(tmp), "%llX", is_long ? static_cast<unsigned long long>(v) : static_cast<unsigned long long>(static_cast<uint32_t>(v)));
+                    else std::snprintf(tmp, sizeof(tmp), "%llu", is_long ? static_cast<unsigned long long>(v) : static_cast<unsigned long long>(static_cast<uint32_t>(v)));
+                    out.append(tmp);
+                } else if (conv == 'f' || conv == 'F' || conv == 'e' || conv == 'E' || conv == 'g' || conv == 'G') {
+                    double dv = next_fp();
+                    std::snprintf(tmp, sizeof(tmp), "%g", dv);
+                    out.append(tmp);
+                }
+            }
+            if (guest_rdi > 0x1000 && guest_rsi > 0) {
+                size_t copy_len = (std::min)(out.size(), static_cast<size_t>(guest_rsi - 1));
+                std::memcpy(reinterpret_cast<void*>(guest_rdi), out.data(), copy_len);
+                reinterpret_cast<char*>(guest_rdi)[copy_len] = '\0';
+            }
+            return static_cast<uint64_t>(out.size());
+        }
+        if (meta.nid == "kiZSXIWd9vg" || meta.resolved_name == "strcpy") {
+            if (guest_rdi > 0x1000 && guest_rsi > 0x1000) {
+                std::strcpy(reinterpret_cast<char*>(guest_rdi), reinterpret_cast<const char*>(guest_rsi));
+            }
+            return guest_rdi;
+        }
+        if (meta.nid == "Ovb2dSJOAuE" || meta.resolved_name == "strcmp") {
+            if (guest_rdi > 0x1000 && guest_rsi > 0x1000) {
+                return static_cast<uint64_t>(static_cast<int64_t>(std::strcmp(
+                    reinterpret_cast<const char*>(guest_rdi),
+                    reinterpret_cast<const char*>(guest_rsi))));
+            }
+            return 0;
+        }
+        if (meta.nid == "aesyjrHVWy4" || meta.resolved_name == "strncmp") {
+            if (guest_rdi > 0x1000 && guest_rsi > 0x1000) {
+                return static_cast<uint64_t>(static_cast<int64_t>(std::strncmp(
+                    reinterpret_cast<const char*>(guest_rdi),
+                    reinterpret_cast<const char*>(guest_rsi),
+                    static_cast<size_t>(guest_rdx))));
+            }
+            return 0;
+        }
+        if (meta.nid == "DfivPArhucg" || meta.resolved_name == "memcmp") {
+            if (guest_rdi > 0x1000 && guest_rsi > 0x1000 && guest_rdx > 0) {
+                return static_cast<uint64_t>(static_cast<int64_t>(std::memcmp(
+                    reinterpret_cast<const void*>(guest_rdi),
+                    reinterpret_cast<const void*>(guest_rsi),
+                    static_cast<size_t>(guest_rdx))));
+            }
+            return 0;
+        }
+        if (meta.nid == "+P6FRGH4LfA" || meta.resolved_name == "memmove") {
+            if (guest_rdi > 0x1000 && guest_rsi > 0x1000 && guest_rdx > 0 && guest_rdx < (1ULL << 28)) {
+                std::memmove(
+                    reinterpret_cast<void*>(guest_rdi),
+                    reinterpret_cast<const void*>(guest_rsi),
+                    static_cast<size_t>(guest_rdx));
+            }
+            return guest_rdi;
+        }
+        if (meta.nid == "ob5xAW4ln-0" || meta.resolved_name == "strchr") {
+            if (guest_rdi > 0x1000) {
+                const char* p = std::strchr(reinterpret_cast<const char*>(guest_rdi), static_cast<int>(guest_rsi));
+                return reinterpret_cast<uint64_t>(p);
+            }
+            return 0;
+        }
+        if (meta.nid == "9yDWMxEFdJU" || meta.resolved_name == "strrchr") {
+            if (guest_rdi > 0x1000) {
+                const char* p = std::strrchr(reinterpret_cast<const char*>(guest_rdi), static_cast<int>(guest_rsi));
+                return reinterpret_cast<uint64_t>(p);
+            }
+            return 0;
+        }
+        if (meta.nid == "viiwFMaNamA" || meta.resolved_name == "strstr") {
+            if (guest_rdi > 0x1000 && guest_rsi > 0x1000) {
+                const char* p = std::strstr(reinterpret_cast<const char*>(guest_rdi), reinterpret_cast<const char*>(guest_rsi));
+                return reinterpret_cast<uint64_t>(p);
+            }
+            return 0;
+        }
+        if (meta.nid == "8u8lPzUEq+U" || meta.resolved_name == "memchr") {
+            if (guest_rdi > 0x1000 && guest_rdx > 0) {
+                const void* p = std::memchr(reinterpret_cast<const void*>(guest_rdi), static_cast<int>(guest_rsi), static_cast<size_t>(guest_rdx));
+                return reinterpret_cast<uint64_t>(p);
+            }
+            return 0;
+        }
+        if (meta.nid == "5jNubw4vlAA" || meta.resolved_name == "strnlen") {
+            if (guest_rdi > 0x1000) {
+                return static_cast<uint64_t>(strnlen(reinterpret_cast<const char*>(guest_rdi), static_cast<size_t>(guest_rsi)));
+            }
+            return 0;
+        }
+        if (meta.nid == "gQX+4GDQjpM" || meta.resolved_name == "malloc") {
+            size_t sz = static_cast<size_t>(guest_rdi);
+            if (sz == 0 || sz > (1ULL << 30)) sz = 64;
+            return reinterpret_cast<uint64_t>(std::calloc(1, sz));
+        }
+        if (meta.nid == "Y7aJ1uydPMo" || meta.resolved_name == "realloc") {
+            size_t sz = static_cast<size_t>(guest_rsi);
+            if (sz == 0 || sz > (1ULL << 30)) sz = 64;
+            return reinterpret_cast<uint64_t>(std::realloc(reinterpret_cast<void*>(guest_rdi), sz));
+        }
+        if (meta.nid == "tIhsqj0qsFE" || meta.resolved_name == "free") {
+            return 0;
+        }
     }
 
     // --- Generic Stub Sink: Return SCE_OK for all other unhandled NIDs ---
@@ -1120,14 +1483,16 @@ size_t NidRegistry::BindImportsToGuestGot(
             0x53,                                     // push rbx
             0x48, 0x83, 0xE4, 0xF0,                   // and rsp, -16
             0x48, 0x83, 0xEC, 0x40,                   // sub rsp, 64
+            0x48, 0x8B, 0x45, 0x10,                   // mov rax, [rbp+0x10] (7th SysV arg on stack)
+            0x48, 0x89, 0x44, 0x24, 0x38,             // mov [rsp+0x38], rax
             0x48, 0x89, 0x4C, 0x24, 0x20,             // mov [rsp+0x20], rcx
             0x4C, 0x89, 0x44, 0x24, 0x28,             // mov [rsp+0x28], r8
             0x4C, 0x89, 0x4C, 0x24, 0x30,             // mov [rsp+0x30], r9
             0x49, 0x89, 0xD1,                         // mov r9, rdx
             0x49, 0x89, 0xF0,                         // mov r8, rsi
             0x48, 0x89, 0xFA,                         // mov rdx, rdi
-            0xB9, 0x00, 0x00, 0x00, 0x00,             // mov ecx, slot_idx   (offset 48)
-            0x48, 0xB8, 0, 0, 0, 0, 0, 0, 0, 0,       // movabs rax, &HleDispatchTrampoline (offset 54)
+            0xB9, 0x00, 0x00, 0x00, 0x00,             // mov ecx, slot_idx   (offset 57)
+            0x48, 0xB8, 0, 0, 0, 0, 0, 0, 0, 0,       // movabs rax, &HleDispatchTrampoline (offset 63)
             0xFF, 0xD0,                               // call rax
             0x48, 0x8D, 0x65, 0xC8,                   // lea rsp, [rbp - 56] (7 pushes * 8 = 56)
             0x5B,                                     // pop rbx
@@ -1140,9 +1505,9 @@ size_t NidRegistry::BindImportsToGuestGot(
             0x5D,                                     // pop rbp
             0xC3                                      // ret
         };
-        std::memcpy(code + 48, &slot_idx, sizeof(uint32_t));
+        std::memcpy(code + 57, &slot_idx, sizeof(uint32_t));
         uint64_t fn_addr = reinterpret_cast<uint64_t>(&HleDispatchTrampoline);
-        std::memcpy(code + 54, &fn_addr, sizeof(uint64_t));
+        std::memcpy(code + 63, &fn_addr, sizeof(uint64_t));
         std::memcpy(stub, code, sizeof(code));
 
         auto* got_slot = reinterpret_cast<uint64_t*>(guest_base + imp.got_vaddr);
@@ -1207,12 +1572,14 @@ size_t NidRegistry::GetTotalDispatchedCalls() {
 
 void NidRegistry::PrintLiveTelemetrySummary() {
     std::unordered_map<std::string, uint64_t> counts_copy;
-    size_t unique_count = 0;
-    {
-        std::lock_guard<std::mutex> lock(g_telemetry_mutex);
-        counts_copy = g_library_call_counts;
-        unique_count = g_unique_nids_invoked.size();
+    std::unordered_set<std::string> unique_nids;
+    for (const auto& slot : g_bound_slots) {
+        if (slot.call_count > 0) {
+            counts_copy[slot.library] += slot.call_count;
+            unique_nids.insert(slot.nid);
+        }
     }
+    size_t unique_count = unique_nids.size();
     std::cout << "[+] HLE Bridge Live Call Telemetry (" << g_call_counter.load()
               << " total calls across " << unique_count << " unique NIDs):\n";
     for (const auto& [lib, count] : counts_copy) {

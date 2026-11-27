@@ -3,6 +3,11 @@
 #include <cstring>
 #include <iostream>
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
+
 namespace yotei::kernel {
 
 namespace {
@@ -160,8 +165,26 @@ int64_t VirtualFileSystem::Read(int32_t fd, void* buf, uint64_t count) {
     std::lock_guard<std::mutex> lock(mutex_);
     auto it = open_fds_.find(fd);
     if (it == open_fds_.end() || !it->second.stream) return -9;
+    it->second.stream->clear();
     it->second.stream->read(reinterpret_cast<char*>(buf), static_cast<std::streamsize>(count));
     return static_cast<int64_t>(it->second.stream->gcount());
+}
+
+int64_t VirtualFileSystem::Write(int32_t /*fd*/, const void* buf, uint64_t count) {
+    if (!buf || reinterpret_cast<uintptr_t>(buf) < 0x1000) return -14;
+    return static_cast<int64_t>(count);
+}
+
+int64_t VirtualFileSystem::Lseek(int32_t fd, int64_t offset, int32_t whence) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = open_fds_.find(fd);
+    if (it == open_fds_.end() || !it->second.stream) return -9;
+    it->second.stream->clear();
+    std::ios_base::seekdir dir = std::ios::beg;
+    if (whence == 1) dir = std::ios::cur;
+    else if (whence == 2) dir = std::ios::end;
+    it->second.stream->seekg(static_cast<std::streamoff>(offset), dir);
+    return static_cast<int64_t>(it->second.stream->tellg());
 }
 
 int64_t VirtualFileSystem::Pread(int32_t fd, void* buf, uint64_t count, int64_t offset) {
@@ -215,15 +238,52 @@ int32_t VirtualFileSystem::AprResolvePath(
             return 0;
         }
     }
-    // Fallback to direct host filesystem check
+    // Fallback to direct host filesystem check and dynamically index it
     auto host_path = ResolveGuestPath(norm);
     std::error_code ec;
     if (!host_path.empty() && std::filesystem::exists(host_path, ec)) {
-        if (out_id) *out_id = 0x80000000U;
-        if (out_size) *out_size = static_cast<uint64_t>(std::filesystem::file_size(host_path, ec));
+        bool is_dir = std::filesystem::is_directory(host_path, ec);
+        uint64_t fsz = is_dir ? 0 : static_cast<uint64_t>(std::filesystem::file_size(host_path, ec));
+        std::lock_guard<std::mutex> lock(mutex_);
+        uint32_t dyn_id = static_cast<uint32_t>(ampr_by_id_.size() + 1);
+        AmprIndexEntry entry{0, fsz, norm, "/app0", dyn_id};
+        ampr_by_path_[norm] = entry;
+        ampr_by_id_[dyn_id] = std::move(entry);
+        if (out_id) *out_id = dyn_id;
+        if (out_size) *out_size = fsz;
         return 0;
     }
-    return -2; // ENOENT
+    return static_cast<int32_t>(0x80020002); // SCE_KERNEL_ERROR_ENOENT
+}
+
+int32_t VirtualFileSystem::AprStatFileById(uint32_t file_id, SceKernelStat* sb) const {
+    if (!sb || reinterpret_cast<uintptr_t>(sb) < 0x1000) return static_cast<int32_t>(0x8002000e);
+    std::string vpath;
+    uint64_t fsz = 0;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        auto it = ampr_by_id_.find(file_id);
+        if (it == ampr_by_id_.end()) return static_cast<int32_t>(0x80020002);
+        vpath = it->second.virtual_path;
+        fsz = it->second.file_size;
+    }
+    auto host_path = ResolveGuestPath(vpath);
+    std::error_code ec;
+    bool is_dir = (!host_path.empty() && std::filesystem::is_directory(host_path, ec));
+    std::memset(sb, 0, sizeof(SceKernelStat));
+    sb->st_mode = is_dir ? 0040777 : 0100666;
+    sb->st_size = is_dir ? 0 : static_cast<int64_t>(fsz);
+    sb->st_blksize = 4096;
+    return 0;
+}
+
+int32_t VirtualFileSystem::AprGetFileSize(uint32_t file_id, uint64_t* out_size) const {
+    if (!out_size || reinterpret_cast<uintptr_t>(out_size) < 0x1000) return static_cast<int32_t>(0x8002000e);
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = ampr_by_id_.find(file_id);
+    if (it == ampr_by_id_.end()) return static_cast<int32_t>(0x80020002);
+    *out_size = it->second.file_size;
+    return 0;
 }
 
 int64_t VirtualFileSystem::AprReadFileById(
@@ -241,6 +301,29 @@ int64_t VirtualFileSystem::AprReadFileById(
     auto host_path = ResolveGuestPath(vpath);
     std::ifstream ifs(host_path, std::ios::binary);
     if (!ifs) return -2;
+#ifdef _WIN32
+    // Ensure all pages in [dst_buf, dst_buf + length) are committed in host virtual address space
+    // (e.g. if the guest reserved a sparse virtual range at 0x8000000000 or mapped a partial direct memory block)
+    uint64_t start_va = reinterpret_cast<uint64_t>(dst_buf) & ~0xFFFFULL;
+    uint64_t end_va   = (reinterpret_cast<uint64_t>(dst_buf) + length + 0xFFFFULL) & ~0xFFFFULL;
+    for (uint64_t page_va = start_va; page_va < end_va; ) {
+        MEMORY_BASIC_INFORMATION mbi{};
+        if (::VirtualQuery(reinterpret_cast<LPCVOID>(page_va), &mbi, sizeof(mbi)) == 0) break;
+        uint64_t reg_end = (std::min)(end_va, reinterpret_cast<uint64_t>(mbi.BaseAddress) + mbi.RegionSize);
+        if (mbi.State == MEM_FREE) {
+            ::VirtualAlloc(reinterpret_cast<LPVOID>(page_va), static_cast<SIZE_T>(reg_end - page_va),
+                           MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+        } else if (mbi.State == MEM_RESERVE) {
+            ::VirtualAlloc(reinterpret_cast<LPVOID>(page_va), static_cast<SIZE_T>(reg_end - page_va),
+                           MEM_COMMIT, PAGE_READWRITE);
+        } else if (mbi.Protect & (PAGE_NOACCESS | PAGE_READONLY)) {
+            DWORD old_prot = 0;
+            ::VirtualProtect(reinterpret_cast<LPVOID>(page_va), static_cast<SIZE_T>(reg_end - page_va),
+                             PAGE_READWRITE, &old_prot);
+        }
+        page_va = (reg_end > page_va) ? reg_end : (page_va + 0x10000ULL);
+    }
+#endif
     ifs.seekg(static_cast<std::streamoff>(offset), std::ios::beg);
     ifs.read(reinterpret_cast<char*>(dst_buf), static_cast<std::streamsize>(length));
     return static_cast<int64_t>(ifs.gcount());

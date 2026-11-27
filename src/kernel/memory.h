@@ -29,18 +29,16 @@ constexpr uint32_t SCE_KERNEL_PROT_GPU_READ  = 0x10;
 constexpr uint32_t SCE_KERNEL_PROT_GPU_WRITE = 0x20;
 constexpr uint32_t SCE_KERNEL_PROT_GPU_ALL   = 0x30;
 
-// PS5 Prospero sceKernelBatchMap entry structure (40 bytes)
+// PS5 Prospero sceKernelBatchMap entry structure (32 bytes)
 #pragma pack(push, 1)
 struct SceKernelBatchMapEntry {
-    uint64_t start_vaddr;
-    uint64_t phys_offset;
-    uint64_t length;
-    uint8_t  prot;
-    uint8_t  memory_type;
-    uint16_t reserved;
-    uint32_t flags;
-    uint32_t operation;
-    uint32_t pad;
+    uint64_t start_vaddr;  // +0x00
+    uint64_t phys_offset;  // +0x08
+    uint64_t length;       // +0x10
+    uint8_t  prot;         // +0x18
+    uint8_t  memory_type;  // +0x19
+    uint16_t reserved;     // +0x1A
+    int32_t  operation;    // +0x1C
 };
 #pragma pack(pop)
 
@@ -118,7 +116,7 @@ public:
 private:
     GuestMemoryManager() = default;
 
-    static constexpr uint64_t kTotalDirectMemorySize = 12ULL * 1024ULL * 1024ULL * 1024ULL; // 12 GiB
+    static constexpr uint64_t kTotalDirectMemorySize = 14ULL * 1024ULL * 1024ULL * 1024ULL; // 14 GiB (PS5 Prospero Direct Memory Pool)
     static constexpr uint64_t kConfiguredFlexibleMemorySize = 165675008ULL;                 // 158 MiB (param.json)
 
     mutable std::mutex mutex_;

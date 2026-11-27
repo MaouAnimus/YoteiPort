@@ -50,7 +50,7 @@ class AmprHleManager {
 public:
     static AmprHleManager& Instance();
 
-    // Dispatch any libSceAmpr or Apr::* NID call; returns true if handled
+    // Dispatch any libSceAmpr or Apr::* / sceKernelApr* NID call; returns true if handled
     bool DispatchNid(
         const std::string& nid,
         const std::string& resolved_name,
@@ -60,7 +60,8 @@ public:
         uint64_t rcx,
         uint64_t r8,
         uint64_t r9,
-        uint64_t* out_ret);
+        uint64_t* out_ret,
+        uint64_t stack_arg0 = 0);
 
     size_t GetTotalSubmittedBuffers() const { return submitted_buffers_; }
     size_t GetTotalBytesStreamed() const { return total_bytes_streamed_; }

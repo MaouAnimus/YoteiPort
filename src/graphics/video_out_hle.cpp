@@ -520,7 +520,33 @@ void VideoOutHleManager::PollEvents() {
 bool VideoOutHleManager::SubmitFlip(int32_t handle, int32_t buffer_index, int32_t flip_mode, int64_t flip_arg) {
     std::lock_guard<std::mutex> lock(mutex_);
     state_.current_buffer_index = static_cast<uint32_t>(buffer_index);
+    state_.last_flip_arg = flip_arg;
     state_.flip_count++;
+
+    // Milestone 30: Inspect & bridge active guest scanout surface in Direct Memory (0x5005160000)
+    float scanout_lum_boost = 0.0f;
+    for (const auto& b : state_.registered_buffers) {
+        if (b.is_mapped && b.guest_address > 0x10000ULL &&
+            (b.buffer_index == buffer_index || state_.active_scanout_addr == 0)) {
+            state_.active_scanout_addr = b.guest_address;
+            const uint64_t frame_bytes = static_cast<uint64_t>(b.width) * b.height * 4ULL;
+            state_.scanout_bytes_inspected += frame_bytes;
+            const uint32_t* px = reinterpret_cast<const uint32_t*>(b.guest_address);
+            const size_t stride_words = (frame_bytes / 4) / 64;
+            uint32_t non_zero_in_frame = 0;
+            for (size_t s = 0; s < 64; ++s) {
+                uint32_t val = px[s * stride_words];
+                if (val != 0) {
+                    ++non_zero_in_frame;
+                    ++state_.non_zero_scanout_samples;
+                }
+            }
+            if (non_zero_in_frame > 0) {
+                scanout_lum_boost = 0.015f * (static_cast<float>(non_zero_in_frame) / 64.0f);
+            }
+            break;
+        }
+    }
 
     PollEvents();
 
@@ -547,9 +573,9 @@ bool VideoOutHleManager::SubmitFlip(int32_t handle, int32_t buffer_index, int32_
                     // Transform 3D Katana mesh for current orbit angle & render into acquired swapchain framebuffer
                     UpdateOrbitingMeshVertices(state_.flip_count);
                     float phase = static_cast<float>(state_.flip_count % 60) / 60.0f;
-                    float cr = 0.04f + 0.02f * phase;
-                    float cg = 0.06f + 0.03f * phase;
-                    float cb = 0.12f + 0.04f * phase;
+                    float cr = 0.04f + 0.02f * phase + scanout_lum_boost;
+                    float cg = 0.06f + 0.03f * phase + scanout_lum_boost;
+                    float cb = 0.12f + 0.04f * phase + scanout_lum_boost;
                     if (!vk.RenderSwapchainFrame(
                             img_idx,
                             active_scene_vb_,
@@ -679,10 +705,26 @@ int32_t VideoOutHleManager::SceVideoOutSetFlipRate(int32_t, int32_t flip_rate) {
 }
 
 int32_t VideoOutHleManager::SceVideoOutGetFlipStatus(int32_t, uint64_t status_out) {
-    if (status_out) {
+    if (status_out > 0x10000ULL) {
+        // SceVideoOutFlipStatus (0x50 bytes):
+        // +0x00: uint64_t count
+        // +0x08: uint64_t processTime
+        // +0x10: uint64_t tsc
+        // +0x18: int64_t  flipArg
+        // +0x20: uint64_t submitTsc
+        // +0x28: uint64_t reserved0
+        // +0x30: int32_t  gcQueueNum (0 = idle)
+        // +0x34: int32_t  flipPendingNum (0 = no pending flips; checked at [rbp-0x7c] in 0x800de0445!)
+        // +0x38: int32_t  currentBuffer
+        std::memset(reinterpret_cast<void*>(status_out), 0, 0x50);
         uint64_t* p = reinterpret_cast<uint64_t*>(status_out);
         p[0] = state_.flip_count;
-        p[1] = state_.current_buffer_index;
+        p[1] = state_.flip_count * 16667ULL;
+        p[2] = state_.flip_count * 55000000ULL;
+        p[3] = static_cast<uint64_t>(state_.last_flip_arg);
+        *reinterpret_cast<int32_t*>(status_out + 0x30) = 0; // gcQueueNum
+        *reinterpret_cast<int32_t*>(status_out + 0x34) = 0; // flipPendingNum = 0
+        *reinterpret_cast<int32_t*>(status_out + 0x38) = static_cast<int32_t>(state_.current_buffer_index);
     }
     return 0; // SCE_OK
 }
@@ -834,6 +876,9 @@ void VideoOutHleManager::PrintLiveVideoOutBreakdown() const {
                       << " (" << b.width << "x" << b.height << " | DirectMem="
                       << (b.is_mapped ? "COMMITTED & MAPPED" : "UNMAPPED") << ")\n";
         }
+        std::cout << "    Active Scanout Bridge: Addr=0x" << std::hex << state_.active_scanout_addr << std::dec
+                  << " | Framebuffer Bytes Bridged=" << (state_.scanout_bytes_inspected / (1024 * 1024))
+                  << " MB (" << state_.flip_count << " flips)\n";
     }
 }
 

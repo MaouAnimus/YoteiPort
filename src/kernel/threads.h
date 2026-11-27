@@ -130,6 +130,7 @@ public:
                      uint64_t* ret);
 
     size_t GetActiveThreadCount();
+    void DumpWorkerThreadState(uint64_t thread_id);
     void Shutdown();
 
 private:
@@ -149,9 +150,14 @@ private:
 
     mutable std::mutex sync_lock_;
     mutable std::mutex equeue_lock_;
-    std::unordered_map<uint64_t, std::unique_ptr<std::recursive_mutex>> mutexes_;
+    struct GuestMutex {
+        std::mutex mtx;
+        std::atomic<uint32_t> owner_tid{0};
+        uint32_t recursion{0};
+    };
+    std::unordered_map<uint64_t, std::unique_ptr<GuestMutex>> mutexes_;
     std::unordered_map<uint64_t, std::unique_ptr<std::shared_mutex>> rwlocks_;
-    std::unordered_map<uint64_t, std::unique_ptr<std::condition_variable_any>> conds_;
+    std::unordered_map<uint64_t, std::unique_ptr<std::condition_variable>> conds_;
     std::unordered_map<int32_t, void*> semaphores_;
     int32_t next_sem_id_ = 100;
     std::unordered_map<uint64_t, GuestEqueue> equeues_;

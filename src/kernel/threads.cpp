@@ -16,10 +16,13 @@ namespace {
 thread_local uint64_t g_current_tcb = 0;
 thread_local uint64_t g_current_guest_tid = 1;
 
-static uint64_t InvokeGuestThreadSafeSeh(uint64_t entry_fn, uint64_t arg) {
+static uint64_t InvokeGuestThreadSafeSeh(uint64_t entry_fn, uint64_t arg, uint64_t tid) {
+    DWORD exc_code = 0;
     __try {
         return InvokeGuestSysV(entry_fn, arg, 0, 0, 0);
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
+    } __except (exc_code = GetExceptionCode(), EXCEPTION_EXECUTE_HANDLER) {
+        std::cout << "  [THREAD] Uncaught SEH Exception 0x" << std::hex << exc_code
+                  << " on Guest Thread ID=" << std::dec << tid << "\n" << std::flush;
         return 0;
     }
 }
@@ -40,7 +43,7 @@ DWORD WINAPI GuestThreadEntry(LPVOID param) {
                   << " Arg=0x" << th->arg << std::dec << "\n" << std::flush;
     }
 
-    th->return_value = InvokeGuestThreadSafeSeh(th->entry_fn, th->arg);
+    th->return_value = InvokeGuestThreadSafeSeh(th->entry_fn, th->arg, th->thread_id);
 
     th->is_finished = true;
     std::cout << "  [THREAD] Finished Guest Thread ID=" << th->thread_id
@@ -325,6 +328,80 @@ size_t ThreadManager::GetActiveThreadCount() {
     return active_thread_count_.load(std::memory_order_relaxed);
 }
 
+void ThreadManager::DumpWorkerThreadState(uint64_t thread_id) {
+#ifdef _WIN32
+    std::shared_ptr<GuestThread> target;
+    {
+        std::lock_guard<std::mutex> lock(thread_lock_);
+        auto it = threads_.find(thread_id);
+        if (it == threads_.end()) return;
+        target = it->second;
+    }
+    if (!target || !target->win_handle || target->is_finished) {
+        std::cout << "    Worker_" << thread_id << " State: finished=" << (target ? target->is_finished : true) << "\n";
+        return;
+    }
+    auto safe_read = [](uint64_t addr) -> uint64_t {
+        if (addr < 0x10000ULL) return 0;
+        MEMORY_BASIC_INFORMATION mbi{};
+        if (::VirtualQuery(reinterpret_cast<LPCVOID>(addr), &mbi, sizeof(mbi)) == 0) return 0;
+        if (mbi.State != MEM_COMMIT || (mbi.Protect & (PAGE_NOACCESS | PAGE_GUARD))) return 0;
+        return *reinterpret_cast<const uint64_t*>(addr);
+    };
+    CONTEXT ctx{};
+    ctx.ContextFlags = CONTEXT_CONTROL | CONTEXT_INTEGER;
+    uint64_t rbp_frames[6] = {};
+    uint64_t top_stack = 0;
+    if (::SuspendThread(target->win_handle) != (DWORD)-1) {
+        if (::GetThreadContext(target->win_handle, &ctx)) {
+            top_stack = safe_read(ctx.Rsp);
+            uint64_t fp = ctx.Rbp;
+            for (int f = 0; f < 6 && fp > 0x10000; ++f) {
+                rbp_frames[f] = safe_read(fp + 8);
+                fp = safe_read(fp);
+            }
+        }
+        ::ResumeThread(target->win_handle);
+    }
+    std::cout << "    Worker_" << thread_id << " LiveRIP=0x" << std::hex << ctx.Rip
+              << " RSP=0x" << ctx.Rsp << " TopStack=0x" << top_stack
+              << " RBX=0x" << ctx.Rbx << " R12=0x" << ctx.R12
+              << " R13=0x" << ctx.R13 << " R14=0x" << ctx.R14 << " R15=0x" << ctx.R15
+              << "\n    Worker_" << std::dec << thread_id << " Backtrace:" << std::hex;
+    for (int f = 0; f < 6; ++f) {
+        if (rbp_frames[f]) std::cout << " [#" << std::dec << f << std::hex << "]=0x" << rbp_frames[f];
+    }
+    std::cout << "\n    Worker_" << std::dec << thread_id << " StackScan:" << std::hex;
+    int found_ret = 0;
+    for (int s = 0; s < 256 && found_ret < 8; ++s) {
+        uint64_t val = safe_read(ctx.Rsp + s * 8);
+        if (val >= 0x800000000ULL && val < 0x803000000ULL) {
+            std::cout << " [+" << std::dec << (s * 8) << std::hex << "]=0x" << val;
+            ++found_ret;
+        }
+    }
+    auto it_m = mutexes_.find(0x804ddee10ULL);
+    if (it_m != mutexes_.end() && it_m->second) {
+        uint32_t owner_win = it_m->second->owner_tid.load();
+        uint64_t owner_guest = 0;
+        std::string owner_name = "none";
+        {
+            std::lock_guard<std::mutex> lock(thread_lock_);
+            for (const auto& [gtid, gth] : threads_) {
+                if (gth && gth->win_tid == owner_win) {
+                    owner_guest = gtid;
+                    owner_name = gth->name;
+                    break;
+                }
+            }
+        }
+        std::cout << " | Mtx[0x804ddee10] owner_win_tid=" << std::dec << owner_win
+                  << " (GuestTID=" << owner_guest << " '" << owner_name << "') rec=" << it_m->second->recursion;
+    }
+    std::cout << std::dec << "\n";
+#endif
+}
+
 void ThreadManager::Shutdown() {
     std::lock_guard<std::mutex> lock(thread_lock_);
 #ifdef _WIN32
@@ -361,55 +438,80 @@ void ThreadManager::Shutdown() {
 uint32_t ThreadManager::MutexInit(uint64_t mutex_addr, uint64_t) {
     if (!mutex_addr) return 0x80020016; // EINVAL
     std::lock_guard<std::mutex> lock(sync_lock_);
-    mutexes_[mutex_addr] = std::make_unique<std::recursive_mutex>();
+    if (mutexes_.find(mutex_addr) == mutexes_.end()) {
+        mutexes_[mutex_addr] = std::make_unique<GuestMutex>();
+    }
     *reinterpret_cast<uint64_t*>(mutex_addr) = mutex_addr;
     return 0;
 }
 
 uint32_t ThreadManager::MutexLock(uint64_t mutex_addr) {
     if (!mutex_addr) return 0x80020016;
-    std::recursive_mutex* m = nullptr;
+    GuestMutex* gm = nullptr;
     {
         std::lock_guard<std::mutex> lock(sync_lock_);
         auto it = mutexes_.find(mutex_addr);
         if (it == mutexes_.end()) {
-            mutexes_[mutex_addr] = std::make_unique<std::recursive_mutex>();
-            m = mutexes_[mutex_addr].get();
+            mutexes_[mutex_addr] = std::make_unique<GuestMutex>();
+            gm = mutexes_[mutex_addr].get();
         } else {
-            m = it->second.get();
+            gm = it->second.get();
         }
     }
-    m->lock();
+    uint32_t tid = ::GetCurrentThreadId();
+    if (gm->owner_tid.load(std::memory_order_relaxed) == tid) {
+        ++gm->recursion;
+        return 0;
+    }
+    gm->mtx.lock();
+    gm->owner_tid.store(tid, std::memory_order_relaxed);
+    gm->recursion = 1;
     return 0;
 }
 
 uint32_t ThreadManager::MutexTrylock(uint64_t mutex_addr) {
     if (!mutex_addr) return 0x80020016;
-    std::recursive_mutex* m = nullptr;
+    GuestMutex* gm = nullptr;
     {
         std::lock_guard<std::mutex> lock(sync_lock_);
         auto it = mutexes_.find(mutex_addr);
         if (it == mutexes_.end()) {
-            mutexes_[mutex_addr] = std::make_unique<std::recursive_mutex>();
-            m = mutexes_[mutex_addr].get();
+            mutexes_[mutex_addr] = std::make_unique<GuestMutex>();
+            gm = mutexes_[mutex_addr].get();
         } else {
-            m = it->second.get();
+            gm = it->second.get();
         }
     }
-    return m->try_lock() ? 0 : 0x80020010; // EBUSY
+    uint32_t tid = ::GetCurrentThreadId();
+    if (gm->owner_tid.load(std::memory_order_relaxed) == tid) {
+        ++gm->recursion;
+        return 0;
+    }
+    if (!gm->mtx.try_lock()) return 0x80020010; // EBUSY
+    gm->owner_tid.store(tid, std::memory_order_relaxed);
+    gm->recursion = 1;
+    return 0;
 }
 
 uint32_t ThreadManager::MutexUnlock(uint64_t mutex_addr) {
     if (!mutex_addr) return 0x80020016;
-    std::recursive_mutex* m = nullptr;
+    GuestMutex* gm = nullptr;
     {
         std::lock_guard<std::mutex> lock(sync_lock_);
         auto it = mutexes_.find(mutex_addr);
         if (it != mutexes_.end()) {
-            m = it->second.get();
+            gm = it->second.get();
         }
     }
-    if (m) m->unlock();
+    if (!gm) return 0;
+    uint32_t tid = ::GetCurrentThreadId();
+    if (gm->owner_tid.load(std::memory_order_relaxed) == tid) {
+        // Sucker Punch's recursive mutex wrapper tracks recursion in guest memory ([mutex_addr + 8])
+        // and only invokes scePthreadMutexUnlock when its own recursion count drops to 0.
+        gm->recursion = 0;
+        gm->owner_tid.store(0, std::memory_order_relaxed);
+        gm->mtx.unlock();
+    }
     return 0;
 }
 
@@ -424,62 +526,80 @@ uint32_t ThreadManager::MutexDestroy(uint64_t mutex_addr) {
 uint32_t ThreadManager::CondInit(uint64_t cond_addr, uint64_t) {
     if (!cond_addr) return 0x80020016;
     std::lock_guard<std::mutex> lock(sync_lock_);
-    conds_[cond_addr] = std::make_unique<std::condition_variable_any>();
+    if (conds_.find(cond_addr) == conds_.end()) {
+        conds_[cond_addr] = std::make_unique<std::condition_variable>();
+    }
     *reinterpret_cast<uint64_t*>(cond_addr) = cond_addr;
     return 0;
 }
 
 uint32_t ThreadManager::CondWait(uint64_t cond_addr, uint64_t mutex_addr) {
     if (!cond_addr || !mutex_addr) return 0x80020016;
-    std::condition_variable_any* cv = nullptr;
-    std::recursive_mutex* m = nullptr;
+    std::condition_variable* cv = nullptr;
+    GuestMutex* gm = nullptr;
     {
         std::lock_guard<std::mutex> lock(sync_lock_);
         auto it_c = conds_.find(cond_addr);
         if (it_c == conds_.end()) {
-            conds_[cond_addr] = std::make_unique<std::condition_variable_any>();
+            conds_[cond_addr] = std::make_unique<std::condition_variable>();
             cv = conds_[cond_addr].get();
         } else {
             cv = it_c->second.get();
         }
         auto it_m = mutexes_.find(mutex_addr);
         if (it_m == mutexes_.end()) {
-            mutexes_[mutex_addr] = std::make_unique<std::recursive_mutex>();
-            m = mutexes_[mutex_addr].get();
+            mutexes_[mutex_addr] = std::make_unique<GuestMutex>();
+            gm = mutexes_[mutex_addr].get();
         } else {
-            m = it_m->second.get();
+            gm = it_m->second.get();
         }
     }
-    if (cv && m) {
-        cv->wait(*m);
+    if (cv && gm) {
+        uint32_t tid = ::GetCurrentThreadId();
+        uint32_t saved_rec = gm->recursion > 0 ? gm->recursion : 1;
+        gm->recursion = 0;
+        gm->owner_tid.store(0, std::memory_order_relaxed);
+        std::unique_lock<std::mutex> ulock(gm->mtx, std::adopt_lock);
+        cv->wait(ulock);
+        ulock.release();
+        gm->owner_tid.store(tid, std::memory_order_relaxed);
+        gm->recursion = saved_rec;
     }
     return 0;
 }
 
 uint32_t ThreadManager::CondTimedwait(uint64_t cond_addr, uint64_t mutex_addr, uint64_t usec) {
     if (!cond_addr || !mutex_addr) return 0x80020016;
-    std::condition_variable_any* cv = nullptr;
-    std::recursive_mutex* m = nullptr;
+    std::condition_variable* cv = nullptr;
+    GuestMutex* gm = nullptr;
     {
         std::lock_guard<std::mutex> lock(sync_lock_);
         auto it_c = conds_.find(cond_addr);
         if (it_c == conds_.end()) {
-            conds_[cond_addr] = std::make_unique<std::condition_variable_any>();
+            conds_[cond_addr] = std::make_unique<std::condition_variable>();
             cv = conds_[cond_addr].get();
         } else {
             cv = it_c->second.get();
         }
         auto it_m = mutexes_.find(mutex_addr);
         if (it_m == mutexes_.end()) {
-            mutexes_[mutex_addr] = std::make_unique<std::recursive_mutex>();
-            m = mutexes_[mutex_addr].get();
+            mutexes_[mutex_addr] = std::make_unique<GuestMutex>();
+            gm = mutexes_[mutex_addr].get();
         } else {
-            m = it_m->second.get();
+            gm = it_m->second.get();
         }
     }
-    if (cv && m) {
+    if (cv && gm) {
+        uint32_t tid = ::GetCurrentThreadId();
+        uint32_t saved_rec = gm->recursion > 0 ? gm->recursion : 1;
+        gm->recursion = 0;
+        gm->owner_tid.store(0, std::memory_order_relaxed);
+        std::unique_lock<std::mutex> ulock(gm->mtx, std::adopt_lock);
         uint64_t wait_usec = (std::min)(usec, 5000000ULL);
-        auto res = cv->wait_for(*m, std::chrono::microseconds(wait_usec));
+        auto res = cv->wait_for(ulock, std::chrono::microseconds(wait_usec));
+        ulock.release();
+        gm->owner_tid.store(tid, std::memory_order_relaxed);
+        gm->recursion = saved_rec;
         return (res == std::cv_status::timeout) ? 0x8002003C : 0; // ETIMEDOUT
     }
     return 0;
@@ -585,7 +705,9 @@ int32_t ThreadManager::SemaDelete(int32_t sem_id) {
 uint32_t ThreadManager::RwlockInit(uint64_t rwlock_addr, uint64_t) {
     if (!rwlock_addr) return 0x80020016;
     std::lock_guard<std::mutex> lock(sync_lock_);
-    rwlocks_[rwlock_addr] = std::make_unique<std::shared_mutex>();
+    if (rwlocks_.find(rwlock_addr) == rwlocks_.end()) {
+        rwlocks_[rwlock_addr] = std::make_unique<std::shared_mutex>();
+    }
     return 0;
 }
 

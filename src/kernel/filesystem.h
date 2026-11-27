@@ -57,12 +57,16 @@ public:
     int32_t Open(const char* guest_path, int32_t flags, int32_t mode);
     int32_t Close(int32_t fd);
     int64_t Read(int32_t fd, void* buf, uint64_t count);
+    int64_t Write(int32_t fd, const void* buf, uint64_t count);
+    int64_t Lseek(int32_t fd, int64_t offset, int32_t whence);
     int64_t Pread(int32_t fd, void* buf, uint64_t count, int64_t offset);
     int32_t Stat(const char* guest_path, SceKernelStat* sb);
     int32_t Fstat(int32_t fd, SceKernelStat* sb);
 
     // Prospero APR / AMPR file resolution (sceKernelAprResolveFilepathsWithPrefixToIdsAndFileSizesForEach)
     int32_t AprResolvePath(const std::string& virtual_path, uint32_t* out_id, uint64_t* out_size) const;
+    int32_t AprStatFileById(uint32_t file_id, SceKernelStat* sb) const;
+    int32_t AprGetFileSize(uint32_t file_id, uint64_t* out_size) const;
     int64_t AprReadFileById(uint32_t file_id, void* dst_buf, uint64_t length, uint64_t offset) const;
 
     size_t GetAmprEntryCount() const { return ampr_by_id_.size(); }
@@ -82,8 +86,8 @@ private:
     std::unordered_map<int32_t, OpenFileHandle> open_fds_;
     int32_t next_fd_ = 100;
 
-    std::unordered_map<std::string, AmprIndexEntry> ampr_by_path_;
-    std::unordered_map<uint32_t, AmprIndexEntry> ampr_by_id_;
+    mutable std::unordered_map<std::string, AmprIndexEntry> ampr_by_path_;
+    mutable std::unordered_map<uint32_t, AmprIndexEntry> ampr_by_id_;
 };
 
 } // namespace yotei::kernel

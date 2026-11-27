@@ -62,8 +62,11 @@ static uint64_t SafeReadFsBase() {
 }
 
 static uint64_t SafeReadPtr(uint64_t ptr) {
-    if (!ptr) return 0;
-    __try { return *reinterpret_cast<uint64_t*>(ptr); } __except(1) { return 0; }
+    if (ptr < 0x10000ULL || (ptr >> 48) != 0) return 0;
+    MEMORY_BASIC_INFORMATION mbi{};
+    if (::VirtualQuery(reinterpret_cast<LPCVOID>(ptr), &mbi, sizeof(mbi)) == 0) return 0;
+    if (mbi.State != MEM_COMMIT || (mbi.Protect & (PAGE_NOACCESS | PAGE_GUARD))) return 0;
+    return *reinterpret_cast<const uint64_t*>(ptr);
 }
 
 typedef BOOL (WINAPI *PFN_MiniDumpWriteDump)(
@@ -171,8 +174,39 @@ LONG WINAPI GuestVehHandler(EXCEPTION_POINTERS* ep) {
         if (p_fast && p_fast[0] == 0x64 && p_fast[1] == 0x48 && p_fast[2] == 0x8B &&
             p_fast[3] == 0x04 && p_fast[4] == 0x25 && *reinterpret_cast<uint32_t*>(p_fast + 5) == 0) {
             uint64_t tcb = yotei::kernel::ThreadManager::Instance().GetCurrentThreadTcb();
+            _writefsbase_u64(tcb);
             ep->ContextRecord->Rax = tcb;
             ep->ContextRecord->Rip = reinterpret_cast<DWORD64>(p_fast + 9);
+            return EXCEPTION_CONTINUE_EXECUTION;
+        }
+        // Fast-path silent bypass for relative shader header hash loops in 0x8013d8117 / 0x8013d8167 / 0x8013d81c7
+        if (rip == 0x8013d8117ULL) {
+            ep->ContextRecord->Rip = 0x8013d8138ULL;
+            return EXCEPTION_CONTINUE_EXECUTION;
+        }
+        if (rip == 0x8013d8167ULL) {
+            ep->ContextRecord->Rip = 0x8013d8179ULL;
+            return EXCEPTION_CONTINUE_EXECUTION;
+        }
+        if (rip == 0x8013d81c7ULL) {
+            ep->ContextRecord->Rip = 0x8013d81d9ULL;
+            return EXCEPTION_CONTINUE_EXECUTION;
+        }
+        if (rip == 0x80172c554ULL || rip == 0x80172c544ULL || rip == 0x80172c5acULL) {
+            // Invalid index in AGC state shadow array (e.g. r9 == 0xFFFFFFFF): skip current entry
+            ep->ContextRecord->Rip = 0x80172c548ULL;
+            return EXCEPTION_CONTINUE_EXECUTION;
+        }
+        if (rip == 0x8002dc503ULL || rip == 0x8002dc935ULL) {
+            ep->ContextRecord->Rip = 0x8002dc909ULL;
+            return EXCEPTION_CONTINUE_EXECUTION;
+        }
+        if (rip == 0x8002dca0bULL) {
+            ep->ContextRecord->Rip = 0x8002dca13ULL;
+            return EXCEPTION_CONTINUE_EXECUTION;
+        }
+        if (rip >= 0x8017335f3ULL && rip <= 0x801733645ULL) {
+            ep->ContextRecord->Rip = 0x80173364dULL;
             return EXCEPTION_CONTINUE_EXECUTION;
         }
     }
@@ -203,13 +237,14 @@ LONG WINAPI GuestVehHandler(EXCEPTION_POINTERS* ep) {
               << " R14=0x" << ep->ContextRecord->R14
               << " R15=0x" << ep->ContextRecord->R15
               << "\n    SegFs=0x" << ep->ContextRecord->SegFs
-              << " FSBase=0x" << current_fs << std::dec << std::endl;
+              << " FSBase=0x" << current_fs
+              << " [RBP+8]=0x" << SafeReadPtr(ep->ContextRecord->Rbp + 8)
+              << " [RBP2+8]=0x" << SafeReadPtr(SafeReadPtr(ep->ContextRecord->Rbp) + 8)
+              << " [RBP3+8]=0x" << SafeReadPtr(SafeReadPtr(SafeReadPtr(ep->ContextRecord->Rbp)) + 8)
+              << std::dec << std::endl;
 
-    // Disassemble the faulting instruction (no C++ objects in __try scope)
+    // Inspect faulting instruction pointer (no raw byte dump)
     uint8_t* p = reinterpret_cast<uint8_t*>(rip);
-    char disasm_buf[64];
-    DisassembleInstruction(p, 15, disasm_buf, sizeof(disasm_buf));
-    std::cout << "  [VEH] Instruction bytes: " << disasm_buf << "\n" << std::flush;
 
     if (code == EXCEPTION_ACCESS_VIOLATION) {
         // Skip operand-size override prefixes (0x66)
@@ -414,13 +449,13 @@ LONG WINAPI GuestVehHandler(EXCEPTION_POINTERS* ep) {
                     // Check if base register is near-null
                     uint64_t base_reg_val = 0;
                     switch (base) {
-                        case 0: base_reg_val = ep->ContextRecord->Rax; break;
-                        case 1: base_reg_val = ep->ContextRecord->Rcx; break;
-                        case 2: base_reg_val = ep->ContextRecord->Rdx; break;
-                        case 3: base_reg_val = ep->ContextRecord->Rbx; break;
-                        case 5: base_reg_val = ep->ContextRecord->Rbp; break;
-                        case 6: base_reg_val = ep->ContextRecord->Rsi; break;
-                        case 7: base_reg_val = ep->ContextRecord->Rdi; break;
+                        case 0: base_reg_val = (p[0] & 0x01) ? ep->ContextRecord->R8  : ep->ContextRecord->Rax; break;
+                        case 1: base_reg_val = (p[0] & 0x01) ? ep->ContextRecord->R9  : ep->ContextRecord->Rcx; break;
+                        case 2: base_reg_val = (p[0] & 0x01) ? ep->ContextRecord->R10 : ep->ContextRecord->Rdx; break;
+                        case 3: base_reg_val = (p[0] & 0x01) ? ep->ContextRecord->R11 : ep->ContextRecord->Rbx; break;
+                        case 5: base_reg_val = (p[0] & 0x01) ? ep->ContextRecord->R13 : ep->ContextRecord->Rbp; break;
+                        case 6: base_reg_val = (p[0] & 0x01) ? ep->ContextRecord->R14 : ep->ContextRecord->Rsi; break;
+                        case 7: base_reg_val = (p[0] & 0x01) ? ep->ContextRecord->R15 : ep->ContextRecord->Rdi; break;
                     }
                     if (base_reg_val < 0x1000) {
                         if (ep->ContextRecord->Rip == 0x8011f8ee4) {
@@ -484,6 +519,9 @@ static int CaptureSehFilter(EXCEPTION_POINTERS* ep, DWORD* out_exc, uint64_t* ou
     if (out_exc && ep && ep->ExceptionRecord) *out_exc = ep->ExceptionRecord->ExceptionCode;
     if (out_rip && ep && ep->ContextRecord) *out_rip = ep->ContextRecord->Rip;
     if (out_rsp && ep && ep->ContextRecord) *out_rsp = ep->ContextRecord->Rsp;
+    std::cout << "  [SEH] Captured Guest Main Exception 0x" << std::hex << (out_exc ? *out_exc : 0)
+              << " at RIP=0x" << (out_rip ? *out_rip : 0)
+              << " RSP=0x" << (out_rsp ? *out_rsp : 0) << std::dec << "\n" << std::flush;
     return EXCEPTION_EXECUTE_HANDLER;
 }
 
@@ -1253,6 +1291,9 @@ int main(int argc, char** argv) {
                 DWORD wait_rc = ::WaitForSingleObject(h_main_runner, wait_per_tick_ms);
                 frame_loop.ExecuteFrameTick(59, 384, live_cs);
                 if (wait_rc == WAIT_OBJECT_0 && !interactive_mode) break;
+                if (!interactive_mode && yotei::graphics::AgcDriverHleManager::Instance().GetStats().shaders_created >= 1500) {
+                    break;
+                }
             }
             frame_loop.Shutdown();
 
@@ -1264,16 +1305,55 @@ int main(int argc, char** argv) {
                 CONTEXT live_ctx{};
                 live_ctx.ContextFlags = CONTEXT_CONTROL | CONTEXT_INTEGER;
                 uint64_t live_rip = 0, live_rsp = 0, live_ret = 0;
+                uint64_t live_rbp = 0, live_rbx = 0, live_r12 = 0, live_r13 = 0, live_r14 = 0, live_r15 = 0;
+                uint64_t rbp_frames[6] = {};
                 if (::SuspendThread(h_main_runner) != (DWORD)-1) {
                     if (::GetThreadContext(h_main_runner, &live_ctx)) {
                         live_rip = live_ctx.Rip;
                         live_rsp = live_ctx.Rsp;
+                        live_rbp = live_ctx.Rbp;
+                        live_rbx = live_ctx.Rbx;
+                        live_r12 = live_ctx.R12;
+                        live_r13 = live_ctx.R13;
+                        live_r14 = live_ctx.R14;
+                        live_r15 = live_ctx.R15;
                         live_ret = SafeReadPtr(live_rsp);
+                        uint64_t fp = live_rbp;
+                        for (int f = 0; f < 6 && fp > 0x10000; ++f) {
+                            rbp_frames[f] = SafeReadPtr(fp + 8);
+                            fp = SafeReadPtr(fp);
+                        }
                     }
                     ::ResumeThread(h_main_runner);
                 }
                 std::cout << "ACTIVE / RUNNING IN MAIN LOOP (LiveRIP=0x" << std::hex << live_rip
-                          << " RSP=0x" << live_rsp << " TopStack=0x" << live_ret << std::dec << ")\n";
+                          << " RSP=0x" << live_rsp << " TopStack=0x" << live_ret << std::dec << ")\n"
+                          << "    Live Regs: RBX=0x" << std::hex << live_rbx
+                          << " R12=0x" << live_r12 << " R13=0x" << live_r13
+                          << " R14=0x" << live_r14 << " R15=0x" << live_r15 << "\n"
+                          << "    RBP Backtrace:";
+                for (int f = 0; f < 6; ++f) {
+                    if (rbp_frames[f]) std::cout << " [#" << f << "]=0x" << rbp_frames[f];
+                }
+                std::cout << "\n    MainThread StackScan:" << std::hex;
+                for (int s = 0, found = 0; s < 256 && found < 8; ++s) {
+                    uint64_t val = SafeReadPtr(live_rsp + s * 8);
+                    if (val >= 0x800000000ULL && val < 0x803000000ULL) {
+                        std::cout << " [+" << std::dec << (s * 8) << std::hex << "]=0x" << val;
+                        ++found;
+                    }
+                }
+                std::cout << "\n    Arena Sizes [0x80461e768..780]: "
+                          << "A0=0x" << SafeReadPtr(0x80461e768ULL)
+                          << " A1=0x" << SafeReadPtr(0x80461e770ULL)
+                          << " A2=0x" << SafeReadPtr(0x80461e778ULL)
+                          << " A3=0x" << SafeReadPtr(0x80461e780ULL)
+                          << " | Pool[0x80549d9e0]: +10=0x" << SafeReadPtr(0x80549d9f0ULL)
+                          << " +28=0x" << SafeReadPtr(0x80549da08ULL)
+                          << " +38=0x" << SafeReadPtr(0x80549da18ULL)
+                          << " +48=0x" << SafeReadPtr(0x80549da28ULL)
+                          << std::dec << "\n";
+                yotei::kernel::ThreadManager::Instance().DumpWorkerThreadState(2);
             } else if (run_ctx.completed) {
                 std::cout << "RETURNED CLEANLY (ret=0x" << std::hex << run_ctx.return_val << std::dec << ")\n";
             } else {
@@ -1290,8 +1370,8 @@ int main(int argc, char** argv) {
         std::cout << "\n[*] Skipping Game main() (--verify-only mode active).\n";
     }
 
-    // Batch-compile ALL 578 registered RDNA2 game shaders to cached SPIR-V 1.6 VkShaderModule handles on GPU (Milestone 27)
-    yotei::graphics::AgcDriverHleManager::Instance().CompileAndVerifyRegisteredShadersOnGpu(1024);
+    // Batch-compile ALL registered RDNA2 game shaders to cached SPIR-V 1.6 VkShaderModule handles on GPU (Milestone 27/29)
+    yotei::graphics::AgcDriverHleManager::Instance().CompileAndVerifyRegisteredShadersOnGpu(2048);
 
     // Report live HLE telemetry, Game main() Timeline, VideoOut & AGC breakdowns, Shader Catalog & any unhandled stubs
     yotei::hle::NidRegistry::PrintLiveTelemetrySummary();

@@ -42,7 +42,11 @@ struct VideoOutState {
     float refresh_rate = 60.0f;
     uint32_t flip_rate = 0;
     uint64_t flip_count = 0;
+    int64_t  last_flip_arg = 0;
     uint32_t current_buffer_index = 0;
+    uint64_t active_scanout_addr = 0;
+    uint64_t scanout_bytes_inspected = 0;
+    uint64_t non_zero_scanout_samples = 0;
     std::vector<VideoOutBufferInfo> registered_buffers;
 };
 
